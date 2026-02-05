@@ -7,11 +7,10 @@
     <title>Forensicate.ai</title>
     <script>
       (function(){
-        var params = new URLSearchParams(window.location.search);
-        var p = params.get("p");
-        if (p) {
-          var repo = "/forensicate.ai";
-          var decoded = decodeURIComponent(p);
+        var repo = "/forensicate.ai";
+        if (window.location.hash && window.location.hash.startsWith("#r=")) {
+          var encoded = window.location.hash.slice(3);
+          var decoded = decodeURIComponent(encoded);
           if (!decoded.startsWith("/")) decoded = "/" + decoded;
           history.replaceState(null, "", repo + decoded);
         }
