@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Forensicate.ai</title>
     <script>
-      (function () {
-        var l = window.location;
-        var path = (l.pathname || "/").replace(/^\/+/, "");
-        var search = l.search || "";
-        var hash = "#/" + path + search;
-        l.replace(l.origin + "/" + hash);
-      })();
+      (function (l) {
+        var path = l.pathname ? l.pathname.slice(1) : "";
+        var search = l.search ? l.search.slice(1).replace(/&/g, "~and~") : "";
+        var redirect = l.protocol + "//" + l.host + "/?/" + path;
+        if (search) redirect += "&" + search;
+        redirect += l.hash || "";
+        l.replace(redirect);
+      })(window.location);
     </script>
   </head>
   <body></body>
