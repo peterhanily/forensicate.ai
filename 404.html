@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forensicate.ai</title>
+    <script>
+      (function () {
+        var l = window.location;
+        var path = (l.pathname || "/").replace(/^\/+/, "");
+        var search = l.search || "";
+        var hash = "#/" + path + search;
+        l.replace(l.origin + "/" + hash);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
