@@ -154,8 +154,17 @@ export default function Layout() {
       </main>
 
       <footer className="border-t border-gray-800 py-4">
-        <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm flex items-center justify-center gap-2">
+        <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm flex flex-wrap items-center justify-center gap-2">
           <span>{APP_NAME} v{APP_VERSION}</span>
+          <span className="text-gray-700">|</span>
+          <a
+            href="/extension-privacy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-500 hover:text-[#c9a227] transition-colors"
+          >
+            Privacy Policy
+          </a>
           <span className="text-gray-700">|</span>
           <a
             href="https://github.com/peterhanily/forensicate.ai"
