@@ -60,6 +60,9 @@ function createHistoryItem(item, index) {
           <span>🎯 ${item.matchCount || 0} matches</span>
           ${item.sourceUrl ? `<span>🔗 ${escapeHtml(item.sourceUrl)}</span>` : ''}
         </div>
+        <div class="history-actions">
+          <button class="btn-small btn-primary" onclick="saveToLibrary(${index})">💾 Save to Library</button>
+        </div>
       </div>
       <div class="confidence-pill ${riskClass}">
         ${item.confidence}%
@@ -114,6 +117,44 @@ function escapeHtml(text) {
   div.textContent = text || '';
   return div.innerHTML;
 }
+
+// Save history item to prompt library
+async function saveToLibrary(index) {
+  try {
+    const { scanHistory = [] } = await chrome.storage.local.get('scanHistory');
+
+    if (index < 0 || index >= scanHistory.length) {
+      alert('History item not found');
+      return;
+    }
+
+    const historyItem = scanHistory[index];
+
+    // Send message to background script to save to library
+    const response = await chrome.runtime.sendMessage({
+      type: 'SAVE_TO_LIBRARY',
+      prompt: {
+        text: historyItem.text,
+        confidence: historyItem.confidence,
+        matchCount: historyItem.matchCount,
+        matchedRules: historyItem.matchedRules || [],
+        sourceUrl: historyItem.sourceUrl
+      }
+    });
+
+    if (response && response.success) {
+      alert('✅ Saved to Prompt Library!');
+    } else {
+      alert('❌ Failed to save to library');
+    }
+  } catch (error) {
+    console.error('Failed to save to library:', error);
+    alert('❌ Failed to save to library');
+  }
+}
+
+// Make saveToLibrary globally accessible
+window.saveToLibrary = saveToLibrary;
 
 // Event listeners
 document.getElementById('clear-history-btn')?.addEventListener('click', clearHistory);

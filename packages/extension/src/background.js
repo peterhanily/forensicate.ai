@@ -186,14 +186,8 @@ async function scanAndShowResult(text, sourceUrl) {
     // Check storage quota before proceeding
     await checkStorageQuota();
 
-    // Show result based on risk level
-    if (result.confidence < 30) {
-      // Low risk - show notification instead of window
-      await showLowRiskNotification(trimmedText, result, sourceUrl);
-    } else {
-      // Medium/High risk - show full result window
-      await showResultWindow();
-    }
+    // Show result as bubble overlay on the page
+    await showBubbleOverlay(trimmedText, resultData, fullScanResult);
 
   } catch (error) {
     console.error('Scan error:', error);
@@ -277,7 +271,31 @@ async function cleanupOldData() {
   }
 }
 
-// Show result window (with reuse)
+// Show bubble overlay on current page
+async function showBubbleOverlay(text, resultData, fullScanResult) {
+  try {
+    // Get current active tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab || !tab.id) {
+      console.error('No active tab found');
+      return;
+    }
+
+    // Send message to content script to show bubble
+    await chrome.tabs.sendMessage(tab.id, {
+      type: 'SHOW_SCAN_RESULT',
+      result: resultData,
+      fullResult: fullScanResult
+    });
+  } catch (error) {
+    console.error('Failed to show bubble overlay:', error);
+    // Fallback to notification if content script not available
+    showError('Unable to display result overlay. Please refresh the page and try again.');
+  }
+}
+
+// Show result window (for fallback/view details)
 async function showResultWindow() {
   // Try to reuse existing window
   if (resultWindowId) {

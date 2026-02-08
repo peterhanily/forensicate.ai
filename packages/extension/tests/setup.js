@@ -8,13 +8,18 @@ global.chrome = {
     onInstalled: {
       addListener: vi.fn()
     },
+    onStartup: {
+      addListener: vi.fn()
+    },
     onMessage: {
       addListener: vi.fn()
     },
-    sendMessage: vi.fn()
+    sendMessage: vi.fn(),
+    getURL: vi.fn((path) => `chrome-extension://fake-id/${path}`)
   },
   contextMenus: {
     create: vi.fn(),
+    removeAll: vi.fn((callback) => callback && callback()),
     onClicked: {
       addListener: vi.fn()
     }
@@ -41,7 +46,8 @@ global.chrome = {
     }
   },
   tabs: {
-    query: vi.fn().mockResolvedValue([{ id: 1, url: 'https://example.com' }])
+    query: vi.fn().mockResolvedValue([{ id: 1, url: 'https://example.com' }]),
+    sendMessage: vi.fn().mockResolvedValue({ success: true })
   },
   scripting: {
     executeScript: vi.fn().mockResolvedValue([{ result: 'selected text' }])
