@@ -286,7 +286,7 @@ async function exportToWebApp() {
     return;
   }
 
-  const confirmed = await customConfirm(`Export ${allPrompts.length} prompts to forensicate.ai Test Battery?\n\nThey will be added to "Extension Snippets" section (persists until you clear browser cache).`);
+  const confirmed = await customConfirm(`Export ${allPrompts.length} prompts to forensicate.ai Test Battery?\n\nThey will be added to "Extension Snippets" section (persists until you clear browser cache).\n\nNote: Your prompts will be included in the URL and may appear in browser history and server logs.`);
   if (!confirmed) {
     return;
   }

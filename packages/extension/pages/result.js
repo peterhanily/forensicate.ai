@@ -104,6 +104,17 @@ function displayResult(result, fullResult) {
   });
 
   document.getElementById('view-full-btn')?.addEventListener('click', () => {
+    // Warn user about data in URL
+    const confirmed = confirm(
+      'This will open forensicate.ai with your scanned text in the URL.\n\n' +
+      'Note: The text will be visible in browser history and may appear in server logs.\n\n' +
+      'Continue?'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     // Create minimal valid config with session data
     const config = {
       version: '1',

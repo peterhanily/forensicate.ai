@@ -278,7 +278,18 @@ function createBubbleElement(result, fullResult) {
     hideBubble();
   });
 
-  bubble.querySelector('#forensicate-full').addEventListener('click', () => {
+  bubble.querySelector('#forensicate-full').addEventListener('click', async () => {
+    // Warn user about data in URL
+    const confirmed = confirm(
+      'This will open forensicate.ai with your scanned text in the URL.\n\n' +
+      'Note: The text will be visible in browser history and may appear in server logs.\n\n' +
+      'Continue?'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     // Create minimal valid config with session data
     const config = {
       version: '1',
