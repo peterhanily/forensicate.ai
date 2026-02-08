@@ -295,7 +295,7 @@ async function showResultWindow() {
 
   // Create new window
   const window = await chrome.windows.create({
-    url: 'pages/result.html',
+    url: chrome.runtime.getURL('pages/result.html'),
     type: 'popup',
     width: 500,
     height: 600
