@@ -321,26 +321,43 @@ function positionBubble(bubble, selectionRect) {
   const bubbleRect = bubble.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
 
-  // Try to position below selection
-  let top = selectionRect.bottom + window.scrollY + 10;
-  let left = selectionRect.left + window.scrollX + (selectionRect.width / 2) - (bubbleRect.width / 2);
+  // Calculate selection position relative to viewport
+  const selectionTop = selectionRect.top;
+  const selectionBottom = selectionRect.bottom;
+  const selectionLeft = selectionRect.left;
+  const selectionWidth = selectionRect.width;
 
-  // If bubble would go off-screen to the right, move it left
-  if (left + bubbleRect.width > viewportWidth) {
+  // Try to position below selection first
+  let top = selectionBottom + 10;
+  let left = selectionLeft + (selectionWidth / 2) - (bubbleRect.width / 2);
+
+  // Ensure bubble fits horizontally in viewport
+  if (left + bubbleRect.width > viewportWidth - 20) {
     left = viewportWidth - bubbleRect.width - 20;
   }
-
-  // If bubble would go off-screen to the left, move it right
   if (left < 20) {
     left = 20;
   }
 
-  // If bubble would go off-screen at bottom, position above selection
-  if (top + bubbleRect.height > viewportHeight + window.scrollY) {
-    top = selectionRect.top + window.scrollY - bubbleRect.height - 10;
+  // Check if bubble fits below selection in viewport
+  if (top + bubbleRect.height > viewportHeight - 20) {
+    // Try positioning above selection
+    top = selectionTop - bubbleRect.height - 10;
+
+    // If it doesn't fit above either, position at top of viewport
+    if (top < 20) {
+      top = 20;
+    }
   }
 
+  // Ensure bubble is always within viewport bounds
+  top = Math.max(20, Math.min(top, viewportHeight - bubbleRect.height - 20));
+
+  // Convert viewport-relative position to absolute page position
+  bubble.style.position = 'fixed';
   bubble.style.top = `${top}px`;
   bubble.style.left = `${left}px`;
 }
