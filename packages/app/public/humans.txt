@@ -13,6 +13,28 @@
     Security Community -- OWASP, Lakera, jailbreakchat.com
     Role -- Detection patterns and research
 
+    GitHub Community -- Awesome ChatGPT Prompts, LLM Security repos
+    Role -- Test datasets and jailbreak examples
+
+    Spencer Kelly -- compromise.js
+    Role -- Natural language processing library
+
+    Finn Årup Nielsen -- AFINN-165
+    Role -- Sentiment analysis lexicon
+
+# AI ASSISTANCE
+
+    This project was AI-assisted (vibe coded) using:
+
+    GitHub Copilot -- Codex by OpenAI
+    Role -- Code generation and completion
+
+    Claude -- by Anthropic
+    Role -- Code generation, testing, optimization
+
+    Claude Code -- CLI tool by Anthropic
+    Role -- Development workflow and documentation
+
 # TECHNOLOGY COLOPHON
 
     Frontend -- React 19, TypeScript

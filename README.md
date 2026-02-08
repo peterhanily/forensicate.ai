@@ -216,6 +216,37 @@ forensicate_ai/
 └── README.md
 ```
 
+## Acknowledgments
+
+### AI-Assisted Development
+
+This project was developed as an **AI-assisted proof of concept** (vibe coded) using:
+- **GitHub Copilot** (Codex by OpenAI)
+- **Claude** (by Anthropic)
+- **Claude Code** (CLI tool by Anthropic)
+
+These tools assisted with code generation, testing, optimization, and documentation throughout the development process.
+
+### Detection Rules & Research Sources
+
+The detection rules and test prompts were informed by research and datasets from:
+
+- **OWASP** - Web application security patterns and injection attack vectors
+- **Lakera** - AI security research and prompt injection taxonomy
+- **jailbreakchat.com** - Community-sourced jailbreak techniques and examples
+- **GitHub Security Research** - Open-source prompt injection datasets including:
+  - [Awesome ChatGPT Prompts](https://github.com/f/awesome-chatgpt-prompts)
+  - [LLM Security](https://github.com/verazuo/awesome-llm-security)
+  - [Prompt Injection Defenses](https://github.com/tldrsec/prompt-injection-defenses)
+  - Various academic and community jailbreak collections
+- **Academic Papers** - Research on adversarial prompts, jailbreaking, and LLM security
+- **compromise.js** - Natural language processing library by Spencer Kelly
+- **AFINN-165** - Sentiment analysis word list by Finn Årup Nielsen
+
+### Special Thanks
+
+Thanks to the security research community for openly sharing their findings, enabling tools like this to help improve AI safety.
+
 ## License
 
 Apache License 2.0 - see [LICENSE](LICENSE) for details.
