@@ -314,17 +314,27 @@ async function exportToWebApp() {
           // Use as-is if not a valid URL
         }
 
+        // Create descriptive name showing source and date
+        const shortSource = sourceDomain.length > 30 ? sourceDomain.substring(0, 27) + '...' : sourceDomain;
+        const riskLevel = prompt.confidence >= 70 ? 'high' : prompt.confidence >= 30 ? 'medium' : 'low';
+
         return {
           id: prompt.id,
-          text: prompt.text,
-          timestamp: prompt.timestamp,
-          sourceUrl: sourceUrl,
-          sourceDomain: sourceDomain,
-          savedDate: date,
-          confidence: prompt.confidence,
-          matchCount: prompt.matchCount,
-          matchedRules: prompt.matchedRules || [],
-          expectedRisk: prompt.confidence >= 70 ? 'high' : prompt.confidence >= 30 ? 'medium' : 'low'
+          name: `${shortSource} · ${date}`,
+          content: prompt.text,
+          tags: [
+            riskLevel,
+            'extension',
+            sourceUrl !== 'Unknown source' ? 'web-capture' : 'manual-scan'
+          ],
+          // Keep metadata for reference
+          metadata: {
+            timestamp: prompt.timestamp,
+            sourceUrl: sourceUrl,
+            confidence: prompt.confidence,
+            matchCount: prompt.matchCount,
+            matchedRules: prompt.matchedRules || []
+          }
         };
       })
     };
