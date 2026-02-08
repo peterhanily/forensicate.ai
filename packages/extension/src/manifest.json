@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Forensicate.ai - Prompt Security Scanner",
   "version": "1.0.0",
-  "description": "Scan text for prompt injection attacks and jailbreaks. Right-click any text or save prompts to your test battery.",
+  "description": "Scan text for prompt injection attacks and jailbreaks. Visit forensicate.ai for full scanner | GitHub: github.com/peterhanily/forensicate.ai",
 
   "permissions": [
     "contextMenus",

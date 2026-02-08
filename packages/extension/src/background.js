@@ -428,6 +428,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (message.type === 'OPEN_HISTORY') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('pages/history.html') });
+    sendResponse({ success: true });
+    return true;
+  }
 });
 
 // Save prompt to library
