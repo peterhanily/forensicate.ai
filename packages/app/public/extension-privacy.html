@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Forensicate.ai Chrome Extension</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #f9fafb;
+            background: #030712;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #111827;
+            padding: 40px;
+            border-radius: 8px;
+            border: 1px solid #374151;
+        }
+        h1 {
+            color: #c9a227;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        h2 {
+            color: #c9a227;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        h3 {
+            color: #e5e7eb;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        p {
+            margin-bottom: 15px;
+            color: #d1d5db;
+        }
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+            color: #d1d5db;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .last-updated {
+            color: #9ca3af;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+        a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .summary {
+            background: #1f2937;
+            border-left: 4px solid #c9a227;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 4px;
+        }
+        .compliance {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .badge {
+            background: #1f2937;
+            border: 1px solid #10b981;
+            color: #10b981;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        .icon {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Privacy Policy - Forensicate.ai Chrome Extension</h1>
+        <p class="last-updated"><strong>Last Updated:</strong> February 8, 2026</p>
+
+        <h2>Overview</h2>
+        <p>Forensicate.ai is committed to protecting your privacy. This extension performs all prompt injection scanning <strong>locally in your browser</strong> and does not collect, transmit, or store any personal data on external servers.</p>
+
+        <h2>Data Collection</h2>
+
+        <h3>What We DO NOT Collect</h3>
+        <ul>
+            <li>❌ We do NOT collect personal information</li>
+            <li>❌ We do NOT track your browsing activity</li>
+            <li>❌ We do NOT send data to external servers</li>
+            <li>❌ We do NOT use analytics or telemetry</li>
+            <li>❌ We do NOT sell or share any data</li>
+            <li>❌ We do NOT access your data unless you explicitly trigger a scan</li>
+        </ul>
+
+        <h3>What We Store Locally</h3>
+        <p>The extension stores the following data <strong>only on your device</strong> using Chrome's local storage API:</p>
+
+        <ol>
+            <li>
+                <strong>Scan History</strong> (up to 50 items)
+                <ul>
+                    <li>Text you explicitly scanned</li>
+                    <li>Scan results (confidence score, matched rules)</li>
+                    <li>Source URL (page where text was scanned)</li>
+                    <li>Timestamp</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Prompt Library</strong> (up to 1000 items)
+                <ul>
+                    <li>Prompts you explicitly saved</li>
+                    <li>Associated scan results</li>
+                    <li>Source URL</li>
+                    <li>Timestamp</li>
+                </ul>
+            </li>
+        </ol>
+
+        <p>All data is stored locally using <code>chrome.storage.local</code> and never leaves your device unless you explicitly choose to export it.</p>
+
+        <h2>Permissions</h2>
+        <p>The extension requests the following permissions:</p>
+
+        <h3>contextMenus</h3>
+        <ul>
+            <li><strong>Why:</strong> To add "Scan with Forensicate.ai" to your right-click menu</li>
+            <li><strong>Usage:</strong> Creates the context menu item only</li>
+        </ul>
+
+        <h3>storage</h3>
+        <ul>
+            <li><strong>Why:</strong> To save your scan history and prompt library locally on your device</li>
+            <li><strong>Usage:</strong> All data stays on your device; nothing is synced or uploaded</li>
+        </ul>
+
+        <h3>activeTab</h3>
+        <ul>
+            <li><strong>Why:</strong> To access selected text when you trigger a scan</li>
+            <li><strong>Usage:</strong> Only activates when you explicitly right-click → "Scan with Forensicate.ai" or use the keyboard shortcut</li>
+            <li><strong>Important:</strong> We do NOT have access to any tab content unless you explicitly trigger a scan</li>
+        </ul>
+
+        <h2>How Scanning Works</h2>
+        <ol>
+            <li>You select text on a webpage</li>
+            <li>You right-click and choose "Scan with Forensicate.ai" (or press Ctrl+Shift+S)</li>
+            <li>The extension reads the selected text</li>
+            <li>All analysis happens <strong>locally in your browser</strong> using the bundled detection engine</li>
+            <li>Results are displayed in a bubble overlay</li>
+            <li>Nothing is sent to any server</li>
+        </ol>
+
+        <h2>Third-Party Services</h2>
+        <p>This extension does NOT use any third-party services, analytics, or tracking tools. The detection engine (78 rules, NLP processing) is entirely bundled within the extension and runs locally.</p>
+
+        <h2>Data Export</h2>
+        <p>You can voluntarily export your saved prompts to the forensicate.ai web app by:</p>
+        <ol>
+            <li>Opening the Prompt Library page</li>
+            <li>Clicking "Export to Test Battery"</li>
+            <li>The data is encoded in a URL parameter and sent to forensicate.ai</li>
+        </ol>
+        <p>This export is <strong>entirely optional</strong> and only happens when you explicitly click the export button.</p>
+
+        <h2>Data Deletion</h2>
+        <p>You can delete all extension data at any time:</p>
+
+        <h3>Delete Individual Items</h3>
+        <ul>
+            <li>Open Library or History page</li>
+            <li>Click the delete button on any item</li>
+        </ul>
+
+        <h3>Clear All Data</h3>
+        <ol>
+            <li>Open Library page → Click "Clear All"</li>
+            <li>Open History page → Click "Clear History"</li>
+        </ol>
+
+        <h3>Complete Removal</h3>
+        <ol>
+            <li>Remove the extension from Chrome</li>
+            <li>All stored data is automatically deleted</li>
+        </ol>
+
+        <h2>Data Retention</h2>
+        <ul>
+            <li><strong>Scan History:</strong> Automatically limited to last 50 scans</li>
+            <li><strong>Prompt Library:</strong> Up to 1000 items, automatically cleaned when storage exceeds 80% of quota</li>
+            <li><strong>Automatic Cleanup:</strong> Extension manages storage limits to prevent data loss</li>
+        </ul>
+
+        <h2>Changes to Privacy Policy</h2>
+        <p>We may update this privacy policy from time to time. Changes will be reflected in the "Last Updated" date above. Continued use of the extension after changes constitutes acceptance of the updated policy.</p>
+
+        <h2>Contact</h2>
+        <p>If you have questions or concerns about privacy:</p>
+        <ul>
+            <li><strong>GitHub Issues:</strong> <a href="https://github.com/peterhanily/forensicate.ai/issues" target="_blank">https://github.com/peterhanily/forensicate.ai/issues</a></li>
+            <li><strong>Website:</strong> <a href="https://forensicate.ai" target="_blank">https://forensicate.ai</a></li>
+        </ul>
+
+        <h2>Open Source</h2>
+        <p>This extension is open source under the Apache 2.0 license. You can review the complete source code at:</p>
+        <p><a href="https://github.com/peterhanily/forensicate.ai" target="_blank">https://github.com/peterhanily/forensicate.ai</a></p>
+
+        <h2>Compliance</h2>
+        <div class="compliance">
+            <span class="badge">✅ GDPR Compliant</span>
+            <span class="badge">✅ CCPA Compliant</span>
+            <span class="badge">✅ Chrome Web Store Policies</span>
+            <span class="badge">✅ Manifest V3</span>
+        </div>
+        <ul style="margin-top: 15px;">
+            <li><strong>GDPR Compliant:</strong> No personal data collected or processed</li>
+            <li><strong>CCPA Compliant:</strong> No personal information sold or shared</li>
+            <li><strong>Chrome Web Store Policies:</strong> Full compliance with data usage policies</li>
+            <li><strong>Manifest V3:</strong> Uses latest Chrome extension security standards</li>
+        </ul>
+
+        <div class="summary">
+            <p><strong>Summary:</strong> This extension is completely private. All scanning happens on your device, no data is sent anywhere, and you have full control over what's saved.</p>
+        </div>
+    </div>
+</body>
+</html>
