@@ -3,7 +3,10 @@ let currentBubble = null;
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'SHOW_SCAN_RESULT') {
+  if (message.type === 'PING') {
+    // Respond to ping to confirm content script is loaded
+    sendResponse({ loaded: true });
+  } else if (message.type === 'SHOW_SCAN_RESULT') {
     showScanBubble(message.result, message.fullResult);
     sendResponse({ success: true });
   } else if (message.type === 'HIDE_BUBBLE') {

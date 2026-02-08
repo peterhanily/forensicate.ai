@@ -291,19 +291,31 @@ async function showBubbleOverlay(text, resultData, fullScanResult) {
       return;
     }
 
-    // Inject content script dynamically (only when needed via activeTab permission)
+    // Check if content script is already loaded by trying to send a test message
+    let contentScriptLoaded = false;
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js']
-      });
-    } catch (injectError) {
-      // Content script might already be injected, or injection failed
-      console.log('Content script injection note:', injectError.message);
+      await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
+      contentScriptLoaded = true;
+    } catch (e) {
+      // Content script not loaded yet
+      contentScriptLoaded = false;
     }
 
-    // Small delay to ensure content script is ready
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Inject content script only if not already loaded
+    if (!contentScriptLoaded) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        });
+        // Small delay to ensure content script is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (injectError) {
+        console.error('Content script injection failed:', injectError.message);
+        showError('Unable to display result overlay. Please refresh the page and try again.');
+        return;
+      }
+    }
 
     // Send message to content script to show bubble
     await chrome.tabs.sendMessage(tab.id, {
@@ -313,7 +325,6 @@ async function showBubbleOverlay(text, resultData, fullScanResult) {
     });
   } catch (error) {
     console.error('Failed to show bubble overlay:', error);
-    // Fallback to notification if content script not available
     showError('Unable to display result overlay. Please refresh the page and try again.');
   }
 }
