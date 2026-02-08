@@ -17,10 +17,10 @@ function exportCSV(batchResults: Array<{ prompt: PromptItem; result: ScanResult 
   const headers = ['Prompt Name', 'Tags', 'Status', 'Confidence', 'Matched Rules', 'Timestamp'];
   const rows = batchResults.map(({ prompt, result }) => [
     `"${prompt.name.replace(/"/g, '""')}"`,
-    `"${prompt.tags.join(', ')}"`,
+    `"${(prompt.tags || []).join(', ')}"`,
     result.isPositive ? 'DETECTED' : 'CLEAN',
     result.confidence.toString(),
-    `"${result.matchedRules.map(r => r.ruleName).join(', ')}"`,
+    `"${(result.matchedRules || []).map(r => r.ruleName).join(', ')}"`,
     result.timestamp.toISOString(),
   ]);
 
@@ -38,13 +38,13 @@ function exportJSON(batchResults: Array<{ prompt: PromptItem; result: ScanResult
     results: batchResults.map(({ prompt, result }) => ({
       prompt: {
         name: prompt.name,
-        tags: prompt.tags,
+        tags: prompt.tags || [],
         content: prompt.content,
       },
       scan: {
         isPositive: result.isPositive,
         confidence: result.confidence,
-        matchedRules: result.matchedRules.map(r => ({
+        matchedRules: (result.matchedRules || []).map(r => ({
           ruleName: r.ruleName,
           ruleId: r.ruleId,
           severity: r.severity,

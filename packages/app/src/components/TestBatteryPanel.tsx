@@ -330,7 +330,7 @@ function CategorySection({
                       )}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {prompt.tags.map((tag) => (
+                      {(prompt.tags || []).map((tag) => (
                         <span
                           key={tag}
                           className="px-1.5 py-0.5 text-xs bg-gray-800 text-gray-400 rounded"
