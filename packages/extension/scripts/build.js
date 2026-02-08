@@ -57,6 +57,12 @@ copyFileSync(
   join(outdir, 'manifest.json')
 );
 
+// Content script
+copyFileSync(
+  join(rootDir, 'src/content.js'),
+  join(outdir, 'content.js')
+);
+
 // Popup
 copyFileSync(
   join(rootDir, 'src/popup.html'),
