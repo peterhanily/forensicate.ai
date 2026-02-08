@@ -95,8 +95,8 @@ function createPromptCard(prompt) {
       <div class="prompt-text">${escapeHtml(prompt.text)}</div>
 
       ${prompt.sourceUrl ? `
-        <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
-          🔗 Source: ${escapeHtml(prompt.sourceUrl)}
+        <div class="source-link">
+          🔗 Source: <a href="${escapeHtml(prompt.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(prompt.sourceUrl)}</a>
         </div>
       ` : ''}
 
