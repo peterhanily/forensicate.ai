@@ -31,6 +31,8 @@ jobs:
 
       - run: pnpm install
 
+      - run: pnpm --filter @forensicate/scanner build
+
       - run: pnpm --filter @forensicate/app build:gh-pages
 
       - uses: actions/upload-pages-artifact@v3
