@@ -434,6 +434,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
     return true;
   }
+
+  if (message.type === 'OPEN_LIBRARY') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('pages/library.html') });
+    sendResponse({ success: true });
+    return true;
+  }
 });
 
 // Save prompt to library

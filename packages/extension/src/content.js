@@ -247,8 +247,8 @@ function createBubbleElement(result, fullResult) {
 
     <div class="forensicate-actions">
       <button class="forensicate-btn forensicate-btn-secondary" id="forensicate-save">💾 Save</button>
-      <button class="forensicate-btn forensicate-btn-secondary" id="forensicate-history">📋 History</button>
-      <button class="forensicate-btn forensicate-btn-primary" id="forensicate-full">🔍 View on Forensicate.ai</button>
+      <button class="forensicate-btn forensicate-btn-secondary" id="forensicate-library">📚 Library</button>
+      <button class="forensicate-btn forensicate-btn-primary" id="forensicate-full">🔍 View Full</button>
     </div>
   `;
 
@@ -273,8 +273,8 @@ function createBubbleElement(result, fullResult) {
     setTimeout(hideBubble, 1500);
   });
 
-  bubble.querySelector('#forensicate-history').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'OPEN_HISTORY' });
+  bubble.querySelector('#forensicate-library').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'OPEN_LIBRARY' });
     hideBubble();
   });
 
