@@ -234,6 +234,7 @@ The detection rules and test prompts were informed by research and datasets from
 - **OWASP** - Web application security patterns and injection attack vectors
 - **Lakera** - AI security research and prompt injection taxonomy
 - **jailbreakchat.com** - Community-sourced jailbreak techniques and examples
+- **Plinny the Liberator** - AI security researcher, prompt injection research and jailbreak examples
 - **GitHub Security Research** - Open-source prompt injection datasets including:
   - [Awesome ChatGPT Prompts](https://github.com/f/awesome-chatgpt-prompts)
   - [LLM Security](https://github.com/verazuo/awesome-llm-security)

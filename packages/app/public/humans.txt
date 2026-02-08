@@ -13,6 +13,9 @@
     Security Community -- OWASP, Lakera, jailbreakchat.com
     Role -- Detection patterns and research
 
+    Plinny the Liberator -- AI Security Researcher
+    Role -- Prompt injection research and jailbreak examples
+
     GitHub Community -- Awesome ChatGPT Prompts, LLM Security repos
     Role -- Test datasets and jailbreak examples
 
