@@ -282,6 +282,20 @@ async function showBubbleOverlay(text, resultData, fullScanResult) {
       return;
     }
 
+    // Inject content script dynamically (only when needed via activeTab permission)
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+    } catch (injectError) {
+      // Content script might already be injected, or injection failed
+      console.log('Content script injection note:', injectError.message);
+    }
+
+    // Small delay to ensure content script is ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Send message to content script to show bubble
     await chrome.tabs.sendMessage(tab.id, {
       type: 'SHOW_SCAN_RESULT',

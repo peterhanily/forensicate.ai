@@ -52,6 +52,11 @@ The extension requests the following permissions:
 - **Usage**: Only activates when you explicitly right-click → "Scan with Forensicate.ai" or use the keyboard shortcut
 - **Important**: We do NOT have access to any tab content unless you explicitly trigger a scan
 
+### scripting
+- **Why**: To display scan results in a bubble overlay on the page
+- **Usage**: Only injects the display script when you trigger a scan (not loaded on every page)
+- **Privacy**: Script is injected on-demand only after you explicitly request a scan
+
 ## How Scanning Works
 
 1. You select text on a webpage
