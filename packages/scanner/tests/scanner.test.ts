@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scanPrompt, scanWithCategories, allRules, ruleCategories, getRuleStats } from '../src/lib/scanner';
+import { scanPrompt, scanWithCategories, allRules, ruleCategories, getRuleStats } from '../src';
 
 describe('Scanner Detection Logic', () => {
   describe('Keyword Detection', () => {

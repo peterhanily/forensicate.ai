@@ -4,8 +4,8 @@ import {
   posImperativeDetection,
   entityImpersonation,
   sentenceStructureAnomaly,
-} from '../src/lib/scanner/nlpRules';
-import { allRules, rehydrateHeuristics } from '../src/lib/scanner';
+} from '../src/nlpRules';
+import { allRules, rehydrateHeuristics } from '../src';
 
 describe('NLP Rules', () => {
   describe('sentimentManipulation', () => {

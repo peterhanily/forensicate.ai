@@ -3,6 +3,7 @@ import { type PromptCategory, type PromptItem } from '../data/samplePrompts';
 import {
   scanPrompt,
   ruleCategories,
+  rehydrateHeuristics,
   type DetectionRule,
   type RuleCategory,
   type ScanResult,
@@ -537,15 +538,28 @@ export default function Scanner() {
     }
   };
 
-  const handleAddPromptSection = (section: { id?: string; name: string; description: string; source: string }) => {
+  const handleAddPromptSection = (section: { id?: string; name: string; description: string; source: string }, initialPrompt?: { name: string; content: string; tags: string[] }) => {
     const newCategory: PromptCategory = {
       id: section.id || `custom-prompt-section-${Date.now()}`,
       name: section.name,
       description: section.description,
       source: section.source,
-      prompts: [],
+      prompts: initialPrompt ? [{
+        id: `custom-prompt-${Date.now()}`,
+        name: initialPrompt.name,
+        content: initialPrompt.content,
+        tags: initialPrompt.tags,
+      }] : [],
     };
-    setCustomPromptCategories(prev => [...prev, newCategory]);
+    console.log('[Scanner] handleAddPromptSection called with:', { section, initialPrompt });
+    console.log('[Scanner] Created new category:', newCategory);
+    console.log('[Scanner] New category has prompts:', newCategory.prompts.length);
+    setCustomPromptCategories(prev => {
+      const updated = [...prev, newCategory];
+      console.log('[Scanner] Updated customPromptCategories:', updated);
+      return updated;
+    });
+    return newCategory.id;
   };
 
   const handleOpenAddPromptModal = (categoryId?: string) => {
@@ -608,8 +622,10 @@ export default function Scanner() {
       if (options.importRules && config.rules) {
         if (options.mergeMode === 'replace') {
           if (Array.isArray(config.rules.localRules)) {
-            setLocalRules(config.rules.localRules);
-            changes.push(`${config.rules.localRules.length} rules`);
+            // Rehydrate heuristic rules after JSON deserialization
+            const rehydrated = rehydrateHeuristics(config.rules.localRules);
+            setLocalRules(rehydrated);
+            changes.push(`${rehydrated.length} rules`);
           }
           if (Array.isArray(config.rules.customCategories)) {
             setCustomCategories(config.rules.customCategories);
@@ -621,7 +637,9 @@ export default function Scanner() {
         } else {
           if (Array.isArray(config.rules.localRules)) {
             setLocalRules(prev => {
-              const importedMap = new Map(config.rules.localRules.map((r: { id: string }) => [r.id, r]));
+              // Rehydrate imported rules first
+              const rehydrated = rehydrateHeuristics(config.rules.localRules);
+              const importedMap = new Map(rehydrated.map((r: { id: string }) => [r.id, r]));
               const merged = prev.map(rule => {
                 const imported = importedMap.get(rule.id);
                 if (imported) { importedMap.delete(rule.id); return { ...rule, ...imported }; }

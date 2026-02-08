@@ -1450,7 +1450,7 @@ interface SavePromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSavePrompt: (prompt: { name: string; content: string; tags: string[] }, categoryId: string) => void;
-  onCreateSection: (section: { id?: string; name: string; description: string; source: string }) => void;
+  onCreateSection: (section: { id?: string; name: string; description: string; source: string }, initialPrompt?: { name: string; content: string; tags: string[] }) => string | void;
   categories: { id: string; name: string }[];
   initialContent: string;
 }
@@ -1527,19 +1527,31 @@ export function SavePromptModal({
         return;
       }
 
-      // Create the section with a specific ID, then save the prompt to it
+      // Create the section with the prompt in one operation
       const sectionId = `custom-prompt-section-${Date.now()}`;
-
-      // Create section with the same ID
+      console.log('[SavePromptModal] Creating new section with prompt:', {
+        section: {
+          id: sectionId,
+          name: newSectionName.trim(),
+          description: newSectionDesc.trim(),
+          source: 'custom',
+        },
+        prompt: {
+          name: name.trim(),
+          content: content.trim(),
+          tags
+        }
+      });
       onCreateSection({
         id: sectionId,
         name: newSectionName.trim(),
         description: newSectionDesc.trim(),
         source: 'custom',
+      }, {
+        name: name.trim(),
+        content: content.trim(),
+        tags
       });
-
-      // Immediately add prompt to the newly created section (no setTimeout needed)
-      onSavePrompt({ name: name.trim(), content: content.trim(), tags }, sectionId);
     } else {
       if (!categoryId) {
         setError('Please select a category');

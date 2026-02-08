@@ -3,6 +3,54 @@
 let allPrompts = [];
 let currentFilter = 'all';
 
+// Custom modal functions to replace native confirm/alert
+function showModal(title, message, buttons) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('custom-modal');
+    const titleEl = document.getElementById('modal-title');
+    const messageEl = document.getElementById('modal-message');
+    const buttonsEl = document.getElementById('modal-buttons');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    buttonsEl.innerHTML = '';
+
+    buttons.forEach(btn => {
+      const button = document.createElement('button');
+      button.textContent = btn.text;
+      button.className = btn.className;
+      button.addEventListener('click', () => {
+        modal.classList.remove('show');
+        resolve(btn.value);
+      });
+      buttonsEl.appendChild(button);
+    });
+
+    modal.classList.add('show');
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('show');
+        resolve(false);
+      }
+    });
+  });
+}
+
+function customConfirm(message) {
+  return showModal('Confirm', message, [
+    { text: 'Cancel', className: 'btn-secondary', value: false },
+    { text: 'Confirm', className: 'btn-danger', value: true }
+  ]);
+}
+
+function customAlert(message) {
+  return showModal('Notice', message, [
+    { text: 'OK', className: 'btn-primary', value: true }
+  ]);
+}
+
 async function loadLibrary() {
   try {
     const { promptLibrary = [] } = await chrome.storage.local.get('promptLibrary');
@@ -144,7 +192,8 @@ function createPromptCard(prompt) {
 }
 
 async function deletePrompt(promptId) {
-  if (!confirm('Delete this prompt from your library?')) {
+  const confirmed = await customConfirm('Delete this prompt from your library?');
+  if (!confirmed) {
     return;
   }
 
@@ -158,7 +207,7 @@ async function deletePrompt(promptId) {
     await loadLibrary();
   } catch (error) {
     console.error('Failed to delete prompt:', error);
-    alert('Failed to delete prompt');
+    await customAlert('Failed to delete prompt');
   }
 }
 
@@ -191,16 +240,17 @@ async function rescanPrompt(text) {
       // Open result in new tab
       chrome.tabs.create({ url: chrome.runtime.getURL('pages/result.html') });
     } else {
-      alert('Scan failed: ' + response.error);
+      await customAlert('Scan failed: ' + response.error);
     }
   } catch (error) {
     console.error('Failed to rescan:', error);
-    alert('Failed to rescan prompt');
+    await customAlert('Failed to rescan prompt');
   }
 }
 
 async function clearAll() {
-  if (!confirm(`Delete all ${allPrompts.length} prompts from your library? This cannot be undone.`)) {
+  const confirmed = await customConfirm(`Delete all ${allPrompts.length} prompts from your library? This cannot be undone.`);
+  if (!confirmed) {
     return;
   }
 
@@ -209,7 +259,7 @@ async function clearAll() {
     await loadLibrary();
   } catch (error) {
     console.error('Failed to clear library:', error);
-    alert('Failed to clear library');
+    await customAlert('Failed to clear library');
   }
 }
 
@@ -232,11 +282,12 @@ function escapeHtml(text) {
 
 async function exportToWebApp() {
   if (allPrompts.length === 0) {
-    alert('No prompts to export. Save some prompts first.');
+    await customAlert('No prompts to export. Save some prompts first.');
     return;
   }
 
-  if (!confirm(`Export ${allPrompts.length} prompts to forensicate.ai Test Battery?\n\nThey will be added to "Extension Snippets" section (persists until you clear browser cache).`)) {
+  const confirmed = await customConfirm(`Export ${allPrompts.length} prompts to forensicate.ai Test Battery?\n\nThey will be added to "Extension Snippets" section (persists until you clear browser cache).`);
+  if (!confirmed) {
     return;
   }
 
@@ -323,7 +374,7 @@ async function exportToWebApp() {
 
   } catch (error) {
     console.error('Failed to export:', error);
-    alert('Failed to export prompts. Error: ' + error.message);
+    await customAlert('Failed to export prompts. Error: ' + error.message);
   }
 }
 

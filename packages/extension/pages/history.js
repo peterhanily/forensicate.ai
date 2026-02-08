@@ -1,5 +1,53 @@
 // History page script
 
+// Custom modal functions to replace native confirm/alert
+function showModal(title, message, buttons) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('custom-modal');
+    const titleEl = document.getElementById('modal-title');
+    const messageEl = document.getElementById('modal-message');
+    const buttonsEl = document.getElementById('modal-buttons');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    buttonsEl.innerHTML = '';
+
+    buttons.forEach(btn => {
+      const button = document.createElement('button');
+      button.textContent = btn.text;
+      button.className = btn.className;
+      button.addEventListener('click', () => {
+        modal.classList.remove('show');
+        resolve(btn.value);
+      });
+      buttonsEl.appendChild(button);
+    });
+
+    modal.classList.add('show');
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('show');
+        resolve(false);
+      }
+    });
+  });
+}
+
+function customConfirm(message) {
+  return showModal('Confirm', message, [
+    { text: 'Cancel', className: 'btn-secondary', value: false },
+    { text: 'Confirm', className: 'btn-danger', value: true }
+  ]);
+}
+
+function customAlert(message) {
+  return showModal('Notice', message, [
+    { text: 'OK', className: 'btn-primary', value: true }
+  ]);
+}
+
 async function loadHistory() {
   try {
     const { scanHistory = [] } = await chrome.storage.local.get('scanHistory');
@@ -102,7 +150,8 @@ function showError(message) {
 }
 
 async function clearHistory() {
-  if (!confirm('Clear all scan history? This cannot be undone.')) {
+  const confirmed = await customConfirm('Clear all scan history? This cannot be undone.');
+  if (!confirmed) {
     return;
   }
 
@@ -111,7 +160,7 @@ async function clearHistory() {
     showEmptyState();
   } catch (error) {
     console.error('Failed to clear history:', error);
-    alert('Failed to clear history');
+    await customAlert('Failed to clear history');
   }
 }
 
@@ -138,7 +187,7 @@ async function saveToLibrary(index) {
     const { scanHistory = [] } = await chrome.storage.local.get('scanHistory');
 
     if (index < 0 || index >= scanHistory.length) {
-      alert('History item not found');
+      await customAlert('History item not found');
       return;
     }
 
@@ -157,13 +206,13 @@ async function saveToLibrary(index) {
     });
 
     if (response && response.success) {
-      alert('✅ Saved to Prompt Library!');
+      await customAlert('✅ Saved to Prompt Library!');
     } else {
-      alert('❌ Failed to save to library');
+      await customAlert('❌ Failed to save to library');
     }
   } catch (error) {
     console.error('Failed to save to library:', error);
-    alert('❌ Failed to save to library');
+    await customAlert('❌ Failed to save to library');
   }
 }
 

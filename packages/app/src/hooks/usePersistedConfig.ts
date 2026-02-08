@@ -229,22 +229,39 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
   }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold]);
 
   const handleGenerateShareUrl = useCallback((promptText?: string): string => {
+    // For share URLs, only include custom/modified data to keep URLs shorter
+    // Don't include default built-in rules and sample prompts
+    const defaultRules = getDefaultRules();
+    const defaultRuleIds = new Set(defaultRules.map(r => r.id));
+
+    // Only include custom rules (not built-in)
+    const customRulesOnly = localRules.filter(r => !defaultRuleIds.has(r.id));
+
+    // Only include modified built-in rules (compare by enabled/weight)
+    const modifiedBuiltInRules = localRules.filter(r => {
+      if (!defaultRuleIds.has(r.id)) return false; // Not built-in
+      const defaultRule = defaultRules.find(dr => dr.id === r.id);
+      if (!defaultRule) return false;
+      // Check if enabled state or weight differs from default
+      return r.enabled !== defaultRule.enabled || r.weight !== defaultRule.weight;
+    });
+
     const config: PersistedConfig = {
       version: CONFIG_VERSION,
       savedAt: new Date().toISOString(),
       rules: {
-        localRules,
+        localRules: [...customRulesOnly, ...modifiedBuiltInRules],
         customCategories,
       },
       prompts: {
-        localPrompts,
+        localPrompts: [], // Don't include default sample prompts in share URLs
         customPromptCategories,
       },
       // Include session state in share URLs
       session: promptText ? { promptText } : undefined,
     };
     return generateShareUrl(config);
-  }, [localRules, customCategories, localPrompts, customPromptCategories]);
+  }, [localRules, customCategories, customPromptCategories]);
 
   const resetToDefaults = useCallback(() => {
     setLocalRules(getDefaultRules());
