@@ -168,6 +168,9 @@ async function saveToLibrary(index) {
 }
 
 // Event listeners
+document.getElementById('view-library-btn')?.addEventListener('click', () => {
+  window.location.href = 'library.html';
+});
 document.getElementById('refresh-btn')?.addEventListener('click', () => window.location.reload());
 document.getElementById('clear-history-btn')?.addEventListener('click', clearHistory);
 

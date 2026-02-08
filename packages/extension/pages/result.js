@@ -104,9 +104,18 @@ function displayResult(result, fullResult) {
   });
 
   document.getElementById('view-full-btn')?.addEventListener('click', () => {
-    // Create config with prompt text to pass to web app
+    // Create minimal valid config with session data
     const config = {
-      version: 1,
+      version: '1',
+      savedAt: new Date().toISOString(),
+      rules: {
+        localRules: [],
+        customCategories: []
+      },
+      prompts: {
+        localPrompts: [],
+        customPromptCategories: []
+      },
       session: {
         promptText: result.text
       }

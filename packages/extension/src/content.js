@@ -247,7 +247,7 @@ function createBubbleElement(result, fullResult) {
 
     <div class="forensicate-actions">
       <button class="forensicate-btn forensicate-btn-secondary" id="forensicate-save">💾 Save</button>
-      <button class="forensicate-btn forensicate-btn-primary" id="forensicate-full">📋 Full Report</button>
+      <button class="forensicate-btn forensicate-btn-primary" id="forensicate-full">🔍 View on Forensicate.ai</button>
     </div>
   `;
 
@@ -273,8 +273,18 @@ function createBubbleElement(result, fullResult) {
   });
 
   bubble.querySelector('#forensicate-full').addEventListener('click', () => {
+    // Create minimal valid config with session data
     const config = {
-      version: 1,
+      version: '1',
+      savedAt: new Date().toISOString(),
+      rules: {
+        localRules: [],
+        customCategories: []
+      },
+      prompts: {
+        localPrompts: [],
+        customPromptCategories: []
+      },
       session: {
         promptText: result.text
       }

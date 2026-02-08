@@ -301,6 +301,9 @@ async function exportToWebApp() {
 }
 
 // Event listeners
+document.getElementById('view-history-btn')?.addEventListener('click', () => {
+  window.location.href = 'history.html';
+});
 document.getElementById('refresh-btn')?.addEventListener('click', () => window.location.reload());
 document.getElementById('clear-all-btn')?.addEventListener('click', clearAll);
 document.getElementById('export-to-webapp-btn')?.addEventListener('click', exportToWebApp);
