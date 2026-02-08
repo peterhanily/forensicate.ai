@@ -2,14 +2,13 @@
   "manifest_version": 3,
   "name": "Forensicate.ai - Prompt Security Scanner",
   "version": "1.0.0",
-  "description": "Detect prompt injection & jailbreak attempts. 78 rules, prompt library, scan history. Privacy-focused & offline.",
+  "description": "Detect prompt injection & jailbreak attempts. Dozens of rules, prompt library, scan history. Privacy-focused.",
 
   "permissions": [
     "contextMenus",
     "storage",
     "activeTab",
     "alarms",
-    "notifications",
     "scripting"
   ],
 
@@ -36,8 +35,8 @@
   "commands": {
     "scan-selection": {
       "suggested_key": {
-        "default": "Ctrl+Shift+S",
-        "mac": "Command+Shift+S"
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
       },
       "description": "Scan selected text"
     }

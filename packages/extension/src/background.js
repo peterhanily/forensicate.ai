@@ -2,7 +2,7 @@
 // Handles context menu, keyboard shortcuts, and scanning
 //
 // DETECTION ENGINE (bundled from @forensicate/scanner):
-// - 78 static detection rules (29 keyword + 41 regex + 4 heuristic + 4 NLP)
+// - Dozens of static detection rules (keyword, regex, heuristic, and NLP-based)
 // - AFINN-165 sentiment analysis dictionary (static wordlist)
 // - compromise.js NLP library for POS tagging
 // - All scanning happens locally (no external API calls)
@@ -352,71 +352,9 @@ async function showResultWindow() {
   });
 }
 
-// Show low-risk notification (instead of full window)
-async function showLowRiskNotification(text, result, sourceUrl) {
-  const truncatedText = text.substring(0, 50) + (text.length > 50 ? '...' : '');
-
-  const notificationId = `scan-${Date.now()}`;
-
-  chrome.notifications?.create(notificationId, {
-    type: 'basic',
-    iconUrl: 'assets/icon-48.png',
-    title: `✅ Low Risk (${result.confidence}%)`,
-    message: `Scanned: "${truncatedText}"\n\n${result.matchedRules.length} minor matches found.`,
-    buttons: [
-      { title: 'View Details' },
-      { title: 'Save to Library' }
-    ],
-    priority: 0
-  });
-
-  // Store notification data for button clicks
-  const notificationData = {
-    text: text,
-    result: result,
-    sourceUrl: sourceUrl
-  };
-
-  // Handle button clicks
-  const handleButtonClick = (clickedNotificationId, buttonIndex) => {
-    if (clickedNotificationId !== notificationId) return;
-
-    if (buttonIndex === 0) {
-      // View Details
-      showResultWindow();
-    } else if (buttonIndex === 1) {
-      // Save to Library with complete data
-      saveToLibrary({
-        text: notificationData.text,
-        confidence: notificationData.result.confidence,
-        matchCount: notificationData.result.matchedRules.length,
-        matchedRules: notificationData.result.matchedRules.slice(0, 10).map(m => ({
-          ruleId: m.ruleId,
-          ruleName: m.ruleName,
-          severity: m.severity,
-          matches: m.matches?.slice(0, 3),
-          confidenceImpact: m.confidenceImpact
-        })),
-        sourceUrl: notificationData.sourceUrl
-      });
-    }
-
-    // Remove listener after handling
-    chrome.notifications.onButtonClicked.removeListener(handleButtonClick);
-  };
-
-  chrome.notifications.onButtonClicked.addListener(handleButtonClick);
-}
-
-// Show error notification
+// Show error (log to console - notifications removed for privacy)
 function showError(message) {
-  chrome.notifications?.create({
-    type: 'basic',
-    iconUrl: 'assets/icon-48.png',
-    title: 'Forensicate.ai',
-    message: message,
-    priority: 1
-  });
+  console.error('[Forensicate.ai]', message);
 }
 
 // Message handler (for future use)

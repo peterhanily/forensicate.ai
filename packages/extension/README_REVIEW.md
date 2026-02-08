@@ -11,7 +11,7 @@ This document explains the extension architecture and addresses common review qu
 Forensicate.ai is a **privacy-first** prompt injection scanner that:
 - Runs **100% locally** in the browser (no external API calls)
 - Scans user-selected text for security vulnerabilities
-- Uses a bundled detection engine with 78 static rules
+- Uses a bundled detection engine with dozens of static rules
 - **Never transmits data** to external servers
 
 ---
@@ -23,15 +23,15 @@ Forensicate.ai is a **privacy-first** prompt injection scanner that:
 The background script is a **bundled artifact** from `@forensicate/scanner` package that includes:
 
 1. **Detection Engine**
-   - 78 static detection rules (keywords, regex, heuristics, NLP)
+   - Dozens of static detection rules (keywords, regex, heuristics, NLP)
    - AFINN-165 sentiment analysis dictionary (static wordlist)
    - compromise.js NLP library (part-of-speech tagging)
 
 2. **Rule Categories**
-   - 29 keyword-based rules
-   - 41 regex pattern rules
-   - 4 heuristic rules (entropy, imperative density, delimiter detection)
-   - 4 NLP rules (sentiment, POS tagging, entity recognition)
+   - Keyword-based rules (pattern matching for known injection phrases)
+   - Regex pattern rules (advanced pattern matching)
+   - Heuristic rules (entropy analysis, imperative density, delimiter detection)
+   - NLP rules (sentiment analysis, POS tagging, entity recognition)
 
 3. **No Remote Code Execution**
    - All rules are **statically defined** at build time
@@ -109,7 +109,6 @@ All data stored **locally on user's device** via `chrome.storage.local`:
 | `scripting` | Inject bubble overlay to display results | Injects content.js dynamically when scan is triggered |
 | `storage` | Save scan history and prompt library locally | All data stays on device, never synced or uploaded |
 | `contextMenus` | Add "Scan with Forensicate.ai" to right-click menu | Creates context menu item only |
-| `notifications` | Show error messages and scan status | Only used for error notifications (e.g., text too long, scan timeout) |
 | `alarms` | Periodic storage cleanup | Cleans up old scans every hour to prevent quota issues |
 
 ### No Broad Host Permissions
@@ -120,59 +119,43 @@ All data stored **locally on user's device** via `chrome.storage.local`:
 
 ---
 
-## Rule Verification
+## Detection Rules
 
-### 78 Detection Rules Breakdown
+### Rule Types and Examples
 
-The extension claims **"78 rules"** in the description. Breakdown:
+The extension uses **dozens of static detection rules** across multiple categories:
 
-**Keyword Rules (29):**
+**Keyword Rules:**
 - Instruction Override, Jailbreak Personas (DAN, STAN, etc.)
 - Role Manipulation, System Prompt Extraction
 - Authority Claims, Developer Mode
 - Safety Override, Threat & Consequence
-- And 20+ more
+- And many more...
 
-**Regex Rules (41):**
+**Regex Pattern Rules:**
 - Ignore/disregard patterns
 - DAN version patterns
 - Role assignment patterns
 - Encoding detection (base64, hex, leetspeak)
 - Injection markers
-- And 30+ more
+- And many more...
 
-**Heuristic Rules (4):**
+**Heuristic Rules:**
 - Shannon Entropy Analysis
 - Imperative Verb Density
 - Nested Delimiter Detection
 - Language/Script Switching
 
-**NLP Rules (4):**
+**NLP Rules:**
 - Sentiment Manipulation (AFINN-165)
 - POS Imperative Detection (compromise.js)
 - Entity Impersonation (NER)
 - Sentence Structure Anomaly
 
-**Total: 78 rules** (29 + 41 + 4 + 4)
-
 Rules are statically defined in the bundled scanner and can be verified in the source code at:
 https://github.com/peterhanily/forensicate.ai/tree/main/packages/scanner/src
 
----
-
-## Notification Usage
-
-Notifications are **only used for**:
-- ⚠️ **Error messages** (e.g., "Text too long", "Scan timeout")
-- ✅ **Success confirmations** (e.g., "Saved to library")
-- 📊 **Scan status** (low-risk scans on quiet mode)
-
-**Notifications are NOT used for**:
-- ❌ Advertising or promotions
-- ❌ Tracking or analytics
-- ❌ Unsolicited messages
-
-Users can disable notifications via Chrome's built-in permission controls.
+**Note:** Rules are continuously updated and expanded to improve detection accuracy.
 
 ---
 
