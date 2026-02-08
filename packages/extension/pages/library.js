@@ -287,14 +287,14 @@ async function exportToWebApp() {
         customCategories: []
       },
       prompts: {
-        localPrompts: [{
+        localPrompts: [],  // Keep default sample prompts
+        customPromptCategories: [{
           id: 'extension-snippets',
           name: 'Extension Snippets',
           description: exportData.categoryDescription,
           source: 'chrome-extension',
           prompts: exportData.prompts
-        }],
-        customPromptCategories: []
+        }]
       },
       session: {
         promptText: latestPrompt.text  // Load latest prompt into input

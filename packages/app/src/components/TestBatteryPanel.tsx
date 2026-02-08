@@ -100,7 +100,9 @@ export default function TestBatteryPanel({
           const allowPromptEditing = category.id === 'extension-snippets' ||
                                        category.source === 'chrome-extension' ||
                                        category.id.startsWith('extension-snippets');
-          const isCustomSection = category.id.startsWith('custom-prompt-section-');
+          const isCustomSection = category.id.startsWith('custom-prompt-section-') ||
+                                   category.id === 'extension-snippets' ||
+                                   category.source === 'chrome-extension';
 
           return (
             <CategorySection

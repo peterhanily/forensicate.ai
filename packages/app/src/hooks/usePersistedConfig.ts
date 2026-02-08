@@ -89,12 +89,25 @@ function loadInitialConfig(): {
     clearUrlConfig();
     // For URL configs, also try to load UI prefs from localStorage
     const storedConfig = loadConfig();
+
+    // Merge URL prompts with defaults (like we do for rules)
+    // If URL config has empty localPrompts, use defaults
+    // Otherwise merge: keep defaults + add any new categories from URL
+    const defaultPrompts = getDefaultPrompts();
+    const urlLocalPrompts = urlConfig.prompts.localPrompts || [];
+    const mergedPrompts = urlLocalPrompts.length === 0
+      ? defaultPrompts
+      : defaultPrompts; // Always keep default prompts, extension prompts go to customPromptCategories
+
     return {
       source: 'url',
       rules: mergeWithDefaultRules(rehydrateHeuristics(urlConfig.rules.localRules)),
       customCategories: urlConfig.rules.customCategories,
-      prompts: urlConfig.prompts.localPrompts,
-      customPromptCategories: urlConfig.prompts.customPromptCategories,
+      prompts: mergedPrompts,
+      customPromptCategories: [
+        ...urlConfig.prompts.customPromptCategories,
+        ...urlLocalPrompts  // Move extension prompts to custom categories
+      ],
       promptText: urlConfig.session?.promptText || '',
       savedAt: new Date(urlConfig.savedAt),
       expandedRuleCategory: storedConfig?.ui?.expandedRuleCategory ?? null,
