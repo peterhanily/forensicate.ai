@@ -1,0 +1,22 @@
+# Our security address
+Contact: https://github.com/peterhanily/forensicate.ai/security/advisories/new
+
+# Our OpenPGP key (if available)
+# Encryption: [URL to PGP key]
+
+# Our security policy
+Policy: https://github.com/peterhanily/forensicate.ai/security/policy
+
+# Preferred languages
+Preferred-Languages: en
+
+# Canonical URI
+Canonical: https://forensicate.ai/.well-known/security.txt
+
+# Acknowledgments page
+Acknowledgments: https://github.com/peterhanily/forensicate.ai#acknowledgments
+
+# Hiring page (if applicable)
+# Hiring: https://forensicate.ai/careers
+
+Expires: 2027-02-08T00:00:00.000Z

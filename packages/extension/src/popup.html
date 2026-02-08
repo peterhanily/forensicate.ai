@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forensicate.ai</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 350px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #030712;
+      color: #f9fafb;
+      padding: 16px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #374151;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #c9a227;
+    }
+
+    .version {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    section {
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #e5e7eb;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      background: #1f2937;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f9fafb;
+    }
+
+    .library-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .risk-category {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #1f2937;
+      border-radius: 6px;
+      border: 1px solid #374151;
+    }
+
+    .risk-category span {
+      font-size: 13px;
+    }
+
+    .risk-category strong {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px 16px;
+      background: #c9a227;
+      color: #030712;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #b8911e;
+    }
+
+    button.secondary {
+      background: #374151;
+      color: #f9fafb;
+    }
+
+    button.secondary:hover {
+      background: #4b5563;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #9ca3af;
+      line-height: 1.5;
+      padding: 12px;
+      background: #1f2937;
+      border-radius: 6px;
+      border: 1px solid #374151;
+    }
+
+    .kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      background: #374151;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Forensicate.ai</h1>
+      <div class="version">v1.0.0</div>
+    </div>
+  </header>
+
+  <section>
+    <h2>📊 Quick Stats</h2>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Total Scans</div>
+        <div class="stat-value" id="total-scans">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Saved Prompts</div>
+        <div class="stat-value" id="saved-prompts">0</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>💾 Prompt Library</h2>
+    <div class="library-summary">
+      <div class="risk-category">
+        <span>🔴 High Risk</span>
+        <strong id="high-count">0</strong>
+      </div>
+      <div class="risk-category">
+        <span>🟡 Medium Risk</span>
+        <strong id="medium-count">0</strong>
+      </div>
+      <div class="risk-category">
+        <span>🟢 Low Risk</span>
+        <strong id="low-count">0</strong>
+      </div>
+    </div>
+    <button id="view-library-btn" class="secondary">View Library</button>
+  </section>
+
+  <section>
+    <h2>⚡ Quick Actions</h2>
+    <div class="actions">
+      <button id="open-webapp-btn">🌐 Open Web App</button>
+      <button id="view-history-btn" class="secondary">📋 View History</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="help-text">
+      <strong>How to use:</strong><br>
+      • Select text and right-click → "Scan with Forensicate.ai"<br>
+      • Or use keyboard shortcut: <span class="kbd">Ctrl+Shift+S</span>
+    </div>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

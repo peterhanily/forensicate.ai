@@ -1,0 +1,60 @@
+{
+  "name": "Forensicate.ai - AI Prompt Security Scanner",
+  "short_name": "Forensicate",
+  "description": "Detect prompt injection attacks and jailbreaks in AI prompts with real-time security analysis",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#c9a227",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["security", "utilities", "developer tools"],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Prompt Scanner with annotations"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "label": "Mobile view"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Prompt Scanner",
+      "short_name": "Scanner",
+      "description": "Open the prompt injection scanner",
+      "url": "/scanner",
+      "icons": [
+        {
+          "src": "/favicon.svg",
+          "sizes": "any"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false
+}

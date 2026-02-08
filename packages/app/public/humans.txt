@@ -1,0 +1,45 @@
+# humanstxt.org/
+# The humans responsible & technology colophon
+
+# TEAM
+
+    Developer & Designer -- Peter Hanily
+    Site -- https://forensicate.ai
+    GitHub -- https://github.com/peterhanily/forensicate.ai
+    Location -- Earth
+
+# THANKS
+
+    Security Community -- OWASP, Lakera, jailbreakchat.com
+    Role -- Detection patterns and research
+
+# TECHNOLOGY COLOPHON
+
+    Frontend -- React 19, TypeScript
+    Build Tool -- Vite 7
+    Styling -- Tailwind CSS 4
+    Routing -- React Router DOM 7
+    NLP -- compromise.js, AFINN-165
+    Testing -- Vitest, React Testing Library
+    Hosting -- GitHub Pages
+    Analytics -- Cloudflare Web Analytics
+    License -- Apache 2.0
+
+# FEATURES
+
+    - 78+ detection rules (keyword, regex, heuristic, NLP)
+    - Real-time prompt injection scanning
+    - Visual annotation with interactive highlights
+    - Confidence scoring and threshold control
+    - Batch scanning and test battery
+    - Offline standalone version
+    - No API keys or server required
+    - Export and share configurations
+    - Open source and free forever
+
+# STATS
+
+    Last update -- 2026/02/08
+    Languages -- TypeScript, JavaScript, CSS
+    Doctype -- HTML5
+    IDE -- Cursor

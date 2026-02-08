@@ -1,0 +1,22 @@
+{
+  "name": "forensicate-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI prompt injection security scanner - monorepo",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peterhanily/forensicate.ai"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @forensicate/app dev",
+    "build": "pnpm --filter @forensicate/app build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "install:all": "pnpm install"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

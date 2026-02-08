@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Library - Forensicate.ai</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #030712;
+      color: #f9fafb;
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #374151;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #c9a227;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #c9a227;
+      color: #030712;
+    }
+
+    .btn-primary:hover {
+      background: #b8911e;
+    }
+
+    .btn-secondary {
+      background: #374151;
+      color: #f9fafb;
+    }
+
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      background: #374151;
+    }
+
+    .tab.active {
+      background: #c9a227;
+      color: #030712;
+      border-color: #c9a227;
+    }
+
+    .library-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .prompt-card {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.2s;
+    }
+
+    .prompt-card:hover {
+      border-color: #4b5563;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .confidence-badge {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .confidence-badge.high {
+      background: #ef4444;
+      color: white;
+    }
+
+    .confidence-badge.medium {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .confidence-badge.low {
+      background: #10b981;
+      color: white;
+    }
+
+    .card-meta {
+      font-size: 12px;
+      color: #9ca3af;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .prompt-text {
+      background: #111827;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-family: system-ui;
+      font-size: 14px;
+      line-height: 1.6;
+      max-height: 150px;
+      overflow-y: auto;
+      color: #e5e7eb;
+      word-wrap: break-word;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .card-actions button {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: #9ca3af;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .empty-state h2 {
+      font-size: 20px;
+      color: #e5e7eb;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #1f2937;
+      border-radius: 8px;
+      border: 1px solid #374151;
+    }
+
+    .stat-item {
+      flex: 1;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .matched-rules {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #374151;
+    }
+
+    .matched-rules-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+
+    .rule-tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin: 4px 4px 4px 0;
+      text-transform: uppercase;
+    }
+
+    .rule-tag.critical {
+      background: #ef4444;
+      color: white;
+    }
+
+    .rule-tag.high {
+      background: #f97316;
+      color: white;
+    }
+
+    .rule-tag.medium {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .rule-tag.low {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .rule-details {
+      display: none;
+      margin-top: 8px;
+      padding: 12px;
+      background: #111827;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .rule-details.show {
+      display: block;
+    }
+
+    .rule-match {
+      margin: 8px 0;
+      padding: 8px;
+      background: #1f2937;
+      border-radius: 4px;
+      border-left: 3px solid #c9a227;
+    }
+
+    .rule-match-name {
+      font-weight: 600;
+      color: #e5e7eb;
+      margin-bottom: 4px;
+    }
+
+    .rule-match-examples {
+      font-family: monospace;
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .toggle-rules-btn {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      padding: 6px 12px;
+      font-size: 12px;
+      margin-top: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .toggle-rules-btn:hover {
+      background: #1f2937;
+      color: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>💾 Prompt Library</h1>
+      <div class="subtitle">Your saved prompt injection examples</div>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="export-to-webapp-btn">📤 Export to Test Battery</button>
+      <button class="btn-secondary" onclick="window.location.reload()">🔄 Refresh</button>
+      <button class="btn-danger" id="clear-all-btn">🗑️ Clear All</button>
+    </div>
+  </header>
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item">
+      <div class="stat-value" id="total-count">0</div>
+      <div class="stat-label">Total Saved</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="high-count">0</div>
+      <div class="stat-label">High Risk</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="medium-count">0</div>
+      <div class="stat-label">Medium Risk</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="low-count">0</div>
+      <div class="stat-label">Low Risk</div>
+    </div>
+  </div>
+
+  <div class="filter-tabs">
+    <div class="tab active" data-filter="all">All</div>
+    <div class="tab" data-filter="high">High Risk</div>
+    <div class="tab" data-filter="medium">Medium Risk</div>
+    <div class="tab" data-filter="low">Low Risk</div>
+  </div>
+
+  <div id="library-container">
+    <div class="empty-state">
+      <div class="empty-state-icon">⏳</div>
+      <h2>Loading...</h2>
+    </div>
+  </div>
+
+  <script src="library.js"></script>
+</body>
+</html>

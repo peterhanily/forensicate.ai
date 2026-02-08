@@ -1,0 +1,55 @@
+# Robots.txt for Forensicate.ai
+# https://forensicate.ai/robots.txt
+
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://forensicate.ai/sitemap.xml
+
+# Crawl-delay for polite crawlers
+Crawl-delay: 1
+
+# Disallow crawling of test/development files
+Disallow: /dist/
+Disallow: /node_modules/
+Disallow: /*.map$
+
+# Allow crawling of main pages
+Allow: /scanner
+Allow: /
+
+# Common bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+# Social Media Crawlers
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: Slackbot
+Allow: /
+
+User-agent: Discordbot
+Allow: /

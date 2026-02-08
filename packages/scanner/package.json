@@ -1,0 +1,57 @@
+{
+  "name": "@forensicate/scanner",
+  "version": "1.0.0",
+  "description": "AI prompt injection detection engine with 78 rules across keyword, regex, heuristic, and NLP-based detection",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./rules": {
+      "types": "./dist/rules.d.ts",
+      "import": "./dist/rules.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "ai",
+    "security",
+    "prompt-injection",
+    "llm",
+    "jailbreak",
+    "detection",
+    "nlp",
+    "chatgpt"
+  ],
+  "author": "Forensicate.ai",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peterhanily/forensicate.ai",
+    "directory": "packages/scanner"
+  },
+  "dependencies": {
+    "compromise": "^14.14.5"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

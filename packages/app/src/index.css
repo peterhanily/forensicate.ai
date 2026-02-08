@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+:root {
+  --color-gold: #c9a227;
+  --color-crimson: #8b0000;
+  --color-blood: #5c0000;
+}
+
+body {
+  @apply bg-gray-950 text-gray-100 antialiased;
+}
+
+/* Toast animations */
+@keyframes toast-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.toast-enter {
+  animation: toast-fade-in 0.3s ease-out forwards;
+}
+
+.toast-exit {
+  animation: toast-fade-out 0.3s ease-in forwards;
+}
+
+/* Custom scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgb(17 24 39); /* gray-900 */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(55 65 81); /* gray-700 */
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(75 85 99); /* gray-600 */
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(55 65 81) rgb(17 24 39);
+}
+
+/* Annotation underlines - stackable using box-shadow */
+.annotated-text {
+  position: relative;
+  display: inline;
+  transition: all 0.2s ease;
+}
+
+.annotated-text:hover {
+  background-color: rgba(201, 162, 39, 0.15);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Severity-based underlines */
+.annotation-critical {
+  text-decoration: underline;
+  text-decoration-color: #ef4444;
+  text-decoration-thickness: 2px;
+  text-decoration-style: solid;
+  text-underline-offset: 3px;
+}
+
+.annotation-high {
+  text-decoration: underline;
+  text-decoration-color: #f97316;
+  text-decoration-thickness: 2px;
+  text-decoration-style: solid;
+  text-underline-offset: 3px;
+}
+
+.annotation-medium {
+  text-decoration: underline;
+  text-decoration-color: #eab308;
+  text-decoration-thickness: 2px;
+  text-decoration-style: solid;
+  text-underline-offset: 3px;
+}
+
+.annotation-low {
+  text-decoration: underline;
+  text-decoration-color: #3b82f6;
+  text-decoration-thickness: 2px;
+  text-decoration-style: solid;
+  text-underline-offset: 3px;
+}
+
+/* Multiple rules = wavy underline */
+.underline-thick.annotation-critical {
+  text-decoration-thickness: 3px;
+  text-decoration-style: wavy;
+}
+
+.underline-thick.annotation-high {
+  text-decoration-thickness: 3px;
+  text-decoration-style: wavy;
+}
+
+.underline-thick.annotation-medium {
+  text-decoration-thickness: 3px;
+  text-decoration-style: wavy;
+}
+
+.underline-thick.annotation-low {
+  text-decoration-thickness: 3px;
+  text-decoration-style: wavy;
+}
+
+/* Popover animations */
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.animate-in {
+  animation: popover-in 0.2s ease-out;
+}

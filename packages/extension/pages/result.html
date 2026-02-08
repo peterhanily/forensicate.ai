@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan Result - Forensicate.ai</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #030712;
+      color: #f9fafb;
+      padding: 24px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #374151;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #c9a227;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+
+    .confidence-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 32px;
+      font-weight: 700;
+      margin: 20px 0;
+    }
+
+    .confidence-badge.low {
+      background: #10b981;
+      color: white;
+    }
+
+    .confidence-badge.medium {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .confidence-badge.high {
+      background: #ef4444;
+      color: white;
+    }
+
+    .risk-label {
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .scanned-text {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .scanned-text pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: system-ui;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e5e7eb;
+    }
+
+    /* Annotated text styles */
+    .annotated-text {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: system-ui;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e5e7eb;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .annotation-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #9ca3af;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .annotation-toggle input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    .annotated-segment {
+      position: relative;
+      display: inline;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .annotated-segment.critical {
+      background-color: rgba(239, 68, 68, 0.3);
+      border-bottom: 2px solid #ef4444;
+    }
+
+    .annotated-segment.high {
+      background-color: rgba(249, 115, 22, 0.3);
+      border-bottom: 2px solid #f97316;
+    }
+
+    .annotated-segment.medium {
+      background-color: rgba(245, 158, 11, 0.3);
+      border-bottom: 2px solid #f59e0b;
+    }
+
+    .annotated-segment.low {
+      background-color: rgba(59, 130, 246, 0.3);
+      border-bottom: 2px solid #3b82f6;
+    }
+
+    .annotated-segment:hover {
+      filter: brightness(1.2);
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 24px 0 12px 0;
+      color: #e5e7eb;
+    }
+
+    .matches-list {
+      list-style: none;
+    }
+
+    .match-item {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+
+    .match-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .match-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .severity {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .severity.critical {
+      background: #ef4444;
+      color: white;
+    }
+
+    .severity.high {
+      background: #f97316;
+      color: white;
+    }
+
+    .severity.medium {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .severity.low {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .match-details {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .match-examples {
+      margin-top: 8px;
+      padding: 8px;
+      background: #111827;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #374151;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #c9a227;
+      color: #030712;
+    }
+
+    .btn-primary:hover {
+      background: #b8911e;
+    }
+
+    .btn-secondary {
+      background: #374151;
+      color: #f9fafb;
+    }
+
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #9ca3af;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Scan Result</h1>
+    <div class="subtitle" id="timestamp"></div>
+  </header>
+
+  <div id="result-container">
+    <div id="loading" class="empty-state">
+      <div class="empty-state-icon">⏳</div>
+      <p>Loading scan result...</p>
+    </div>
+  </div>
+
+  <script src="result.js"></script>
+</body>
+</html>
