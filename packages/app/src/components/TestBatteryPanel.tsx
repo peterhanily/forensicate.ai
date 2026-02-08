@@ -95,25 +95,34 @@ export default function TestBatteryPanel({
           <div className="px-3 py-8 text-center text-gray-500 text-xs">
             No prompts match "{promptSearchQuery}"
           </div>
-        ) : filteredPromptCategories.map((category) => (
-          <CategorySection
-            key={category.id}
-            category={category}
-            isExpanded={expandedCategory === category.id}
-            onToggle={() => onToggleCategory(category.id)}
-            onSelectPrompt={onSelectPrompt}
-            onAddPrompt={() => onOpenAddPromptModal(category.id)}
-            onDeletePrompt={(promptId) => onDeletePrompt(promptId, category.id)}
-            onDeleteSection={
-              category.id.startsWith('custom-prompt-section-')
-                ? () => onDeletePromptSection(category.id)
-                : undefined
-            }
-            isCustomSection={category.id.startsWith('custom-prompt-section-')}
-            selectedPrompts={selectedPrompts}
-            onToggleSelection={onToggleSelection}
-          />
-        ))}
+        ) : filteredPromptCategories.map((category) => {
+          // Allow editing for custom sections OR extension-imported categories
+          const allowPromptEditing = category.id === 'extension-snippets' ||
+                                       category.source === 'chrome-extension' ||
+                                       category.id.startsWith('extension-snippets');
+          const isCustomSection = category.id.startsWith('custom-prompt-section-');
+
+          return (
+            <CategorySection
+              key={category.id}
+              category={category}
+              isExpanded={expandedCategory === category.id}
+              onToggle={() => onToggleCategory(category.id)}
+              onSelectPrompt={onSelectPrompt}
+              onAddPrompt={() => onOpenAddPromptModal(category.id)}
+              onDeletePrompt={(promptId) => onDeletePrompt(promptId, category.id)}
+              onDeleteSection={
+                isCustomSection
+                  ? () => onDeletePromptSection(category.id)
+                  : undefined
+              }
+              isCustomSection={isCustomSection}
+              selectedPrompts={selectedPrompts}
+              onToggleSelection={onToggleSelection}
+              allowPromptEditing={allowPromptEditing}
+            />
+          );
+        })}
       </div>
 
       <div className="px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0 space-y-2">
@@ -195,6 +204,7 @@ interface CategorySectionProps {
   isCustomSection?: boolean;
   selectedPrompts?: Set<string>;
   onToggleSelection?: (promptId: string) => void;
+  allowPromptEditing?: boolean;  // Whether prompts in this category can be edited/deleted
 }
 
 function CategorySection({
@@ -208,6 +218,7 @@ function CategorySection({
   isCustomSection,
   selectedPrompts,
   onToggleSelection,
+  allowPromptEditing = false,
 }: CategorySectionProps) {
   return (
     <div className="border-b border-gray-800 last:border-b-0">
@@ -310,9 +321,9 @@ function CategorySection({
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="text-gray-300 text-sm">{prompt.name}</span>
-                      {prompt.id.startsWith('custom-prompt-') && (
+                      {(allowPromptEditing || isCustomSection) && (
                         <span className="px-1 py-0.5 text-[9px] bg-blue-900/30 text-blue-400 rounded">
-                          custom
+                          {category.source === 'chrome-extension' ? 'extension' : 'custom'}
                         </span>
                       )}
                     </div>
@@ -328,7 +339,7 @@ function CategorySection({
                     </div>
                   </button>
                 </div>
-                {prompt.id.startsWith('custom-prompt-') && onDeletePrompt && (
+                {(allowPromptEditing || isCustomSection) && onDeletePrompt && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeletePrompt(prompt.id); }}
                     className="mt-1.5 ml-6 px-1.5 py-0.5 text-[10px] bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5"

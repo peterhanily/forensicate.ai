@@ -537,9 +537,9 @@ export default function Scanner() {
     }
   };
 
-  const handleAddPromptSection = (section: { name: string; description: string; source: string }) => {
+  const handleAddPromptSection = (section: { id?: string; name: string; description: string; source: string }) => {
     const newCategory: PromptCategory = {
-      id: `custom-prompt-section-${Date.now()}`,
+      id: section.id || `custom-prompt-section-${Date.now()}`,
       name: section.name,
       description: section.description,
       source: section.source,

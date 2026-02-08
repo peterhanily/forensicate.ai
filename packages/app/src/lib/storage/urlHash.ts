@@ -41,12 +41,9 @@ export function decodeConfig(encoded: string): PersistedConfig | null {
 
     // Fall back to legacy base64 format for backwards compatibility
     console.log('[Decode] Trying legacy base64 format...');
-    let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
-    while (base64.length % 4) {
-      base64 += '=';
-    }
-
-    const jsonString = decodeURIComponent(escape(atob(base64)));
+    // The extension encodes as: btoa(encodeURIComponent(JSON.stringify(config)))
+    // So we decode as: JSON.parse(decodeURIComponent(atob(base64)))
+    const jsonString = decodeURIComponent(atob(encoded));
     console.log('[Decode] Decoded JSON string:', jsonString.substring(0, 200) + '...');
     const data = JSON.parse(jsonString);
     console.log('[Decode] Parsed data:', data);

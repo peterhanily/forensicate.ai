@@ -241,6 +241,10 @@ async function exportToWebApp() {
   }
 
   try {
+    // Sort prompts by timestamp to find the latest one
+    const sortedPrompts = [...allPrompts].sort((a, b) => b.timestamp - a.timestamp);
+    const latestPrompt = sortedPrompts[0];
+
     // Convert prompts to test battery format with detailed metadata
     const exportData = {
       categoryName: 'Extension Snippets',
@@ -274,11 +278,34 @@ async function exportToWebApp() {
       })
     };
 
-    // Encode as URL hash to pass to web app
-    const dataHash = encodeURIComponent(JSON.stringify(exportData));
+    // Create full config with test battery AND latest prompt in input
+    const config = {
+      version: '1',
+      savedAt: new Date().toISOString(),
+      rules: {
+        localRules: [],
+        customCategories: []
+      },
+      prompts: {
+        localPrompts: [{
+          id: 'extension-snippets',
+          name: 'Extension Snippets',
+          description: exportData.categoryDescription,
+          source: 'chrome-extension',
+          prompts: exportData.prompts
+        }],
+        customPromptCategories: []
+      },
+      session: {
+        promptText: latestPrompt.text  // Load latest prompt into input
+      }
+    };
 
-    // Open web app with import data
-    const webAppUrl = `https://forensicate.ai/scanner#import-extension=${dataHash}`;
+    // Encode config to base64
+    const encoded = btoa(encodeURIComponent(JSON.stringify(config)));
+
+    // Open web app with config
+    const webAppUrl = `https://forensicate.ai/scanner?config=${encoded}`;
 
     // Create tab with the data
     await chrome.tabs.create({ url: webAppUrl });
