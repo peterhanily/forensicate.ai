@@ -129,10 +129,19 @@ export default function Scanner() {
               const sourceName = item.sourceDomain || item.sourceUrl || 'Unknown';
               const shortSource = sourceName.length > 30 ? sourceName.substring(0, 27) + '...' : sourceName;
 
+              console.log('[Extension Import] Processing item:', {
+                id: item.id,
+                hasText: !!item.text,
+                textLength: item.text?.length,
+                text: item.text?.substring(0, 100),
+                sourceUrl: item.sourceUrl,
+                timestamp: item.timestamp
+              });
+
               return {
                 id: item.id || `ext-${Date.now()}-${Math.random()}`,
                 name: `${shortSource} · ${item.savedDate || new Date(item.timestamp).toLocaleDateString()}`,
-                content: item.text,
+                content: item.text || '',
                 tags: [
                   item.expectedRisk || 'unknown',
                   'extension',
@@ -322,7 +331,14 @@ export default function Scanner() {
   // ============================================================================
 
   const handlePromptSelect = (prompt: PromptItem) => {
-    setPromptText(prompt.content);
+    console.log('[handlePromptSelect] Selected prompt:', {
+      id: prompt.id,
+      name: prompt.name,
+      hasContent: !!prompt.content,
+      contentLength: prompt.content?.length,
+      content: prompt.content?.substring(0, 100)
+    });
+    setPromptText(prompt.content || '');
     setScanResult(null);
     lastScannedRef.current = ''; // Force rescan
   };
