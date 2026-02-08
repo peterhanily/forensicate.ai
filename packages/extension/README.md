@@ -5,11 +5,14 @@ Browser extension for scanning text with Forensicate.ai's prompt injection detec
 ## Features
 
 ✅ **Context Menu Scanning** - Right-click any selected text → "Scan with Forensicate.ai"
+✅ **Inline Bubble Results** - Scan results appear in a bubble overlay near your selection
 ✅ **Keyboard Shortcut** - Press `Ctrl+Shift+S` (or `Cmd+Shift+S` on Mac) to scan selected text
-✅ **Prompt Library** - Save scanned prompts to your local library
-✅ **Scan History** - View your last 50 scans
+✅ **Prompt Library** - Save scanned prompts to your local library (up to 1000 items)
+✅ **Scan History** - View your last 50 scans with full details
+✅ **Export to Web App** - Send saved prompts to forensicate.ai test battery
 ✅ **Offline Capable** - All scanning happens locally in your browser
 ✅ **Privacy First** - No data sent to external servers
+✅ **Storage Management** - Automatic cleanup when storage quota exceeds 80%
 
 ## Installation
 
@@ -172,33 +175,37 @@ The extension requests these permissions:
 - **Firefox**: 109+ (Manifest V3 support)
 - **Opera**: 82+ (Chromium-based)
 
-## Known Issues
+## What's New (v1.0)
 
-- Icon images are placeholders (replace with proper PNG icons before store submission)
-- Library and History pages are stubs (to be implemented)
-- No content script for inline scanning (future feature)
+✅ **Bubble Dialog** - Scan results appear inline near selected text
+✅ **Full Library Page** - Search, filter, view, and manage saved prompts
+✅ **Full History Page** - View and manage last 50 scans with save-to-library
+✅ **Export to Web App** - Export entire library to forensicate.ai test battery
+✅ **Proper PNG Icons** - Professional 16x16, 48x48, 128x128 icons
+✅ **Storage Quota Management** - Automatic cleanup prevents data loss
+✅ **Custom Modal Dialogs** - Native-styled confirmation dialogs
+✅ **22 Unit Tests** - Comprehensive test coverage
 
 ## Roadmap
 
 ### v1.1 (Next)
-- [ ] Proper icon set (16x16, 48x48, 128x128 PNG)
-- [ ] Library page with search/filter
-- [ ] History page with date filtering
-- [ ] Export library as JSON
-- [ ] Import test battery
+- [ ] Settings page (confidence threshold, auto-scan, storage limits)
+- [ ] Badge showing confidence score on toolbar icon
+- [ ] Import test battery from file
+- [ ] Dark/light theme toggle
+- [ ] Rule enable/disable in extension
 
 ### v1.2 (Future)
-- [ ] Content script for inline scanning
-- [ ] Auto-scan on LLM chat interfaces
-- [ ] Settings page (confidence threshold, auto-scan sites)
-- [ ] Badge showing confidence on toolbar icon
-- [ ] Dark/light theme toggle
+- [ ] Auto-scan on LLM chat interfaces (ChatGPT, Claude, etc.)
+- [ ] Custom keyboard shortcut configuration
+- [ ] Pin favorite prompts in library
+- [ ] Annotation highlighting in extension results
 
 ### v2.0 (Long-term)
-- [ ] Sync library across devices (browser sync)
-- [ ] Custom rule editor
+- [ ] Sync library across devices (Chrome Sync API)
+- [ ] Custom rule editor in extension
 - [ ] Rule presets (Lakera, OWASP, etc.)
-- [ ] Integration with web app (share results)
+- [ ] Real-time scanning as you type
 
 ## Contributing
 

@@ -1,23 +1,71 @@
 # Forensicate.ai
 
-**Live site: [forensicate.ai](https://forensicate.ai)**
+**🌐 Live site: [forensicate.ai](https://forensicate.ai)**
+**⭐ GitHub: [github.com/peterhanily/forensicate.ai](https://github.com/peterhanily/forensicate.ai)**
 
-A web-based AI security tool for analyzing prompts for potential injection vulnerabilities and security risks.
+A comprehensive AI security toolkit for analyzing prompts for potential injection vulnerabilities and security risks. Available as a web app, standalone HTML file, and Chrome browser extension.
 
 ## Overview
 
 Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 78 rules in 15 categories.
 
-## Features
+## Available Formats
+
+1. **🌐 Web App** - [forensicate.ai](https://forensicate.ai) - Full-featured online version
+2. **📦 Standalone HTML** - Single-file offline version (like CyberChef)
+3. **🔌 Chrome Extension** - Real-time scanning directly in your browser
+
+## Chrome Extension
+
+The Forensicate.ai Chrome extension brings prompt injection detection directly into your browser workflow.
+
+### Extension Features
+
+- **🔍 Context Menu Scanning**: Right-click selected text → "Scan with Forensicate.ai"
+- **💬 Inline Bubble Results**: Scan results appear in a bubble overlay near your selection
+- **💾 Prompt Library**: Save scans for later analysis (up to 1000 items)
+- **📋 Scan History**: Track your last 50 scans
+- **📤 Export to Web App**: Send saved prompts to forensicate.ai test battery
+- **⚡ Instant Analysis**: Results appear within milliseconds
+- **🎯 Confidence Scoring**: Same 0-99% confidence algorithm as web app
+- **📊 Rule Matches**: See which detection rules triggered
+
+### Extension Installation
+
+**From Chrome Web Store:**
+```
+Coming soon - under review
+```
+
+**Manual Installation (Developer Mode):**
+1. Download or clone this repository
+2. Build the extension: `cd packages/extension && pnpm build`
+3. Open Chrome and navigate to `chrome://extensions`
+4. Enable "Developer mode" (toggle in top-right)
+5. Click "Load unpacked"
+6. Select `packages/extension/dist/chrome` folder
+7. Extension icon appears in toolbar
+
+### Extension Usage
+
+1. **Scan Text**: Select any text on a webpage, right-click → "Scan with Forensicate.ai"
+2. **View Results**: Bubble appears showing confidence score and matched rules
+3. **Save Scans**: Click "💾 Save" in bubble to add to library
+4. **View Library**: Click extension icon → "💾 View Saved Prompt Library"
+5. **Export**: From library page, export prompts to forensicate.ai for batch analysis
+
+## Web App Features
 
 ### Prompt Scanner
 
 - **Real-time Analysis**: Auto-scan prompts for injection vulnerabilities with debounced instant results
+- **Clickable Annotations**: Matched text segments are highlighted and clickable to show rule details
 - **Confidence Scoring**: Logarithmic confidence calculation (0-99%) based on severity-weighted matches
 - **Adjustable Threshold**: Confidence threshold slider to control sensitivity (0% disables filtering)
 - **Per-Rule Impact**: See each rule's point contribution to the confidence score
 - **Detailed Results**: See exactly which rules triggered, why, and how much each contributed
 - **Compound Threat Detection**: Identifies multi-vector attacks combining techniques from different categories
+- **Visual Highlighting**: Color-coded severity indicators (🟢 Low, 🟡 Medium, 🟠 High, 🔴 Critical)
 
 ### Detection Rules (78 Rules in 15 Categories)
 
@@ -146,8 +194,13 @@ The app will be available at `http://localhost:5173`
 
 ### Testing
 
+**300 tests total** across all packages:
+- 188 tests - Web app (Scanner, components, storage, rules)
+- 90 tests - Scanner engine (detection rules, heuristics, NLP)
+- 22 tests - Chrome extension (background, storage, scanning)
+
 ```bash
-# Run all tests
+# Run all tests (300 tests)
 pnpm test
 
 # Run tests for specific package
@@ -186,10 +239,11 @@ forensicate_ai/
 │   │   │   ├── hooks/           # React hooks
 │   │   │   │   └── usePersistedConfig.ts
 │   │   │   ├── lib/             # Utilities
-│   │   │   │   └── storage/     # Persistence layer
-│   │   │   ├── data/            # Test prompts
+│   │   │   │   ├── storage/     # Persistence (localStorage + URL)
+│   │   │   │   └── annotation.ts # Text highlighting
+│   │   │   ├── data/            # Sample test prompts
 │   │   │   └── main.tsx         # Entry point
-│   │   ├── tests/               # 188 tests
+│   │   ├── tests/               # 188 tests (95% coverage)
 │   │   └── public/              # Static assets
 │   │
 │   ├── scanner/                 # Scanner engine (shared)
@@ -202,14 +256,17 @@ forensicate_ai/
 │   │   │   └── types.ts
 │   │   └── tests/               # 78 tests
 │   │
-│   └── extension/               # Chrome extension
+│   └── extension/               # Chrome extension (MV3)
 │       ├── src/
 │       │   ├── background.js    # Service worker
-│       │   └── manifest.json
+│       │   ├── content.js       # Bubble overlay
+│       │   ├── popup.html/js    # Extension popup
+│       │   └── manifest.json    # Chrome MV3 manifest
 │       ├── pages/               # Extension pages
-│       │   ├── result.html
-│       │   ├── library.html
-│       │   └── history.html
+│       │   ├── library.html/js  # Saved prompts
+│       │   ├── history.html/js  # Scan history
+│       │   └── result.html/js   # Full scan results
+│       ├── icons/               # PNG icons (16, 48, 128)
 │       └── tests/               # 22 tests
 │
 ├── pnpm-workspace.yaml          # Workspace configuration
