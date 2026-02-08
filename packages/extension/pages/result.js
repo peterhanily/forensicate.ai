@@ -176,11 +176,16 @@ function showError(message) {
     <div class="empty-state">
       <div class="empty-state-icon">❌</div>
       <p>${escapeHtml(message)}</p>
-      <button class="btn-secondary" onclick="window.close()" style="margin-top: 16px;">
+      <button class="btn-secondary error-close-btn" style="margin-top: 16px;">
         Close
       </button>
     </div>
   `;
+
+  // Add event listener after rendering
+  document.querySelector('.error-close-btn')?.addEventListener('click', () => {
+    window.close();
+  });
 }
 
 function getRiskColor(riskClass) {

@@ -43,6 +43,9 @@ function displayHistory(history) {
       ${history.map((item, index) => createHistoryItem(item, index)).join('')}
     </div>
   `;
+
+  // Add event listeners after rendering
+  attachEventListeners();
 }
 
 function createHistoryItem(item, index) {
@@ -61,7 +64,7 @@ function createHistoryItem(item, index) {
           ${item.sourceUrl ? `<span>🔗 ${escapeHtml(item.sourceUrl)}</span>` : ''}
         </div>
         <div class="history-actions">
-          <button class="btn-small btn-primary" onclick="saveToLibrary(${index})">💾 Save to Library</button>
+          <button class="btn-small btn-primary save-to-library-btn" data-index="${index}">💾 Save to Library</button>
         </div>
       </div>
       <div class="confidence-pill ${riskClass}">
@@ -118,6 +121,17 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Attach event listeners to dynamically created buttons
+function attachEventListeners() {
+  const saveButtons = document.querySelectorAll('.save-to-library-btn');
+  saveButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      const index = parseInt(e.target.dataset.index, 10);
+      await saveToLibrary(index);
+    });
+  });
+}
+
 // Save history item to prompt library
 async function saveToLibrary(index) {
   try {
@@ -153,10 +167,8 @@ async function saveToLibrary(index) {
   }
 }
 
-// Make saveToLibrary globally accessible
-window.saveToLibrary = saveToLibrary;
-
 // Event listeners
+document.getElementById('refresh-btn')?.addEventListener('click', () => window.location.reload());
 document.getElementById('clear-history-btn')?.addEventListener('click', clearHistory);
 
 // Load history on page load
