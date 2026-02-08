@@ -1,5 +1,14 @@
 // Background service worker for Forensicate.ai extension
 // Handles context menu, keyboard shortcuts, and scanning
+//
+// DETECTION ENGINE (bundled from @forensicate/scanner):
+// - 78 static detection rules (29 keyword + 41 regex + 4 heuristic + 4 NLP)
+// - AFINN-165 sentiment analysis dictionary (static wordlist)
+// - compromise.js NLP library for POS tagging
+// - All scanning happens locally (no external API calls)
+// - No remote code execution or dynamic rule loading
+//
+// Source code: https://github.com/peterhanily/forensicate.ai
 
 import { scanPrompt, getEnabledRules } from '@forensicate/scanner';
 

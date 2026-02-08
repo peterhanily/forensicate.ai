@@ -57,6 +57,12 @@ copyFileSync(
   join(outdir, 'manifest.json')
 );
 
+// Review documentation for Chrome Web Store reviewers
+copyFileSync(
+  join(rootDir, 'README_REVIEW.md'),
+  join(outdir, 'README_REVIEW.md')
+);
+
 // Content script
 copyFileSync(
   join(rootDir, 'src/content.js'),
