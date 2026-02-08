@@ -49,6 +49,7 @@ export function loadConfig(): PersistedConfig | null {
  */
 export function validateConfig(data: unknown): data is PersistedConfig {
   if (!data || typeof data !== 'object') {
+    console.warn('[Validate] Config is not an object:', typeof data);
     return false;
   }
 
@@ -56,16 +57,19 @@ export function validateConfig(data: unknown): data is PersistedConfig {
 
   // Check version
   if (typeof config.version !== 'string') {
+    console.warn('[Validate] Invalid version:', config.version);
     return false;
   }
 
   // Check savedAt
   if (typeof config.savedAt !== 'string') {
+    console.warn('[Validate] Invalid savedAt:', config.savedAt);
     return false;
   }
 
   // Check rules structure
   if (!config.rules || typeof config.rules !== 'object') {
+    console.warn('[Validate] Invalid rules structure:', config.rules);
     return false;
   }
   const rules = config.rules as Record<string, unknown>;
