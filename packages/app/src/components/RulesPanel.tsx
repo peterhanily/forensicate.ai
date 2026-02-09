@@ -61,7 +61,7 @@ export default function RulesPanel({
   onImportCommunityRule,
   importedCommunityRuleIds = new Set(),
 }: RulesPanelProps) {
-  const [activeTab, setActiveTab] = useState<'my-rules' | 'community'>('my-rules');
+  const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
 
   return (
     <div className={`${showMobileRules ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 lg:flex-shrink-0 border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden flex-col max-h-[50vh] lg:max-h-[calc(100vh-220px)] lg:sticky lg:top-20 lg:self-start`}>
@@ -70,7 +70,7 @@ export default function RulesPanel({
           <div>
             <h3 className="text-[#c9a227] text-sm font-semibold">Detection Rules</h3>
             <p className="text-gray-500 text-xs">
-              {activeTab === 'my-rules'
+              {activeTab === 'builtin'
                 ? `${enabledRuleCount} of ${totalRuleCount} rules enabled`
                 : 'Browse community contributions'}
             </p>
@@ -88,14 +88,14 @@ export default function RulesPanel({
         {/* Tabs */}
         <div className="flex gap-1">
           <button
-            onClick={() => setActiveTab('my-rules')}
+            onClick={() => setActiveTab('builtin')}
             className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-              activeTab === 'my-rules'
+              activeTab === 'builtin'
                 ? 'bg-[#c9a227] text-gray-900'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            My Rules
+            Built-in
           </button>
           <button
             onClick={() => setActiveTab('community')}
@@ -110,8 +110,8 @@ export default function RulesPanel({
         </div>
       </div>
 
-      {/* My Rules Tab */}
-      {activeTab === 'my-rules' && (
+      {/* Built-in Rules Tab */}
+      {activeTab === 'builtin' && (
         <>
           {/* Search input */}
           <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
@@ -206,10 +206,12 @@ export default function RulesPanel({
 
     {/* Community Rules Tab */}
     {activeTab === 'community' && onImportCommunityRule && (
-      <CommunityRulesPanel
-        onImportRule={onImportCommunityRule}
-        importedRuleIds={importedCommunityRuleIds}
-      />
+      <div className="flex-1 flex flex-col min-h-0">
+        <CommunityRulesPanel
+          onImportRule={onImportCommunityRule}
+          importedRuleIds={importedCommunityRuleIds}
+        />
+      </div>
     )}
     </div>
   );
