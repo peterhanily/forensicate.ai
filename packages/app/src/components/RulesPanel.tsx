@@ -201,6 +201,16 @@ export default function RulesPanel({
           </button>
         </div>
       </div>
+      </>
+    )}
+
+    {/* Community Rules Tab */}
+    {activeTab === 'community' && onImportCommunityRule && (
+      <CommunityRulesPanel
+        onImportRule={onImportCommunityRule}
+        importedRuleIds={importedCommunityRuleIds}
+      />
+    )}
     </div>
   );
 }
@@ -517,16 +527,6 @@ function RuleItem({
           )}
         </div>
       </div>
-        </>
-      )}
-
-      {/* Community Rules Tab */}
-      {activeTab === 'community' && onImportCommunityRule && (
-        <CommunityRulesPanel
-          onImportRule={onImportCommunityRule}
-          importedRuleIds={importedCommunityRuleIds}
-        />
-      )}
     </div>
   );
 }

@@ -142,6 +142,42 @@ Coming soon - under review
   - Preview imported data before applying
 - **Reset to Defaults**: One-click reset option
 
+### Community Rules
+
+Browse and import detection rules contributed by the community directly in the web app.
+
+**Using Community Rules:**
+- Switch to the "Community" tab in the Rules Panel
+- Browse rules by category or search by keyword
+- Click a rule to see examples, references, and details
+- Import rules with one click to add them to your custom rules
+
+**Contributing Your Own Rules:**
+
+Help improve Forensicate.ai by contributing detection rules for new attack patterns! Community contributions are welcomed via GitHub Pull Requests.
+
+1. **Fork the repository** on GitHub
+2. **Create a new rule file** in `community-rules/rules/[category]/`
+3. **Follow the schema** defined in `community-rules/SCHEMA.md`
+4. **Test your rule** thoroughly with examples
+5. **Submit a Pull Request** with your rule
+
+For detailed contribution guidelines, see: [community-rules/README.md](community-rules/README.md)
+
+**Why contribute?**
+- Help the community detect new injection techniques
+- Share your security research findings
+- Get recognition with author attribution
+- Improve AI safety for everyone
+
+**Quality Standards:**
+- Rules must have clear descriptions and examples
+- Must avoid false positives on common benign phrases
+- Should target specific attack patterns or techniques
+- Include references to source material where applicable
+
+Community rules are reviewed by maintainers before being added to the index and automatically distributed to all users.
+
 ### Standalone/Offline Mode
 
 - Download as single self-contained HTML file (like CyberChef)
