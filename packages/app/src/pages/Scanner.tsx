@@ -875,12 +875,43 @@ export default function Scanner() {
           onDisableAll={() => { setLocalRules(prev => prev.map(r => ({ ...r, enabled: false }))); lastScannedRef.current = ''; }}
           onShowAddSectionModal={() => setShowAddSectionModal(true)}
           onImportCommunityRule={(rule) => {
-            // Add community rule to custom rules
-            setLocalRules(prev => [...prev, rule]);
-            showToastMessage(`✅ Imported "${rule.name}" to custom rules`, 3000);
+            // Create or get "Imported" category
+            const importedCategoryId = 'custom-imported';
+            const importedCategory = customCategories.find(c => c.id === importedCategoryId);
+
+            if (!importedCategory) {
+              // Create "Imported" category if it doesn't exist
+              setCustomCategories(prev => [...prev, {
+                id: importedCategoryId,
+                name: 'Imported',
+                description: 'Rules imported from the community',
+                isCustom: true,
+                rules: []
+              }]);
+            }
+
+            // Change rule ID to custom- prefix so it appears in custom categories
+            const importedRule = {
+              ...rule,
+              id: `custom-imported-${rule.id.replace('community-', '')}`
+            };
+
+            // Add rule to localRules and to the Imported category
+            setLocalRules(prev => [...prev, importedRule]);
+            setCustomCategories(prev => prev.map(cat =>
+              cat.id === importedCategoryId
+                ? { ...cat, rules: [...cat.rules, importedRule] }
+                : cat
+            ));
+
+            showToastMessage(`✅ Imported "${rule.name}" to Imported category`, 3000);
             lastScannedRef.current = ''; // Force re-scan
           }}
-          importedCommunityRuleIds={new Set(localRules.map(r => r.id))}
+          importedCommunityRuleIds={new Set(
+            localRules
+              .filter(r => r.id.startsWith('custom-imported-'))
+              .map(r => 'community-' + r.id.replace('custom-imported-', ''))
+          )}
         />
 
         {/* Center - Input and Results */}
