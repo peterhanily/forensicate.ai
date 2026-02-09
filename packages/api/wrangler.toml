@@ -1,0 +1,39 @@
+name = "forensicate-api"
+main = "src/index.ts"
+compatibility_date = "2025-02-07"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (non-sensitive)
+[vars]
+ENVIRONMENT = "development"
+API_VERSION = "v1"
+MAX_TEXT_LENGTH = "100000"
+SCAN_TIMEOUT_MS = "5000"
+
+# KV Namespaces (for API tokens and tenant metadata)
+[[kv_namespaces]]
+binding = "API_TOKENS"
+id = "placeholder"  # Replace with actual KV namespace ID after creation
+preview_id = "placeholder"
+
+[[kv_namespaces]]
+binding = "TENANT_METADATA"
+id = "placeholder"  # Replace with actual KV namespace ID after creation
+preview_id = "placeholder"
+
+# Durable Objects (for rate limiting)
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+script_name = "forensicate-api"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RateLimiter"]
+
+# Secrets (set via `wrangler secret put <NAME>`)
+# - HMAC_SECRET: For signing/verifying requests
+
+# Resource limits
+[limits]
+cpu_ms = 50  # 50ms CPU time per request

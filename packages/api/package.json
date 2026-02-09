@@ -1,0 +1,31 @@
+{
+  "name": "@forensicate/api",
+  "version": "1.0.0",
+  "description": "Forensicate.ai REST API for Cloudflare Workers",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@forensicate/scanner": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250117.0",
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.103.0"
+  },
+  "keywords": [
+    "prompt-injection",
+    "security",
+    "api",
+    "cloudflare-workers"
+  ],
+  "license": "Apache-2.0"
+}

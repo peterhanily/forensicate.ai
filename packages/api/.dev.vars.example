@@ -1,0 +1,15 @@
+# Environment variables for local development
+# Copy this file to .dev.vars and fill in the values
+
+# HMAC secret for signing/verifying requests (generate with: openssl rand -hex 32)
+HMAC_SECRET=your_hmac_secret_here
+
+# Environment
+ENVIRONMENT=development
+
+# API Version
+API_VERSION=v1
+
+# Limits
+MAX_TEXT_LENGTH=100000
+SCAN_TIMEOUT_MS=5000

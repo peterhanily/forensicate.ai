@@ -1,0 +1,23 @@
+# Wrangler
+.wrangler/
+.dev.vars
+wrangler.toml.local
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+
+# Testing
+coverage/
+
+# OS
+.DS_Store
