@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { type PromptCategory, type PromptItem } from '../data/samplePrompts';
 import {
   scanPrompt,
@@ -30,6 +30,17 @@ import ScanHistory, { type ScanHistoryEntry } from '../components/ScanHistory';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import AnnotatedPrompt from '../components/AnnotatedPrompt';
 import RuleDetailsModal from '../components/RuleDetailsModal';
+
+// Extension export item type
+interface ExtensionExportItem {
+  id?: string;
+  text: string;
+  sourceDomain?: string;
+  sourceUrl?: string;
+  timestamp: number;
+  savedDate?: string;
+  expectedRisk?: string;
+}
 
 export default function Scanner() {
   // Use persisted config hook for all state management
@@ -81,7 +92,7 @@ export default function Scanner() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Helper to show toast with auto-dismiss
-  const showToastMessage = (message: string, duration = 3000) => {
+  const showToastMessage = useCallback((message: string, duration = 3000) => {
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
     }
@@ -93,7 +104,7 @@ export default function Scanner() {
       setToastFading(true);
       setTimeout(() => setShowToast(false), 300);
     }, duration);
-  };
+  }, []);
 
   // Auto-hide toast after 3 seconds (only runs once for initial URL load)
   useEffect(() => {
@@ -124,7 +135,7 @@ export default function Scanner() {
             name: exportData.categoryName || 'Extension Snippets',
             description: exportData.categoryDescription || `${exportData.prompts.length} prompts from browser extension`,
             source: 'Browser Extension',
-            prompts: exportData.prompts.map((item: any) => {
+            prompts: exportData.prompts.map((item: ExtensionExportItem) => {
               // Create descriptive name showing source and date
               const sourceName = item.sourceDomain || item.sourceUrl || 'Unknown';
               const shortSource = sourceName.length > 30 ? sourceName.substring(0, 27) + '...' : sourceName;
@@ -154,19 +165,23 @@ export default function Scanner() {
           // Add to custom prompt categories
           setCustomPromptCategories(prev => [...prev, newCategory]);
 
-          // Clear hash and show toast
+          // Clear hash and show toast (defer to avoid setState in effect)
           window.history.replaceState(null, '', window.location.pathname + window.location.search);
-          showToastMessage(
-            `✅ Imported ${exportData.prompts.length} prompts to "Extension Snippets"!`,
-            5000
-          );
+          setTimeout(() => {
+            showToastMessage(
+              `✅ Imported ${exportData.prompts.length} prompts to "Extension Snippets"!`,
+              5000
+            );
+          }, 0);
         }
       } catch (error) {
         console.error('Failed to import from extension:', error);
-        showToastMessage('❌ Failed to import prompts from extension', 5000);
+        setTimeout(() => {
+          showToastMessage('❌ Failed to import prompts from extension', 5000);
+        }, 0);
       }
     }
-  }, []); // Only run once on mount
+  }, [setCustomPromptCategories, showToastMessage]); // Added required dependencies
 
   // Modal states
   const [showAddRuleModal, setShowAddRuleModal] = useState(false);

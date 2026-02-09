@@ -19,5 +19,8 @@ dist/
 # Testing
 coverage/
 
+# Tokens (never commit!)
+.tokens
+
 # OS
 .DS_Store

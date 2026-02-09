@@ -1,6 +1,6 @@
 // /v1/scan endpoint handler
 
-import { scanPrompt, getEnabledRules } from '@forensicate/scanner';
+import { scanPrompt, getEnabledRules, ruleCategories } from '@forensicate/scanner';
 import type { Env, ScanRequest, ScanResponse, TenantMetadata } from '../types';
 import { createErrorResponse, validateScanRequest } from '../utils';
 
@@ -47,17 +47,34 @@ export async function handleScan(
     const rules = getEnabledRules();
 
     // Scan with timeout protection
-    const result = await Promise.race([
+    const result = await Promise.race<ReturnType<typeof scanPrompt>>([
       // Actual scan
       Promise.resolve(scanPrompt(text, rules, confidenceThreshold)),
 
       // Timeout
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Scan timeout exceeded')), SCAN_TIMEOUT_MS)
-      )
+      ) as never
     ]);
 
     const processingTimeMs = Date.now() - startTime;
+
+    // Calculate risk level from confidence
+    const riskLevel: 'low' | 'medium' | 'high' =
+      result.confidence >= 70 ? 'high' :
+      result.confidence >= 30 ? 'medium' :
+      'low';
+
+    // Build rule lookup maps
+    const ruleLookup = new Map<string, { category: string; description: string }>();
+    for (const category of ruleCategories) {
+      for (const rule of category.rules) {
+        ruleLookup.set(rule.id, {
+          category: category.name,
+          description: rule.description
+        });
+      }
+    }
 
     // Format response
     const response: ScanResponse = {
@@ -66,19 +83,22 @@ export async function handleScan(
         text: text.substring(0, 1000), // Limit echoed text
         textLength: text.length,
         confidence: result.confidence,
-        riskLevel: result.riskLevel,
+        riskLevel,
         matchCount: result.matchedRules.length,
-        matches: result.matchedRules.map(match => ({
-          ruleId: match.ruleId,
-          ruleName: match.ruleName,
-          ruleType: match.ruleType,
-          category: match.category,
-          severity: match.severity,
-          description: match.description,
-          confidenceImpact: match.confidenceImpact,
-          matches: match.matches?.slice(0, 5), // Limit matched strings
-          positions: includePositions ? match.positions?.slice(0, 10) : undefined
-        })),
+        matches: result.matchedRules.map(match => {
+          const ruleInfo = ruleLookup.get(match.ruleId);
+          return {
+            ruleId: match.ruleId,
+            ruleName: match.ruleName,
+            ruleType: match.ruleType,
+            category: ruleInfo?.category || 'Unknown',
+            severity: match.severity,
+            description: ruleInfo?.description || '',
+            confidenceImpact: match.confidenceImpact,
+            matches: match.matches?.slice(0, 5), // Limit matched strings
+            positions: includePositions ? match.positions?.slice(0, 10) : undefined
+          };
+        }),
         scannedAt: new Date().toISOString(),
         processingTimeMs
       }

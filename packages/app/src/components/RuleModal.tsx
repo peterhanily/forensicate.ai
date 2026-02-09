@@ -157,7 +157,7 @@ export function AddRuleModal({
       }
 
       try {
-        // eslint-disable-next-line no-new-func
+        // Dynamic function creation needed for user-defined heuristics
         const fn = new Function('text', heuristicBody.trim()) as (text: string) => import('@forensicate/scanner').HeuristicResult | null;
         // Validate: test with empty string to check it doesn't throw
         fn('');
@@ -1476,8 +1476,11 @@ export function SavePromptModal({
   // Initialize content when modal opens
   useEffect(() => {
     if (isOpen) {
-      setContent(initialContent);
-      setCategoryId(categories[0]?.id || '');
+      // Defer setState to avoid synchronous updates in effect
+      setTimeout(() => {
+        setContent(initialContent);
+        setCategoryId(categories[0]?.id || '');
+      }, 0);
     }
   }, [isOpen, initialContent, categories]);
 
