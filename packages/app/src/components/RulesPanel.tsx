@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { DetectionRule, RuleCategory } from '@forensicate/scanner';
+import CommunityRulesPanel from './CommunityRulesPanel';
 
 // ============================================================================
 // Rules Panel Component
@@ -29,6 +30,8 @@ interface RulesPanelProps {
   onEnableAll: () => void;
   onDisableAll: () => void;
   onShowAddSectionModal: () => void;
+  onImportCommunityRule?: (rule: DetectionRule) => void;
+  importedCommunityRuleIds?: Set<string>;
 }
 
 export default function RulesPanel({
@@ -55,26 +58,63 @@ export default function RulesPanel({
   onEnableAll,
   onDisableAll,
   onShowAddSectionModal,
+  onImportCommunityRule,
+  importedCommunityRuleIds = new Set(),
 }: RulesPanelProps) {
+  const [activeTab, setActiveTab] = useState<'my-rules' | 'community'>('my-rules');
+
   return (
     <div className={`${showMobileRules ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 lg:flex-shrink-0 border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden flex-col max-h-[50vh] lg:max-h-[calc(100vh-220px)] lg:sticky lg:top-20 lg:self-start`}>
-      <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0 flex items-center justify-between">
-        <div>
-          <h3 className="text-[#c9a227] text-sm font-semibold">Detection Rules</h3>
-          <p className="text-gray-500 text-xs">{enabledRuleCount} of {totalRuleCount} rules enabled</p>
+      <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-[#c9a227] text-sm font-semibold">Detection Rules</h3>
+            <p className="text-gray-500 text-xs">
+              {activeTab === 'my-rules'
+                ? `${enabledRuleCount} of ${totalRuleCount} rules enabled`
+                : 'Browse community contributions'}
+            </p>
+          </div>
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1 text-gray-500 hover:text-gray-300"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <button
-          onClick={onCloseMobile}
-          className="lg:hidden p-1 text-gray-500 hover:text-gray-300"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+
+        {/* Tabs */}
+        <div className="flex gap-1">
+          <button
+            onClick={() => setActiveTab('my-rules')}
+            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+              activeTab === 'my-rules'
+                ? 'bg-[#c9a227] text-gray-900'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            My Rules
+          </button>
+          <button
+            onClick={() => setActiveTab('community')}
+            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+              activeTab === 'community'
+                ? 'bg-[#c9a227] text-gray-900'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            Community
+          </button>
+        </div>
       </div>
 
-      {/* Search input */}
-      <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
+      {/* My Rules Tab */}
+      {activeTab === 'my-rules' && (
+        <>
+          {/* Search input */}
+          <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
         <div className="relative">
           <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -477,6 +517,16 @@ function RuleItem({
           )}
         </div>
       </div>
+        </>
+      )}
+
+      {/* Community Rules Tab */}
+      {activeTab === 'community' && onImportCommunityRule && (
+        <CommunityRulesPanel
+          onImportRule={onImportCommunityRule}
+          importedRuleIds={importedCommunityRuleIds}
+        />
+      )}
     </div>
   );
 }

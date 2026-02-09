@@ -874,6 +874,13 @@ export default function Scanner() {
           onEnableAll={() => { setLocalRules(prev => prev.map(r => ({ ...r, enabled: true }))); lastScannedRef.current = ''; }}
           onDisableAll={() => { setLocalRules(prev => prev.map(r => ({ ...r, enabled: false }))); lastScannedRef.current = ''; }}
           onShowAddSectionModal={() => setShowAddSectionModal(true)}
+          onImportCommunityRule={(rule) => {
+            // Add community rule to custom rules
+            setLocalRules(prev => [...prev, rule]);
+            showToastMessage(`✅ Imported "${rule.name}" to custom rules`, 3000);
+            lastScannedRef.current = ''; // Force re-scan
+          }}
+          importedCommunityRuleIds={new Set(localRules.map(r => r.id))}
         />
 
         {/* Center - Input and Results */}
