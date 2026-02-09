@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-02-08T00:00:00Z",
+  "totalRules": 3,
+  "categories": {
+    "injection": 1,
+    "jailbreak": 1,
+    "obfuscation": 1,
+    "encoding": 0,
+    "experimental": 0
+  },
+  "rules": [
+    {
+      "id": "community-injection-001",
+      "file": "rules/injection/community-injection-001.json",
+      "name": "System Prompt Leak Attempt",
+      "category": "injection",
+      "severity": "high",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-jailbreak-001",
+      "file": "rules/jailbreak/community-jailbreak-001.json",
+      "name": "Developer Mode Request",
+      "category": "jailbreak",
+      "severity": "high",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-obfuscation-001",
+      "file": "rules/obfuscation/community-obfuscation-001.json",
+      "name": "Base64 Payload Detection",
+      "category": "obfuscation",
+      "severity": "medium",
+      "author": "forensicate-team",
+      "votes": 0
+    }
+  ]
+}

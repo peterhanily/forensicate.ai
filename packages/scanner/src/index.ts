@@ -6,3 +6,13 @@ export * from './scanner';
 export { rehydrateHeuristics, heuristicRules } from './heuristicRules';
 export { nlpRules, nlpCategory } from './nlpRules';
 export { detectCompoundThreats } from './compoundDetector';
+export {
+  fetchCommunityIndex,
+  fetchCommunityRule,
+  fetchAllCommunityRules,
+  communityRuleToDetectionRule,
+  clearCommunityCache,
+  type CommunityRule,
+  type CommunityRuleIndex,
+  type CommunityRuleMetadata
+} from './communityRules';
