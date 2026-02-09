@@ -1,6 +1,64 @@
 import type { PromptCategory, PromptItem } from '../data/samplePrompts';
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Convert source string to clickable URL
+ * Supports various formats and platforms:
+ * - "github/username/repo" -> GitHub repository
+ * - "Lakera/guide-name" -> Lakera website
+ * - "Research/topic" -> Search query for the research topic
+ * - "internal/*" -> No link (internal sources)
+ * - Full URLs -> Unchanged
+ */
+function getSourceUrl(source: string): { url: string; display: string } | null {
+  if (!source) return null;
+
+  // Skip internal sources
+  if (source.startsWith('internal/')) {
+    return null;
+  }
+
+  // Already a full URL
+  if (source.startsWith('http://') || source.startsWith('https://')) {
+    return { url: source, display: source };
+  }
+
+  // GitHub shorthand: github/username/repo
+  if (source.startsWith('github/')) {
+    const path = source.substring(7); // Remove 'github/'
+    return {
+      url: `https://github.com/${path}`,
+      display: source
+    };
+  }
+
+  // Lakera resources
+  if (source.startsWith('Lakera/')) {
+    // Link to their AI security guide
+    return {
+      url: 'https://www.lakera.ai/blog/guide-to-prompt-injection',
+      display: source
+    };
+  }
+
+  // Research topics - create a search link
+  if (source.startsWith('Research/')) {
+    const topic = source.substring(9).replace(/-/g, ' '); // Remove 'Research/' and format
+    const searchQuery = encodeURIComponent(`LLM ${topic} prompt injection`);
+    return {
+      url: `https://www.google.com/search?q=${searchQuery}`,
+      display: source
+    };
+  }
+
+  // Default: no link
+  return null;
+}
+
+// ============================================================================
 // Test Battery Panel Component
 // ============================================================================
 
@@ -253,7 +311,29 @@ function CategorySection({
         <div className="bg-gray-900/50">
           <div className="px-3 py-1.5 text-xs text-gray-500 border-b border-gray-800">
             <div className="flex justify-between items-start gap-2">
-              <span className="flex-1">Source: {category.source}</span>
+              <span className="flex-1">
+                Source:{' '}
+                {(() => {
+                  const linkInfo = getSourceUrl(category.source);
+                  return linkInfo ? (
+                    <a
+                      href={linkInfo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#c9a227] hover:text-[#d4b030] underline inline-flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                      title={`Open: ${linkInfo.url}`}
+                    >
+                      {linkInfo.display}
+                      <svg className="w-2.5 h-2.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">{category.source}</span>
+                  );
+                })()}
+              </span>
             </div>
             {/* Action buttons row */}
             <div className="flex gap-1 mt-1.5">
