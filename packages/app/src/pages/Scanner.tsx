@@ -875,20 +875,7 @@ export default function Scanner() {
           onDisableAll={() => { setLocalRules(prev => prev.map(r => ({ ...r, enabled: false }))); lastScannedRef.current = ''; }}
           onShowAddSectionModal={() => setShowAddSectionModal(true)}
           onImportCommunityRule={(rule) => {
-            // Create or get "Imported" category
             const importedCategoryId = 'custom-imported';
-            const importedCategory = customCategories.find(c => c.id === importedCategoryId);
-
-            if (!importedCategory) {
-              // Create "Imported" category if it doesn't exist
-              setCustomCategories(prev => [...prev, {
-                id: importedCategoryId,
-                name: 'Imported',
-                description: 'Rules imported from the community',
-                isCustom: true,
-                rules: []
-              }]);
-            }
 
             // Change rule ID to custom- prefix so it appears in custom categories
             const importedRule = {
@@ -896,13 +883,31 @@ export default function Scanner() {
               id: `custom-imported-${rule.id.replace('community-', '')}`
             };
 
-            // Add rule to localRules and to the Imported category
+            // Add rule to localRules
             setLocalRules(prev => [...prev, importedRule]);
-            setCustomCategories(prev => prev.map(cat =>
-              cat.id === importedCategoryId
-                ? { ...cat, rules: [...cat.rules, importedRule] }
-                : cat
-            ));
+
+            // Create "Imported" category with rule, or add rule to existing category
+            setCustomCategories(prev => {
+              const existingCategory = prev.find(c => c.id === importedCategoryId);
+
+              if (existingCategory) {
+                // Add rule to existing Imported category
+                return prev.map(cat =>
+                  cat.id === importedCategoryId
+                    ? { ...cat, rules: [...cat.rules, importedRule] }
+                    : cat
+                );
+              } else {
+                // Create new Imported category with the rule
+                return [...prev, {
+                  id: importedCategoryId,
+                  name: 'Imported',
+                  description: 'Rules imported from the community',
+                  isCustom: true,
+                  rules: [importedRule]
+                }];
+              }
+            });
 
             showToastMessage(`✅ Imported "${rule.name}" to Imported category`, 3000);
             lastScannedRef.current = ''; // Force re-scan

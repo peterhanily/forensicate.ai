@@ -100,7 +100,7 @@ export default function CommunityRulesPanel({
   const categories = ['all', ...new Set(rules.map((r) => r.category))];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-full">
       {/* Header */}
       <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
