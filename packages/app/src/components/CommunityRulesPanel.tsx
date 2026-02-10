@@ -12,11 +12,15 @@ import {
 interface CommunityRulesPanelProps {
   onImportRule: (rule: DetectionRule) => void;
   importedRuleIds: Set<string>;
+  autoImportEnabled: boolean;
+  onToggleAutoImport: (enabled: boolean) => void;
 }
 
 export default function CommunityRulesPanel({
   onImportRule,
   importedRuleIds,
+  autoImportEnabled,
+  onToggleAutoImport,
 }: CommunityRulesPanelProps) {
   const [rules, setRules] = useState<CommunityRuleMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -364,7 +368,18 @@ export default function CommunityRulesPanel({
       </div>
 
       {/* Footer */}
-      <div className="px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0">
+      <div className="px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0 space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoImportEnabled}
+              onChange={(e) => onToggleAutoImport(e.target.checked)}
+              className="w-3 h-3 rounded border-gray-600 bg-gray-800 text-[#c9a227] focus:ring-[#c9a227] focus:ring-offset-gray-900"
+            />
+            <span className="text-gray-400">Auto-import on page load</span>
+          </label>
+        </div>
         <div className="flex items-center justify-between text-xs text-gray-500">
           <a
             href="https://github.com/peterhanily/forensicate.ai/tree/main/community-rules"

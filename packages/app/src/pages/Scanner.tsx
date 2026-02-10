@@ -4,6 +4,8 @@ import {
   scanPrompt,
   ruleCategories,
   rehydrateHeuristics,
+  fetchAllCommunityRules,
+  communityRuleToDetectionRule,
   type DetectionRule,
   type RuleCategory,
   type ScanResult,
@@ -59,6 +61,8 @@ export default function Scanner() {
     setExpandedPromptCategory: setExpandedCategory,
     confidenceThreshold,
     setConfidenceThreshold,
+    autoImportCommunityRules,
+    setAutoImportCommunityRules,
     loadSource,
     initialPromptText,
     generateShareUrl,
@@ -201,6 +205,59 @@ export default function Scanner() {
   // Search/filter state
   const [ruleSearchQuery, setRuleSearchQuery] = useState('');
   const [promptSearchQuery, setPromptSearchQuery] = useState('');
+
+  // Auto-import community rules on page load
+  const hasAutoImported = useRef(false);
+  useEffect(() => {
+    if (autoImportCommunityRules && !hasAutoImported.current) {
+      hasAutoImported.current = true;
+
+      (async () => {
+        try {
+          const communityRules = await fetchAllCommunityRules();
+          const importedCategoryId = 'custom-imported';
+
+          // Transform community rules to detection rules
+          const detectionRules = communityRules.map(rule => {
+            const detectionRule = communityRuleToDetectionRule(rule);
+            // Change ID to custom-imported prefix
+            return {
+              ...detectionRule,
+              id: `custom-imported-${rule.id.replace('community-', '')}`
+            };
+          });
+
+          // Add all rules to localRules
+          setLocalRules(prev => [...prev, ...detectionRules]);
+
+          // Create or update "Imported" category
+          setCustomCategories(prev => {
+            const existingCategory = prev.find(c => c.id === importedCategoryId);
+
+            if (existingCategory) {
+              return prev.map(cat =>
+                cat.id === importedCategoryId
+                  ? { ...cat, rules: [...cat.rules, ...detectionRules] }
+                  : cat
+              );
+            } else {
+              return [...prev, {
+                id: importedCategoryId,
+                name: 'Imported',
+                description: 'Rules imported from the community',
+                isCustom: true,
+                rules: detectionRules
+              }];
+            }
+          });
+
+          console.log(`Auto-imported ${communityRules.length} community rules`);
+        } catch (err) {
+          console.error('Failed to auto-import community rules:', err);
+        }
+      })();
+    }
+  }, [autoImportCommunityRules, setLocalRules, setCustomCategories]);
 
   // Annotation view state
   const [showAnnotations, setShowAnnotations] = useState(true);
@@ -917,6 +974,8 @@ export default function Scanner() {
               .filter(r => r.id.startsWith('custom-imported-'))
               .map(r => 'community-' + r.id.replace('custom-imported-', ''))
           )}
+          autoImportEnabled={autoImportCommunityRules}
+          onToggleAutoImport={setAutoImportCommunityRules}
         />
 
         {/* Center - Input and Results */}

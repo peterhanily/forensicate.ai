@@ -37,6 +37,8 @@ interface UsePersistedConfigReturn {
   setExpandedPromptCategory: React.Dispatch<React.SetStateAction<string | null>>;
   confidenceThreshold: number;
   setConfidenceThreshold: React.Dispatch<React.SetStateAction<number>>;
+  autoImportCommunityRules: boolean;
+  setAutoImportCommunityRules: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Meta
   loadSource: LoadSource;
@@ -113,6 +115,7 @@ function loadInitialConfig(): {
       expandedRuleCategory: storedConfig?.ui?.expandedRuleCategory ?? null,
       expandedPromptCategory: storedConfig?.ui?.expandedPromptCategory ?? null,
       confidenceThreshold: storedConfig?.ui?.confidenceThreshold ?? 50,
+      autoImportCommunityRules: storedConfig?.ui?.autoImportCommunityRules ?? true,
     };
   }
 
@@ -129,6 +132,7 @@ function loadInitialConfig(): {
       expandedRuleCategory: storedConfig.ui?.expandedRuleCategory ?? null,
       expandedPromptCategory: storedConfig.ui?.expandedPromptCategory ?? null,
       confidenceThreshold: storedConfig.ui?.confidenceThreshold ?? 50,
+      autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
     };
   }
 
@@ -143,6 +147,7 @@ function loadInitialConfig(): {
     expandedRuleCategory: null,
     expandedPromptCategory: null,
     confidenceThreshold: 50,
+    autoImportCommunityRules: true,
   };
 }
 
@@ -168,6 +173,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
   const [expandedRuleCategory, setExpandedRuleCategory] = useState<string | null>(initialConfig.expandedRuleCategory);
   const [expandedPromptCategory, setExpandedPromptCategory] = useState<string | null>(initialConfig.expandedPromptCategory);
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(initialConfig.confidenceThreshold);
+  const [autoImportCommunityRules, setAutoImportCommunityRules] = useState<boolean>(initialConfig.autoImportCommunityRules);
 
   // Track if initial load is done (for debounce skip)
   const initialLoadDone = useRef(false);
@@ -209,6 +215,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
           expandedRuleCategory,
           expandedPromptCategory,
           confidenceThreshold,
+          autoImportCommunityRules,
         },
       };
 
@@ -226,7 +233,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
         clearTimeout(saveTimerRef.current);
       }
     };
-  }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold]);
+  }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold, autoImportCommunityRules]);
 
   const handleGenerateShareUrl = useCallback((promptText?: string): string => {
     // For share URLs, only include custom/modified data to keep URLs shorter
@@ -292,6 +299,8 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     setExpandedPromptCategory,
     confidenceThreshold,
     setConfidenceThreshold,
+    autoImportCommunityRules,
+    setAutoImportCommunityRules,
     loadSource,
     lastSaved,
     error,
