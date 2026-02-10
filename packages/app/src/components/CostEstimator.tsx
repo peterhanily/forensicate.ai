@@ -24,21 +24,26 @@ interface CostEstimatorProps {
 const TOP_5_MODELS = [
   { provider: 'google', model: 'gemini-2.5-flash', badge: '🏆 Best Value' },
   { provider: 'openai', model: 'gpt-4o-mini', badge: '💰 Cheapest' },
-  { provider: 'anthropic', model: 'claude-haiku-4.5', badge: '⚡ Fast' },
-  { provider: 'openai', model: 'gpt-4o', badge: '🎯 Multimodal' },
+  { provider: 'openai', model: 'gpt-5.1', badge: '🧠 Adaptive' },
+  { provider: 'openai', model: 'gpt-5.2-pro', badge: '🚀 Latest' },
   { provider: 'anthropic', model: 'claude-sonnet-4.5', badge: '⚖️ Balanced' },
 ];
 
 // All other tracked models (shown in dropdown)
 const ALL_OTHER_MODELS = [
   { provider: 'anthropic', model: 'claude-3-haiku' },
+  { provider: 'anthropic', model: 'claude-haiku-4.5' },
   { provider: 'openai', model: 'o3-mini' },
   { provider: 'openai', model: 'o1-mini' },
+  { provider: 'openai', model: 'gpt-5' },
+  { provider: 'openai', model: 'gpt-5.2' },
   { provider: 'mistral', model: 'mistral-small-3.1' },
+  { provider: 'google', model: 'gemini-2.5-flash-lite' },
   { provider: 'anthropic', model: 'claude-3-opus' },
   { provider: 'google', model: 'gemini-1.5-pro' },
   { provider: 'google', model: 'gemini-2.5-pro' },
   { provider: 'google', model: 'gemini-3-pro' },
+  { provider: 'openai', model: 'gpt-4o' },
   { provider: 'mistral', model: 'mistral-medium-3' },
   { provider: 'mistral', model: 'mistral-large-2411' },
   { provider: 'anthropic', model: 'claude-opus-4.5' },
