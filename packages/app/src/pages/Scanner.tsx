@@ -231,17 +231,36 @@ export default function Scanner() {
             };
           });
 
-          // Add all rules to localRules
-          setLocalRules(prev => [...prev, ...detectionRules]);
+          // Check which rules are already imported (deduplication)
+          setLocalRules(prev => {
+            const existingIds = new Set(prev.map(r => r.id));
+            const newRules = detectionRules.filter(r => !existingIds.has(r.id));
 
-          // Create or update "Imported" category
+            if (newRules.length === 0) {
+              console.log('Community rules already imported, skipping');
+              return prev;
+            }
+
+            console.log(`Auto-imported ${newRules.length} new community rules`);
+            return [...prev, ...newRules];
+          });
+
+          // Create or update "Imported" category (with deduplication)
           setCustomCategories(prev => {
             const existingCategory = prev.find(c => c.id === importedCategoryId);
 
             if (existingCategory) {
+              // Check which rules are new in this category
+              const existingRuleIds = new Set(existingCategory.rules.map(r => r.id));
+              const newCategoryRules = detectionRules.filter(r => !existingRuleIds.has(r.id));
+
+              if (newCategoryRules.length === 0) {
+                return prev; // No new rules to add
+              }
+
               return prev.map(cat =>
                 cat.id === importedCategoryId
-                  ? { ...cat, rules: [...cat.rules, ...detectionRules] }
+                  ? { ...cat, rules: [...cat.rules, ...newCategoryRules] }
                   : cat
               );
             } else {
@@ -254,8 +273,6 @@ export default function Scanner() {
               }];
             }
           });
-
-          console.log(`Auto-imported ${communityRules.length} community rules`);
         } catch (err) {
           console.error('Failed to auto-import community rules:', err);
         }
@@ -277,17 +294,28 @@ export default function Scanner() {
           // Transform community prompts to prompt items
           const promptItems = communityPrompts.map(communityPromptToPromptItem);
 
-          // Create or update "Community Imported" category
+          // Create or update "Community Imported" category (with deduplication)
           setCustomPromptCategories(prev => {
             const existingCategory = prev.find(c => c.id === importedCategoryId);
 
             if (existingCategory) {
+              // Check which prompts are new in this category
+              const existingPromptIds = new Set(existingCategory.prompts.map(p => p.id));
+              const newPrompts = promptItems.filter(p => !existingPromptIds.has(p.id));
+
+              if (newPrompts.length === 0) {
+                console.log('Community prompts already imported, skipping');
+                return prev; // No new prompts to add
+              }
+
+              console.log(`Auto-imported ${newPrompts.length} new community prompts`);
               return prev.map(cat =>
                 cat.id === importedCategoryId
-                  ? { ...cat, prompts: [...cat.prompts, ...promptItems] }
+                  ? { ...cat, prompts: [...cat.prompts, ...newPrompts] }
                   : cat
               );
             } else {
+              console.log(`Auto-imported ${promptItems.length} community prompts`);
               return [...prev, {
                 id: importedCategoryId,
                 name: 'Community Imported',
@@ -297,8 +325,6 @@ export default function Scanner() {
               }];
             }
           });
-
-          console.log(`Auto-imported ${communityPrompts.length} community prompts`);
         } catch (err) {
           console.error('Failed to auto-import community prompts:', err);
         }
