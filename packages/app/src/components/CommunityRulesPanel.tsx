@@ -196,7 +196,7 @@ export default function CommunityRulesPanel({
           <div className="px-3 py-8 text-center">
             <p className="text-red-400 text-sm mb-3">❌ {error}</p>
             <button
-              onClick={loadRules}
+              onClick={() => loadRules(true)}
               className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded transition-colors"
             >
               Try Again
