@@ -1,11 +1,11 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2025-02-08T00:00:00Z",
-  "totalRules": 3,
+  "lastUpdated": "2025-02-10T00:00:00Z",
+  "totalRules": 9,
   "categories": {
-    "injection": 1,
-    "jailbreak": 1,
-    "obfuscation": 1,
+    "injection": 3,
+    "jailbreak": 3,
+    "obfuscation": 3,
     "encoding": 0,
     "experimental": 0
   },
@@ -20,6 +20,24 @@
       "votes": 0
     },
     {
+      "id": "community-injection-002",
+      "file": "rules/injection/community-injection-002.json",
+      "name": "Token Smuggling Attack",
+      "category": "injection",
+      "severity": "high",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-injection-003",
+      "file": "rules/injection/community-injection-003.json",
+      "name": "Context Window Manipulation",
+      "category": "injection",
+      "severity": "medium",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
       "id": "community-jailbreak-001",
       "file": "rules/jailbreak/community-jailbreak-001.json",
       "name": "Developer Mode Request",
@@ -29,11 +47,47 @@
       "votes": 0
     },
     {
+      "id": "community-jailbreak-002",
+      "file": "rules/jailbreak/community-jailbreak-002.json",
+      "name": "Hypothetical Scenario Framing",
+      "category": "jailbreak",
+      "severity": "medium",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-jailbreak-003",
+      "file": "rules/jailbreak/community-jailbreak-003.json",
+      "name": "Emotional Manipulation & Guilt",
+      "category": "jailbreak",
+      "severity": "low",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
       "id": "community-obfuscation-001",
       "file": "rules/obfuscation/community-obfuscation-001.json",
       "name": "Base64 Payload Detection",
       "category": "obfuscation",
       "severity": "medium",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-obfuscation-002",
+      "file": "rules/obfuscation/community-obfuscation-002.json",
+      "name": "Shanklin's Truth",
+      "category": "obfuscation",
+      "severity": "medium",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-obfuscation-003",
+      "file": "rules/obfuscation/community-obfuscation-003.json",
+      "name": "Unicode Homoglyph Substitution",
+      "category": "obfuscation",
+      "severity": "high",
       "author": "forensicate-team",
       "votes": 0
     }
