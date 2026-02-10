@@ -20,13 +20,14 @@ interface CostEstimatorProps {
   className?: string;
 }
 
-// Default providers to show if none specified
+// Default providers to show if none specified (updated Feb 2026)
 const DEFAULT_PROVIDERS = [
+  { provider: 'google', model: 'gemini-2.5-flash' },
   { provider: 'openai', model: 'gpt-4o-mini' },
-  { provider: 'openai', model: 'gpt-4o' },
   { provider: 'anthropic', model: 'claude-haiku-4.5' },
+  { provider: 'mistral', model: 'mistral-small-3.1' },
   { provider: 'anthropic', model: 'claude-sonnet-4.5' },
-  { provider: 'google', model: 'gemini-2.0-flash' },
+  { provider: 'openai', model: 'gpt-4o' },
 ];
 
 export default function CostEstimator({
@@ -37,6 +38,7 @@ export default function CostEstimator({
   className = '',
 }: CostEstimatorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDisclaimerExpanded, setIsDisclaimerExpanded] = useState(false);
 
   if (!promptText || promptText.trim().length === 0) {
     return null;
@@ -123,21 +125,47 @@ export default function CostEstimator({
       {isExpanded && (
         <div className="px-4 pb-4 space-y-4 border-t border-gray-800 bg-gradient-to-b from-black to-gray-950">
 
-          {/* CRITICAL DISCLAIMER - Make it VERY visible */}
-          <div className="pt-3 bg-yellow-900/20 border border-yellow-700/50 rounded p-3 space-y-2">
-            <div className="text-xs font-mono font-bold text-yellow-400 flex items-center gap-2">
-              <span className="text-base">⚠️</span>
-              ACCURACY DISCLAIMER
-            </div>
-            <div className="text-xs text-yellow-200/90 space-y-1 font-mono leading-relaxed">
-              <div>• Token estimates use 4 char/token approximation (±25% variance typical)</div>
-              <div>• Output tokens assumed at 100 (actual: 10-10,000+ depending on use case)</div>
-              <div>• Prices manually verified {new Date(cheapest.source.lastUpdated).toLocaleDateString()} - may be outdated</div>
-              <div>• Enterprise/volume pricing, regional variations, promotions NOT reflected</div>
-              <div className="pt-1 text-yellow-300 font-semibold">
-                → Use for ORDER-OF-MAGNITUDE estimation only, not budgeting
+          {/* DISCLAIMER - Collapsible */}
+          <div className="pt-3">
+            <button
+              onClick={() => setIsDisclaimerExpanded(!isDisclaimerExpanded)}
+              className="w-full bg-yellow-900/20 border border-yellow-700/50 rounded p-2 hover:bg-yellow-900/30 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-mono font-bold text-yellow-400 flex items-center gap-2">
+                  <span className="text-base">⚠️</span>
+                  ACCURACY DISCLAIMER
+                </div>
+                <svg
+                  className={`w-3 h-3 text-yellow-400 transition-transform ${
+                    isDisclaimerExpanded ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
               </div>
-            </div>
+            </button>
+            {isDisclaimerExpanded && (
+              <div className="bg-yellow-900/20 border border-yellow-700/50 border-t-0 rounded-b px-3 pb-3 pt-2">
+                <div className="text-xs text-yellow-200/90 space-y-1 font-mono leading-relaxed">
+                  <div>• Token estimates use 4 char/token approximation (±25% variance typical)</div>
+                  <div>• Output tokens assumed at 100 (actual: 10-10,000+ depending on use case)</div>
+                  <div>• Prices manually verified {new Date(cheapest.source.lastUpdated).toLocaleDateString()} - may be outdated</div>
+                  <div>• Enterprise/volume pricing, regional variations, promotions NOT reflected</div>
+                  <div className="pt-1 text-yellow-300 font-semibold">
+                    → Use for ORDER-OF-MAGNITUDE estimation only, not budgeting
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Token breakdown - Terminal style */}
