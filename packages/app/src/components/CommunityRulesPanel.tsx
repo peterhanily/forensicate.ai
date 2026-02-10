@@ -3,6 +3,7 @@ import {
   fetchCommunityIndex,
   fetchCommunityRule,
   communityRuleToDetectionRule,
+  clearCommunityCache,
   type CommunityRule,
   type CommunityRuleMetadata,
   type DetectionRule,
@@ -33,11 +34,17 @@ export default function CommunityRulesPanel({
     loadRules();
   }, []);
 
-  async function loadRules() {
+  async function loadRules(forceRefresh = false) {
     try {
       setLoading(true);
       setRefreshing(true);
       setError(null);
+
+      // Clear cache if force refresh
+      if (forceRefresh) {
+        clearCommunityCache();
+      }
+
       const index = await fetchCommunityIndex();
       setRules(index.rules);
     } catch (err) {
@@ -122,10 +129,10 @@ export default function CommunityRulesPanel({
             </p>
           </div>
           <button
-            onClick={loadRules}
+            onClick={() => loadRules(true)}
             disabled={refreshing}
             className="p-1.5 text-gray-400 hover:text-[#c9a227] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh"
+            title="Refresh from GitHub"
           >
             <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
