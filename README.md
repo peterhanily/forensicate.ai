@@ -13,11 +13,11 @@ Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helpi
 
 1. **🌐 Web App** - [forensicate.ai](https://forensicate.ai) - Full-featured online version
 2. **📦 Standalone HTML** - Single-file offline version (like CyberChef)
-3. **🔌 Chrome Extension** - Real-time scanning directly in your browser
+3. **🔌 Browser Extensions** - Real-time scanning for Chrome & Firefox
 
-## Chrome Extension
+## Browser Extensions
 
-The Forensicate.ai Chrome extension brings prompt injection detection directly into your browser workflow.
+The Forensicate.ai browser extension brings prompt injection detection directly into your browser workflow. Available for both Chrome and Firefox.
 
 ### Extension Features
 
@@ -32,19 +32,26 @@ The Forensicate.ai Chrome extension brings prompt injection detection directly i
 
 ### Extension Installation
 
-**From Chrome Web Store:**
-```
-Coming soon - under review
-```
+**From Browser Stores:**
+- Chrome Web Store: `Coming soon - under review`
+- Firefox Add-ons: `Coming soon - under review`
 
-**Manual Installation (Developer Mode):**
+**Manual Installation - Chrome (Developer Mode):**
 1. Download or clone this repository
-2. Build the extension: `cd packages/extension && pnpm build`
+2. Build the extension: `cd packages/extension && pnpm build:chrome`
 3. Open Chrome and navigate to `chrome://extensions`
 4. Enable "Developer mode" (toggle in top-right)
 5. Click "Load unpacked"
 6. Select `packages/extension/dist/chrome` folder
 7. Extension icon appears in toolbar
+
+**Manual Installation - Firefox (Developer Mode):**
+1. Download or clone this repository
+2. Build the extension: `cd packages/extension && pnpm build:firefox`
+3. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
+4. Click "Load Temporary Add-on"
+5. Select `packages/extension/dist/firefox/manifest.json` file
+6. Extension icon appears in toolbar
 
 ### Extension Usage
 
