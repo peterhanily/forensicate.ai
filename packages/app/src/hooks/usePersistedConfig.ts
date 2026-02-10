@@ -83,6 +83,7 @@ function loadInitialConfig(): {
   expandedRuleCategory: string | null;
   expandedPromptCategory: string | null;
   confidenceThreshold: number;
+  autoImportCommunityRules: boolean;
 } {
   // Priority: URL > localStorage > defaults
   const urlConfig = getConfigFromUrl();

@@ -32,6 +32,8 @@ interface RulesPanelProps {
   onShowAddSectionModal: () => void;
   onImportCommunityRule?: (rule: DetectionRule) => void;
   importedCommunityRuleIds?: Set<string>;
+  autoImportEnabled?: boolean;
+  onToggleAutoImport?: (enabled: boolean) => void;
 }
 
 export default function RulesPanel({
@@ -60,6 +62,8 @@ export default function RulesPanel({
   onShowAddSectionModal,
   onImportCommunityRule,
   importedCommunityRuleIds = new Set(),
+  autoImportEnabled = false,
+  onToggleAutoImport,
 }: RulesPanelProps) {
   const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
 
@@ -209,6 +213,8 @@ export default function RulesPanel({
       <CommunityRulesPanel
         onImportRule={onImportCommunityRule}
         importedRuleIds={importedCommunityRuleIds}
+        autoImportEnabled={autoImportEnabled}
+        onToggleAutoImport={onToggleAutoImport || (() => {})}
       />
     )}
     </div>
