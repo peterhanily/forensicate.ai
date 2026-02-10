@@ -120,7 +120,7 @@ export default function CommunityRulesPanel({
   return (
     <>
       {/* Header */}
-      <div className="w-full px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0">
+      <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div>
             <h3 className="text-[#c9a227] text-sm font-semibold">Community Rules</h3>
@@ -141,12 +141,12 @@ export default function CommunityRulesPanel({
         </div>
 
         {/* Category filter */}
-        <div className="w-full min-w-0 flex gap-1 mb-2 overflow-x-auto pb-1">
+        <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-2 py-1 text-xs rounded whitespace-nowrap transition-colors flex-shrink-0 ${
+              className={`px-2 py-1 text-xs rounded whitespace-nowrap transition-colors ${
                 selectedCategory === category
                   ? 'bg-[#c9a227] text-gray-900 font-semibold'
                   : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -183,7 +183,7 @@ export default function CommunityRulesPanel({
       </div>
 
       {/* Content */}
-      <div className="w-full flex-1 overflow-y-scroll custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {loading ? (
           <div className="flex items-center justify-center py-12 text-gray-500">
             <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
@@ -364,7 +364,7 @@ export default function CommunityRulesPanel({
       </div>
 
       {/* Footer */}
-      <div className="w-full px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0">
+      <div className="px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <a
             href="https://github.com/peterhanily/forensicate.ai/tree/main/community-rules"
