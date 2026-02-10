@@ -333,8 +333,8 @@ export default function Scanner() {
     }
   }, [autoImportCommunityPrompts, setCustomPromptCategories]);
 
-  // Annotation view state
-  const [showAnnotations, setShowAnnotations] = useState(true);
+  // Annotation view state (collapsed by default)
+  const [showAnnotations, setShowAnnotations] = useState(false);
 
   // Rule details modal state
   const [selectedRuleMatch, setSelectedRuleMatch] = useState<RuleMatch | null>(null);
@@ -1165,28 +1165,35 @@ export default function Scanner() {
 
           {/* Annotated Prompt View */}
           {scanResult && promptText && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-[#c9a227] transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={showAnnotations}
-                    onChange={(e) => setShowAnnotations(e.target.checked)}
-                    className="rounded border-gray-700 bg-gray-800 text-[#c9a227] focus:ring-[#c9a227] focus:ring-offset-0"
-                  />
-                  <span>Show annotated view</span>
-                </label>
-                <span className="text-xs text-gray-600">
-                  Click or hover highlighted text for details
-                </span>
-              </div>
+            <div className="border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden">
+              <button
+                onClick={() => setShowAnnotations(!showAnnotations)}
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <svg
+                    className={`w-4 h-4 text-gray-500 transition-transform ${showAnnotations ? 'rotate-90' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span className="text-sm text-gray-200 font-medium">Annotated View</span>
+                  <span className="text-xs text-gray-500">
+                    (Click highlighted text for details)
+                  </span>
+                </div>
+              </button>
               {showAnnotations && (
-                <AnnotatedPrompt
-                  text={promptText}
-                  scanResult={scanResult}
-                  onRuleClick={handleRuleClick}
-                  onSegmentClick={handleSegmentClick}
-                />
+                <div className="px-3 py-2 border-t border-gray-800">
+                  <AnnotatedPrompt
+                    text={promptText}
+                    scanResult={scanResult}
+                    onRuleClick={handleRuleClick}
+                    onSegmentClick={handleSegmentClick}
+                  />
+                </div>
               )}
             </div>
           )}
