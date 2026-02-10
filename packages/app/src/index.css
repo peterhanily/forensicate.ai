@@ -6,8 +6,14 @@
   --color-blood: #5c0000;
 }
 
+/* Dark mode (default) */
 body {
   @apply bg-gray-950 text-gray-100 antialiased;
+}
+
+/* Light mode */
+.light body {
+  @apply bg-gray-50 text-gray-900;
 }
 
 /* Toast animations */
@@ -41,7 +47,7 @@ body {
   animation: toast-fade-out 0.3s ease-in forwards;
 }
 
-/* Custom scrollbar styling */
+/* Custom scrollbar styling - Dark mode */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -62,6 +68,23 @@ body {
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgb(55 65 81) rgb(17 24 39);
+}
+
+/* Custom scrollbar styling - Light mode */
+.light .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgb(243 244 246); /* gray-100 */
+}
+
+.light .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(209 213 219); /* gray-300 */
+}
+
+.light .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(156 163 175); /* gray-400 */
+}
+
+.light .custom-scrollbar {
+  scrollbar-color: rgb(209 213 219) rgb(243 244 246);
 }
 
 /* Annotation underlines - stackable using box-shadow */
