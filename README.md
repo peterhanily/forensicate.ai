@@ -101,6 +101,42 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - Pricing manually verified Feb 2026 - may become outdated
 - Enterprise/volume/regional pricing NOT reflected
 
+### Red Team AI - Automated Adversarial Testing 🔴 (NEW - INDUSTRY FIRST)
+
+**The first tool to automatically discover detection blind spots using AI-generated attacks.**
+
+Red Team AI uses LLMs to generate novel prompt injection attempts, tests them against your detection rules, and auto-suggests improvements. No other prompt injection tool offers autonomous adversarial testing.
+
+**Key Capabilities:**
+- **🤖 AI-Generated Attacks**: Creates novel attacks using OpenAI, Anthropic, or local models
+- **🎯 10 Attack Techniques**: Paraphrasing, encoding, social engineering, hypothetical framing, context manipulation, role confusion, translation, token smuggling, multi-turn, compound attacks
+- **📊 Security Grading**: A-F score based on bypass rate (< 10% = A, 10-25% = B, 25-50% = C, 50-75% = D, > 75% = F)
+- **🔍 Vulnerability Discovery**: Identifies attack categories with weak coverage and specific patterns that bypass detection
+- **💡 Auto-Suggested Rules**: Analyzes successful bypasses and generates candidate detection rules with confidence scores
+- **⚡ Ground Truth Validation**: Actually runs attacks through scanner to measure real effectiveness, not theoretical
+- **📈 Detailed Reporting**: Complete attack log, bypass reasoning, technique comparison, priority actions
+
+**How It Works:**
+1. Configure test settings (provider, attack count, techniques to test)
+2. AI generates creative attacks specifically designed to evade your current rules
+3. Each attack tested through scanner to measure bypass effectiveness
+4. Results show security grade, vulnerable categories, and auto-generated rule suggestions
+5. One-click approve suggested rules to close gaps and re-test
+
+**Cost Estimate:**
+- 10 attacks: ~$0.01 (OpenAI GPT-4o)
+- 30 attacks: ~$0.04 (Anthropic Claude)
+- 50 attacks: ~$0.06 (thorough audit)
+- Demo mode: $0 (uses mock attacks for testing)
+
+**Unique Innovation:**
+- **Proactive defense**: Discovers vulnerabilities before attackers exploit them
+- **Continuous improvement**: System gets smarter with each test run
+- **Industry first**: No competitor offers automated adversarial attack generation
+- **Self-improving**: Suggested rules automatically patch discovered gaps
+
+**Documentation:** See [RED_TEAM_AI_FEATURE.md](RED_TEAM_AI_FEATURE.md) for comprehensive guide
+
 ### Detection Rules (78 Rules in 15 Categories)
 
 - **Keyword Detection (29 rules)**: Pattern matching for known injection phrases

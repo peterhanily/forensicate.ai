@@ -35,6 +35,7 @@ import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import AnnotatedPrompt from '../components/AnnotatedPrompt';
 import RuleDetailsModal from '../components/RuleDetailsModal';
 import CostEstimator from '../components/CostEstimator';
+import { RedTeamPanel } from '../components/RedTeamPanel';
 
 // Extension export item type
 interface ExtensionExportItem {
@@ -1209,6 +1210,11 @@ export default function Scanner() {
             scanHistory={scanHistory}
             batchResults={batchResults}
           />
+
+          {/* Red Team AI - Adversarial Testing */}
+          <div className="mt-4">
+            <RedTeamPanel />
+          </div>
         </div>
 
         {/* Right Side - Test Battery */}
