@@ -35,6 +35,8 @@ injection_prompts/github/
 *.md
 !README.md
 !**/README.md
+!SCHEMA.md
+!**/SCHEMA.md
 
 # Coverage reports
 coverage/
