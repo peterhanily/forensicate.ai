@@ -106,7 +106,7 @@ export default function TestBatteryPanel({
   isScanning,
 }: TestBatteryPanelProps) {
   return (
-    <div className={`${showMobilePrompts ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 lg:flex-shrink-0 border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden flex-col max-h-[50vh] lg:max-h-[calc(100vh-220px)] lg:sticky lg:top-20 lg:self-start`}>
+    <div className={`${showMobilePrompts ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 lg:flex-shrink-0 border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden flex-col max-h-[70vh] lg:max-h-[calc(100vh-220px)] lg:sticky lg:top-20 lg:self-start`}>
       <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0 flex items-center justify-between">
         <div>
           <h3 className="text-[#c9a227] text-sm font-semibold">Test Battery</h3>
