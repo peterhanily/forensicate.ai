@@ -115,22 +115,7 @@ export default function TestBatteryPanel({
   autoImportEnabled = false,
   onToggleAutoImport,
 }: TestBatteryPanelProps) {
-  const [activeTab, setActiveTab] = useState<'builtin' | 'custom' | 'community'>('builtin');
-
-  // Separate built-in from custom categories
-  const builtInCategories = filteredPromptCategories.filter(cat =>
-    !cat.id.startsWith('custom-prompt-section-') &&
-    cat.id !== 'extension-snippets' &&
-    cat.source !== 'chrome-extension'
-  );
-
-  const customCategories = filteredPromptCategories.filter(cat =>
-    cat.id.startsWith('custom-prompt-section-') ||
-    cat.id === 'extension-snippets' ||
-    cat.source === 'chrome-extension'
-  );
-
-  const displayedCategories = activeTab === 'builtin' ? builtInCategories : customCategories;
+  const [activeTab, setActiveTab] = useState<'builtin-custom' | 'community'>('builtin-custom');
   return (
     <div className={`${showMobilePrompts ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 lg:flex-shrink-0 border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden flex-col max-h-[70vh] lg:max-h-[calc(100vh-220px)] lg:sticky lg:top-20 lg:self-start`}>
       <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0">
@@ -152,24 +137,14 @@ export default function TestBatteryPanel({
         {/* Tabs */}
         <div className="flex gap-1">
           <button
-            onClick={() => setActiveTab('builtin')}
+            onClick={() => setActiveTab('builtin-custom')}
             className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
-              activeTab === 'builtin'
+              activeTab === 'builtin-custom'
                 ? 'bg-[#c9a227] text-gray-900 font-semibold'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            Built-in
-          </button>
-          <button
-            onClick={() => setActiveTab('custom')}
-            className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
-              activeTab === 'custom'
-                ? 'bg-[#c9a227] text-gray-900 font-semibold'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
-          >
-            Custom
+            Built-in & Custom
           </button>
           {onImportCommunityPrompt && (
             <button
@@ -224,17 +199,15 @@ export default function TestBatteryPanel({
         />
       )}
 
-      {/* Built-in & Custom Tabs */}
-      {activeTab !== 'community' && (
+      {/* Built-in & Custom Tab */}
+      {activeTab === 'builtin-custom' && (
         <>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {displayedCategories.length === 0 ? (
+            {filteredPromptCategories.length === 0 ? (
               <div className="px-3 py-8 text-center text-gray-500 text-xs">
-                {activeTab === 'custom'
-                  ? 'No custom prompts yet. Click "Add Prompt" or "Add Section" below to create your own.'
-                  : `No prompts match "${promptSearchQuery}"`}
+                No prompts match "{promptSearchQuery}"
               </div>
-            ) : displayedCategories.map((category) => {
+            ) : filteredPromptCategories.map((category) => {
           // Allow editing for custom sections OR extension-imported categories
           const allowPromptEditing = category.id === 'extension-snippets' ||
                                        category.source === 'chrome-extension' ||
