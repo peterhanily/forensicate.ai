@@ -20,14 +20,38 @@ interface CostEstimatorProps {
   className?: string;
 }
 
+// Top 5 models by performance/cost factor (highlighted by default)
+const TOP_5_MODELS = [
+  { provider: 'google', model: 'gemini-2.5-flash', badge: '🏆 Best Value' },
+  { provider: 'openai', model: 'gpt-4o-mini', badge: '💰 Cheapest' },
+  { provider: 'anthropic', model: 'claude-haiku-4.5', badge: '⚡ Fast' },
+  { provider: 'openai', model: 'gpt-4o', badge: '🎯 Multimodal' },
+  { provider: 'anthropic', model: 'claude-sonnet-4.5', badge: '⚖️ Balanced' },
+];
+
+// All other tracked models (shown in dropdown)
+const ALL_OTHER_MODELS = [
+  { provider: 'anthropic', model: 'claude-3-haiku' },
+  { provider: 'openai', model: 'o3-mini' },
+  { provider: 'openai', model: 'o1-mini' },
+  { provider: 'mistral', model: 'mistral-small-3.1' },
+  { provider: 'anthropic', model: 'claude-3-opus' },
+  { provider: 'google', model: 'gemini-1.5-pro' },
+  { provider: 'google', model: 'gemini-2.5-pro' },
+  { provider: 'google', model: 'gemini-3-pro' },
+  { provider: 'mistral', model: 'mistral-medium-3' },
+  { provider: 'mistral', model: 'mistral-large-2411' },
+  { provider: 'anthropic', model: 'claude-opus-4.5' },
+  { provider: 'openai', model: 'gpt-4-turbo' },
+  { provider: 'openai', model: 'o1-preview' },
+  { provider: 'openai', model: 'gpt-4' },
+  { provider: 'perplexity', model: 'sonar-pro' },
+];
+
 // Default providers to show if none specified (updated Feb 2026)
 const DEFAULT_PROVIDERS = [
-  { provider: 'google', model: 'gemini-2.5-flash' },
-  { provider: 'openai', model: 'gpt-4o-mini' },
-  { provider: 'anthropic', model: 'claude-haiku-4.5' },
-  { provider: 'mistral', model: 'mistral-small-3.1' },
-  { provider: 'anthropic', model: 'claude-sonnet-4.5' },
-  { provider: 'openai', model: 'gpt-4o' },
+  ...TOP_5_MODELS.map(m => ({ provider: m.provider, model: m.model })),
+  ...ALL_OTHER_MODELS,
 ];
 
 export default function CostEstimator({
@@ -39,6 +63,7 @@ export default function CostEstimator({
 }: CostEstimatorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDisclaimerExpanded, setIsDisclaimerExpanded] = useState(false);
+  const [showAllModels, setShowAllModels] = useState(false);
 
   if (!promptText || promptText.trim().length === 0) {
     return null;
@@ -199,8 +224,30 @@ export default function CostEstimator({
 
           {/* Provider comparison - Terminal data grid */}
           <div>
-            <div className="text-xs font-mono font-semibold text-[#c9a227] mb-2">
-              PROVIDER RATES
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-mono font-semibold text-[#c9a227]">
+                PROVIDER RATES
+              </div>
+              <button
+                onClick={() => setShowAllModels(!showAllModels)}
+                className="text-xs font-mono text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              >
+                {showAllModels ? (
+                  <>
+                    <span>Show Top 5 Only</span>
+                    <svg className="w-3 h-3 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </>
+                ) : (
+                  <>
+                    <span>Show All {estimates.length} Models</span>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Table header */}
@@ -215,6 +262,14 @@ export default function CostEstimator({
             <div className="space-y-1">
               {estimates.map((estimate, idx) => {
                 const isStale = isPricingStale(estimate.source.lastUpdated);
+                const isTop5 = idx < 5;
+                const shouldShow = showAllModels || isTop5;
+
+                if (!shouldShow) return null;
+
+                const top5Badge = TOP_5_MODELS.find(
+                  m => m.provider === estimate.provider && m.model === estimate.model
+                )?.badge;
 
                 return (
                   <div
@@ -222,6 +277,8 @@ export default function CostEstimator({
                     className={`grid grid-cols-12 gap-2 p-2 rounded font-mono text-xs border ${
                       idx === 0
                         ? 'bg-green-950/30 border-green-700/50 text-green-300'
+                        : isTop5
+                        ? 'bg-blue-950/20 border-blue-800/50 text-gray-300'
                         : 'bg-gray-900/50 border-gray-800 text-gray-300'
                     }`}
                   >
@@ -230,8 +287,15 @@ export default function CostEstimator({
                       {idx === 0 && (
                         <span className="text-green-400 font-bold text-xs">★</span>
                       )}
-                      <div>
-                        <div className="font-semibold">{estimate.displayName}</div>
+                      <div className="flex-1">
+                        <div className="font-semibold flex items-center gap-1">
+                          {estimate.displayName}
+                          {top5Badge && isTop5 && (
+                            <span className="text-[10px] text-blue-300 bg-blue-900/30 px-1 rounded">
+                              {top5Badge}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500 capitalize flex items-center gap-1">
                           {estimate.provider}
                           {isStale && <span className="text-yellow-500">⚠</span>}
