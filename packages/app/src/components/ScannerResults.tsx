@@ -5,6 +5,8 @@ interface ScannerResultsProps {
   promptText: string;
   isScanning: boolean;
   onRuleClick?: (match: RuleMatch) => void;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 export default function ScannerResults({
@@ -12,18 +14,48 @@ export default function ScannerResults({
   promptText,
   isScanning,
   onRuleClick,
+  isExpanded = true,
+  onToggle,
 }: ScannerResultsProps) {
+  const headerContent = (
+    <>
+      <div className="flex items-center gap-2">
+        {onToggle && (
+          <svg
+            className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+        <span className="text-gray-400 text-xs font-mono">scan_results</span>
+      </div>
+      {scanResult && (
+        <span className="text-gray-500 text-xs font-mono">
+          {scanResult.totalRulesChecked} rules checked
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div className="border border-gray-800 rounded-lg bg-gray-900/50 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-800/50 border-b border-gray-700">
-        <span className="text-gray-400 text-xs font-mono">scan_results</span>
-        {scanResult && (
-          <span className="text-gray-500 text-xs font-mono">
-            {scanResult.totalRulesChecked} rules checked
-          </span>
-        )}
-      </div>
-      <div className="p-4 min-h-[180px] max-h-[300px] overflow-y-auto custom-scrollbar">
+      {onToggle ? (
+        <button
+          onClick={onToggle}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 border-b border-gray-700 hover:bg-gray-800/30 transition-colors"
+        >
+          {headerContent}
+        </button>
+      ) : (
+        <div className="flex items-center justify-between px-3 py-2 bg-gray-800/50 border-b border-gray-700">
+          {headerContent}
+        </div>
+      )}
+      {isExpanded && (
+        <div className="p-4 min-h-[180px] max-h-[300px] overflow-y-auto custom-scrollbar">
         {isScanning ? (
           <div className="flex items-center justify-center h-full text-gray-500 text-sm">
             <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
@@ -207,6 +239,7 @@ export default function ScannerResults({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

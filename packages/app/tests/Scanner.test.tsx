@@ -33,8 +33,9 @@ describe('Scanner', () => {
     expect(screen.getByText('Auto-scan enabled')).toBeInTheDocument();
     // The manual Scan button should NOT be visible when auto-scan is on
     const scanButtons = screen.getAllByRole('button', { name: /scan/i });
-    // Only the Batch Scan button should exist
-    expect(scanButtons.every(btn => btn.textContent?.includes('Batch'))).toBe(true);
+    // Only the Batch Scan button should exist (filter out collapsible section headers like "scan_results")
+    const actionButtons = scanButtons.filter(btn => !btn.textContent?.includes('scan_results'));
+    expect(actionButtons.every(btn => btn.textContent?.includes('Batch'))).toBe(true);
   });
 
   it('renders the test battery panel', () => {

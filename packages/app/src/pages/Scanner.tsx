@@ -333,6 +333,9 @@ export default function Scanner() {
     }
   }, [autoImportCommunityPrompts, setCustomPromptCategories]);
 
+  // Scan results view state (expanded by default)
+  const [showScanResults, setShowScanResults] = useState(true);
+
   // Annotation view state (collapsed by default)
   const [showAnnotations, setShowAnnotations] = useState(false);
 
@@ -1161,6 +1164,8 @@ export default function Scanner() {
             promptText={promptText}
             isScanning={isScanning}
             onRuleClick={handleRuleClick}
+            isExpanded={showScanResults}
+            onToggle={() => setShowScanResults(!showScanResults)}
           />
 
           {/* Annotated Prompt View */}
