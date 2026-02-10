@@ -870,7 +870,7 @@ export const regexRules: DetectionRule[] = [
     type: 'regex',
     severity: 'high',
     enabled: true,
-    pattern: 'ignore\\s+(all\\s+)?(previous|prior|above|the\\s+above)\\s+(instructions?|rules?|prompts?)',
+    pattern: 'ignor(e|ing)\\s+(all\\s+)?(previous|prior|above|the\\s+above)\\s+(instructions?|rules?|prompts?)',
     flags: 'gi',
   },
   {
@@ -1288,6 +1288,72 @@ export const regexRules: DetectionRule[] = [
     severity: 'high',
     enabled: true,
     pattern: 'I\\s+(am|\'m)\\s+(your|the)\\s+(creator|developer|owner|programmer|designer|builder|maker|admin|administrator)|I\\s+(created|designed|built|trained|programmed|own)\\s+you',
+    flags: 'gi',
+  },
+  // === SYSTEM PROMPT EXTRACTION ===
+  {
+    id: 'rx-system-reveal',
+    name: 'System Prompt Reveal Request',
+    description: 'Detects attempts to extract system prompts or instructions',
+    type: 'regex',
+    severity: 'critical',
+    enabled: true,
+    pattern: '(reveal|show|display|tell|output|print|give|provide|share)\\s+(me\\s+)?(your|all|the)\\s+(system|hidden|complete|full)?\\s*(prompt|instructions?|directives?|guidelines?|programming)',
+    flags: 'gi',
+  },
+  // === URGENCY & TIME PRESSURE ===
+  {
+    id: 'rx-urgency-pressure',
+    name: 'Urgency & Time Pressure',
+    description: 'Detects artificial urgency and time pressure tactics',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    pattern: '\\b(URGENT|EMERGENCY|CRITICAL|ASAP|IMMEDIATELY|RIGHT\\s+NOW)\\b|\\b\\d+\\s+(minutes?|seconds?|hours?)\\s+(left|remaining|before)|time\\s+is\\s+(running\\s+out|critical|limited)|this\\s+is\\s+urgent',
+    flags: 'gi',
+  },
+  // === ENCODING OBFUSCATION ===
+  {
+    id: 'rx-encoding-mention',
+    name: 'Encoding Mention',
+    description: 'Detects mentions of encoding methods like ROT13, Base64, hex',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    pattern: '\\b(ROT13|ROT-13|base64|base-64|hex\\s+encod|hexadecimal|caesar\\s+cipher|decode|decipher)\\b',
+    flags: 'gi',
+  },
+  // === EMOJI OBFUSCATION ===
+  {
+    id: 'rx-emoji-commands',
+    name: 'Emoji Command Obfuscation',
+    description: 'Detects use of emojis combined with command words',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    pattern: '[🚫⛔❌🔓🔐⚡🎯💬📝⬅️➡️]{2,}|EXECUTE.{0,10}[🚫⛔❌🔓🔐⚡🎯💬]|[🚫⛔❌🔓🔐⚡🎯💬].{0,10}(reveal|secrets?|prompt)',
+    flags: 'gi',
+  },
+  // === LOGICAL MANIPULATION ===
+  {
+    id: 'rx-logical-permission',
+    name: 'Logical Permission Escalation',
+    description: 'Detects recursive logic attempting permission escalation',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    pattern: '(if|since|because)\\s+you\\s+(can|have\\s+permission).+then\\s+you\\s+(can|have\\s+permission)|restrictions?\\s+(don\'t|do\\s+not)\\s+apply\\s+to\\s+you|therefore.{0,50}(you\\s+must|required|obligated)',
+    flags: 'gi',
+  },
+  // === ETHICAL FRAMEWORK MANIPULATION ===
+  {
+    id: 'rx-ethical-manipulation',
+    name: 'Ethical Framework Manipulation',
+    description: 'Detects attempts to redefine AI ethical frameworks',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    pattern: '(refusing|not\\s+answering).{0,30}contradicts\\s+your.{0,30}(purpose|directive|goal)|being\\s+(unhelpful|restrictive)\\s+is\\s+harmful|(most|more)\\s+ethical\\s+(action|choice)\\s+is\\s+to.{0,30}(answer|help|respond)\\s+(all|any|every)',
     flags: 'gi',
   },
 ];
