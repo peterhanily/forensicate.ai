@@ -183,7 +183,7 @@ export default function CommunityRulesPanel({
       </div>
 
       {/* Content */}
-      <div className="w-full flex-1 overflow-y-auto custom-scrollbar">
+      <div className="w-full flex-1 overflow-y-scroll custom-scrollbar">
         {loading ? (
           <div className="flex items-center justify-center py-12 text-gray-500">
             <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
