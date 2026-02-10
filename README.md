@@ -74,6 +74,33 @@ The Forensicate.ai browser extension brings prompt injection detection directly 
 - **Compound Threat Detection**: Identifies multi-vector attacks combining techniques from different categories
 - **Visual Highlighting**: Color-coded severity indicators (🟢 Low, 🟡 Medium, 🟠 High, 🔴 Critical)
 
+### Cost Estimator (NEW)
+
+Estimate API costs for testing prompts across multiple LLM providers with Bloomberg terminal-inspired interface:
+
+- **💰 Multi-Provider Cost Analysis**: Compare costs across OpenAI, Anthropic, Google, Mistral, and local models
+- **📊 Token Estimation**: Automatic token counting (~4 chars/token approximation)
+- **🎯 Provider Comparison**: Side-by-side pricing with cheapest option highlighted
+- **📈 Savings Calculator**: Shows cost differences and optimization opportunities
+- **🔗 Source Attribution**: Each provider links to official pricing page with verification date
+- **⚠️ Accuracy Disclaimers**: Clear warnings about estimation limitations and data freshness
+- **🖥️ Terminal-Style UI**: Dark theme with monospace fonts and color-coded data grid
+- **📅 Staleness Detection**: Warns when pricing data is >60 days old
+
+**What It Shows:**
+- Input/output token breakdown
+- Per-provider costs (input/1M, output/1M, total)
+- Batch testing cost projections
+- Pricing methodology and accuracy notes
+- Last verified date for each provider
+
+**Important Notes:**
+- Costs are ORDER-OF-MAGNITUDE estimates only, not for budgeting
+- Token estimation uses 4 char/token (±25% variance typical)
+- Output tokens assumed at 100 (actual varies 10-10,000+)
+- Pricing manually verified Feb 2026 - may become outdated
+- Enterprise/volume/regional pricing NOT reflected
+
 ### Detection Rules (78 Rules in 15 Categories)
 
 - **Keyword Detection (29 rules)**: Pattern matching for known injection phrases
@@ -274,6 +301,7 @@ forensicate_ai/
 │   │   ├── src/
 │   │   │   ├── components/      # UI components
 │   │   │   │   ├── AnnotatedPrompt.tsx
+│   │   │   │   ├── CostEstimator.tsx (NEW)
 │   │   │   │   ├── RulesPanel.tsx
 │   │   │   │   ├── TestBatteryPanel.tsx
 │   │   │   │   └── ...
@@ -283,6 +311,10 @@ forensicate_ai/
 │   │   │   │   └── usePersistedConfig.ts
 │   │   │   ├── lib/             # Utilities
 │   │   │   │   ├── storage/     # Persistence (localStorage + URL)
+│   │   │   │   ├── pricing/     # Cost estimation (NEW)
+│   │   │   │   │   ├── types.ts
+│   │   │   │   │   ├── pricingDatabase.ts
+│   │   │   │   │   └── costCalculator.ts
 │   │   │   │   └── annotation.ts # Text highlighting
 │   │   │   ├── data/            # Sample test prompts
 │   │   │   └── main.tsx         # Entry point

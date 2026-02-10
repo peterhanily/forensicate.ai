@@ -34,6 +34,7 @@ import ScanHistory, { type ScanHistoryEntry } from '../components/ScanHistory';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import AnnotatedPrompt from '../components/AnnotatedPrompt';
 import RuleDetailsModal from '../components/RuleDetailsModal';
+import CostEstimator from '../components/CostEstimator';
 
 // Extension export item type
 interface ExtensionExportItem {
@@ -1187,6 +1188,15 @@ export default function Scanner() {
                 />
               )}
             </div>
+          )}
+
+          {/* Cost Estimator - Show after scan results */}
+          {scanResult && promptText && (
+            <CostEstimator
+              promptText={promptText}
+              mode="single"
+              className="mt-4"
+            />
           )}
 
           <ScanHistory
