@@ -250,8 +250,11 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     const defaultRules = getDefaultRules();
     const defaultRuleIds = new Set(defaultRules.map(r => r.id));
 
-    // Only include custom rules (not built-in)
-    const customRulesOnly = localRules.filter(r => !defaultRuleIds.has(r.id));
+    // Only include custom rules (not built-in, not community)
+    // Community rules have IDs starting with "community-" and will be auto-imported by recipients
+    const customRulesOnly = localRules.filter(r =>
+      !defaultRuleIds.has(r.id) && !r.id.startsWith('community-')
+    );
 
     // Only include modified built-in rules (compare by enabled/weight)
     const modifiedBuiltInRules = localRules.filter(r => {
@@ -262,6 +265,13 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
       return r.enabled !== defaultRule.enabled || r.weight !== defaultRule.weight;
     });
 
+    // Filter out community prompts from custom categories
+    // Community prompts have IDs starting with "community-" and will be auto-imported by recipients
+    const customPromptsOnly = customPromptCategories.map(category => ({
+      ...category,
+      prompts: category.prompts.filter(p => !p.id?.startsWith('community-'))
+    })).filter(category => category.prompts.length > 0); // Remove empty categories
+
     const config: PersistedConfig = {
       version: CONFIG_VERSION,
       savedAt: new Date().toISOString(),
@@ -271,7 +281,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
       },
       prompts: {
         localPrompts: [], // Don't include default sample prompts in share URLs
-        customPromptCategories,
+        customPromptCategories: customPromptsOnly,
       },
       // Include session state in share URLs
       session: promptText ? { promptText } : undefined,
