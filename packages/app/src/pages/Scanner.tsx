@@ -1051,6 +1051,7 @@ export default function Scanner() {
           )}
           autoImportEnabled={autoImportCommunityRules}
           onToggleAutoImport={setAutoImportCommunityRules}
+          matchedRuleIds={scanResult ? new Set(scanResult.matchedRules.map(m => m.ruleId)) : new Set()}
         />
 
         {/* Center - Input and Results */}

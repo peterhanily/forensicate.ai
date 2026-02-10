@@ -34,6 +34,7 @@ interface RulesPanelProps {
   importedCommunityRuleIds?: Set<string>;
   autoImportEnabled?: boolean;
   onToggleAutoImport?: (enabled: boolean) => void;
+  matchedRuleIds?: Set<string>; // NEW: IDs of rules that matched in the last scan
 }
 
 export default function RulesPanel({
@@ -64,6 +65,7 @@ export default function RulesPanel({
   importedCommunityRuleIds = new Set(),
   autoImportEnabled = false,
   onToggleAutoImport,
+  matchedRuleIds = new Set(),
 }: RulesPanelProps) {
   const [activeTab, setActiveTab] = useState<'builtin' | 'community'>('builtin');
 
@@ -165,6 +167,7 @@ export default function RulesPanel({
             onDeleteRule={onDeleteRule}
             onDeleteSection={category.isCustom ? onDeleteSection : undefined}
             onViewLogic={onViewLogic}
+            matchedRuleIds={matchedRuleIds}
           />
         ))}
       </div>
@@ -240,6 +243,7 @@ interface RuleCategorySectionProps {
   onDeleteRule?: (ruleId: string) => void;
   onDeleteSection?: (categoryId: string) => void;
   onViewLogic?: (rule: DetectionRule) => void;
+  matchedRuleIds?: Set<string>;
 }
 
 function RuleCategorySection({
@@ -257,17 +261,22 @@ function RuleCategorySection({
   onDeleteRule,
   onDeleteSection,
   onViewLogic,
+  matchedRuleIds = new Set(),
 }: RuleCategorySectionProps) {
   const enabledCount = category.rules.filter(r => r.enabled).length;
   const allEnabled = enabledCount === category.rules.length && category.rules.length > 0;
   const noneEnabled = enabledCount === 0;
   const isCustomSection = category.isCustom;
 
+  // Check if this category contains any matched rules
+  const hasMatchedRules = category.rules.some(rule => matchedRuleIds.has(rule.id));
+  const matchedCount = category.rules.filter(rule => matchedRuleIds.has(rule.id)).length;
+
   return (
-    <div className="border-b border-gray-800 last:border-b-0">
+    <div className={`border-b border-gray-800 last:border-b-0 ${hasMatchedRules && !isExpanded ? 'bg-[#c9a227]/10 border-l-2 border-l-[#c9a227]' : ''}`}>
       <button
         onClick={onToggle}
-        className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 transition-colors"
+        className={`w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 transition-colors ${hasMatchedRules && !isExpanded ? 'pl-2.5' : ''}`}
       >
         <div className="text-left flex-1">
           <div className="flex items-center gap-1.5">
@@ -275,6 +284,11 @@ function RuleCategorySection({
             {isCustomSection && (
               <span className="px-1 py-0.5 text-[9px] bg-blue-900/50 text-blue-300 rounded">
                 Custom
+              </span>
+            )}
+            {hasMatchedRules && !isExpanded && (
+              <span className="px-1 py-0.5 text-[9px] bg-[#c9a227] text-gray-900 rounded font-semibold">
+                {matchedCount} matched
               </span>
             )}
           </div>
@@ -367,6 +381,7 @@ function RuleCategorySection({
                 getTypeIcon={getTypeIcon}
                 onDelete={rule.id.startsWith('custom-') ? () => onDeleteRule?.(rule.id) : undefined}
                 onViewLogic={onViewLogic ? () => onViewLogic(rule) : undefined}
+                isMatched={matchedRuleIds.has(rule.id)}
               />
             ))
           )}
@@ -391,6 +406,7 @@ interface RuleItemProps {
   getTypeIcon: (type: string) => string;
   onDelete?: () => void;
   onViewLogic?: () => void;
+  isMatched?: boolean;
 }
 
 function RuleItem({
@@ -404,6 +420,7 @@ function RuleItem({
   getTypeIcon,
   onDelete,
   onViewLogic,
+  isMatched = false,
 }: RuleItemProps) {
   const [keywordText, setKeywordText] = useState(rule.keywords?.join('\n') || '');
   const isCustomRule = rule.id.startsWith('custom-');
@@ -417,7 +434,7 @@ function RuleItem({
   };
 
   return (
-    <div className="px-3 py-2 border-b border-gray-800/50 last:border-b-0 group">
+    <div className={`px-3 py-2 border-b border-gray-800/50 last:border-b-0 group ${isMatched ? 'bg-[#c9a227]/10 border-l-2 border-l-[#c9a227] pl-2.5' : ''}`}>
       <div className="flex items-start gap-2">
         {/* Toggle Checkbox */}
         <button
@@ -448,6 +465,11 @@ function RuleItem({
             <span className={`px-1 py-0.5 text-[10px] rounded ${getSeverityColor(rule.severity)}`}>
               {rule.severity}
             </span>
+            {isMatched && (
+              <span className="px-1 py-0.5 text-[9px] bg-[#c9a227] text-gray-900 rounded font-semibold animate-pulse">
+                MATCHED
+              </span>
+            )}
             {isCustomRule && (
               <span className="px-1 py-0.5 text-[9px] bg-blue-900/30 text-blue-400 rounded">
                 custom
