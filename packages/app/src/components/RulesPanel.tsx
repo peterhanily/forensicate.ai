@@ -72,7 +72,7 @@ export default function RulesPanel({
             <p className="text-gray-500 text-xs">
               {activeTab === 'builtin'
                 ? `${enabledRuleCount} of ${totalRuleCount} rules enabled`
-                : 'Browse community contributions'}
+                : 'Browse & import community rules'}
             </p>
           </div>
           <button
@@ -95,7 +95,7 @@ export default function RulesPanel({
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            Built-in
+            Built-in & Custom
           </button>
           <button
             onClick={() => setActiveTab('community')}

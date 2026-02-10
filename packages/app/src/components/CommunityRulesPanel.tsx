@@ -118,7 +118,7 @@ export default function CommunityRulesPanel({
           <div>
             <h3 className="text-[#c9a227] text-sm font-semibold">Community Rules</h3>
             <p className="text-gray-500 text-xs">
-              {filteredRules.length} rule{filteredRules.length !== 1 ? 's' : ''} available
+              {filteredRules.length} rule{filteredRules.length !== 1 ? 's' : ''} available • Import to use
             </p>
           </div>
           <button
