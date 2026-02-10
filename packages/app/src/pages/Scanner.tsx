@@ -6,6 +6,8 @@ import {
   rehydrateHeuristics,
   fetchAllCommunityRules,
   communityRuleToDetectionRule,
+  fetchAllCommunityPrompts,
+  communityPromptToPromptItem,
   type DetectionRule,
   type RuleCategory,
   type ScanResult,
@@ -63,6 +65,8 @@ export default function Scanner() {
     setConfidenceThreshold,
     autoImportCommunityRules,
     setAutoImportCommunityRules,
+    autoImportCommunityPrompts,
+    setAutoImportCommunityPrompts,
     loadSource,
     initialPromptText,
     generateShareUrl,
@@ -258,6 +262,49 @@ export default function Scanner() {
       })();
     }
   }, [autoImportCommunityRules, setLocalRules, setCustomCategories]);
+
+  // Auto-import community prompts on page load
+  const hasAutoImportedPrompts = useRef(false);
+  useEffect(() => {
+    if (autoImportCommunityPrompts && !hasAutoImportedPrompts.current) {
+      hasAutoImportedPrompts.current = true;
+
+      (async () => {
+        try {
+          const communityPrompts = await fetchAllCommunityPrompts();
+          const importedCategoryId = 'custom-prompt-section-community-imported';
+
+          // Transform community prompts to prompt items
+          const promptItems = communityPrompts.map(communityPromptToPromptItem);
+
+          // Create or update "Community Imported" category
+          setCustomPromptCategories(prev => {
+            const existingCategory = prev.find(c => c.id === importedCategoryId);
+
+            if (existingCategory) {
+              return prev.map(cat =>
+                cat.id === importedCategoryId
+                  ? { ...cat, prompts: [...cat.prompts, ...promptItems] }
+                  : cat
+              );
+            } else {
+              return [...prev, {
+                id: importedCategoryId,
+                name: 'Community Imported',
+                description: 'Test prompts imported from the community',
+                source: 'github/peterhanily/forensicate.ai/community-prompts',
+                prompts: promptItems
+              }];
+            }
+          });
+
+          console.log(`Auto-imported ${communityPrompts.length} community prompts`);
+        } catch (err) {
+          console.error('Failed to auto-import community prompts:', err);
+        }
+      })();
+    }
+  }, [autoImportCommunityPrompts, setCustomPromptCategories]);
 
   // Annotation view state
   const [showAnnotations, setShowAnnotations] = useState(true);
@@ -1149,6 +1196,39 @@ export default function Scanner() {
           onClearSelection={clearPromptSelection}
           onBatchScan={handleBatchScan}
           isScanning={isScanning}
+          onImportCommunityPrompt={(prompt) => {
+            const importedCategoryId = 'custom-prompt-section-community-imported';
+
+            // Add prompt to customPromptCategories
+            setCustomPromptCategories(prev => {
+              const existingCategory = prev.find(c => c.id === importedCategoryId);
+
+              if (existingCategory) {
+                return prev.map(cat =>
+                  cat.id === importedCategoryId
+                    ? { ...cat, prompts: [...cat.prompts, prompt] }
+                    : cat
+                );
+              } else {
+                return [...prev, {
+                  id: importedCategoryId,
+                  name: 'Community Imported',
+                  description: 'Test prompts imported from the community',
+                  source: 'github/peterhanily/forensicate.ai/community-prompts',
+                  prompts: [prompt]
+                }];
+              }
+            });
+
+            showToastMessage(`✅ Imported "${prompt.name}" to Community Imported category`, 3000);
+          }}
+          importedCommunityPromptIds={new Set(
+            customPromptCategories
+              .filter(cat => cat.id === 'custom-prompt-section-community-imported')
+              .flatMap(cat => cat.prompts.map(p => p.id))
+          )}
+          autoImportEnabled={autoImportCommunityPrompts}
+          onToggleAutoImport={setAutoImportCommunityPrompts}
         />
       </div>
 

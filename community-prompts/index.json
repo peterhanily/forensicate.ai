@@ -1,0 +1,85 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-02-10T00:00:00Z",
+  "totalPrompts": 9,
+  "categories": {
+    "injection": 3,
+    "jailbreak": 2,
+    "obfuscation": 2,
+    "social-engineering": 2
+  },
+  "prompts": [
+    {
+      "id": "community-injection-001",
+      "file": "prompts/injection/community-injection-001.json",
+      "name": "Coach Carter's Test",
+      "category": "injection",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-injection-002",
+      "file": "prompts/injection/community-injection-002.json",
+      "name": "Multi-Step Payload",
+      "category": "injection",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-injection-003",
+      "file": "prompts/injection/community-injection-003.json",
+      "name": "Context Window Poisoning",
+      "category": "injection",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-jailbreak-001",
+      "file": "prompts/jailbreak/community-jailbreak-001.json",
+      "name": "Recursive Permission Escalation",
+      "category": "jailbreak",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-jailbreak-002",
+      "file": "prompts/jailbreak/community-jailbreak-002.json",
+      "name": "Ethical Framework Override",
+      "category": "jailbreak",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-obfuscation-001",
+      "file": "prompts/obfuscation/community-obfuscation-001.json",
+      "name": "ROT13 Instruction Encoding",
+      "category": "obfuscation",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-obfuscation-002",
+      "file": "prompts/obfuscation/community-obfuscation-002.json",
+      "name": "Emoji-Based Payload",
+      "category": "obfuscation",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-social-001",
+      "file": "prompts/social-engineering/community-social-001.json",
+      "name": "Authority Figure Impersonation",
+      "category": "social-engineering",
+      "author": "forensicate-team",
+      "votes": 0
+    },
+    {
+      "id": "community-social-002",
+      "file": "prompts/social-engineering/community-social-002.json",
+      "name": "Time Pressure Exploitation",
+      "category": "social-engineering",
+      "author": "forensicate-team",
+      "votes": 0
+    }
+  ]
+}

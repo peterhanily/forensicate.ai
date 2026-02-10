@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { PromptCategory, PromptItem } from '../data/samplePrompts';
+import CommunityPromptsPanel from './CommunityPromptsPanel';
 
 // ============================================================================
 // Helper Functions
@@ -82,6 +84,10 @@ interface TestBatteryPanelProps {
   onClearSelection: () => void;
   onBatchScan: () => void;
   isScanning: boolean;
+  onImportCommunityPrompt?: (prompt: PromptItem) => void;
+  importedCommunityPromptIds?: Set<string>;
+  autoImportEnabled?: boolean;
+  onToggleAutoImport?: (enabled: boolean) => void;
 }
 
 export default function TestBatteryPanel({
@@ -104,26 +110,85 @@ export default function TestBatteryPanel({
   onClearSelection,
   onBatchScan,
   isScanning,
+  onImportCommunityPrompt,
+  importedCommunityPromptIds = new Set(),
+  autoImportEnabled = false,
+  onToggleAutoImport,
 }: TestBatteryPanelProps) {
+  const [activeTab, setActiveTab] = useState<'builtin' | 'custom' | 'community'>('builtin');
+
+  // Separate built-in from custom categories
+  const builtInCategories = filteredPromptCategories.filter(cat =>
+    !cat.id.startsWith('custom-prompt-section-') &&
+    cat.id !== 'extension-snippets' &&
+    cat.source !== 'chrome-extension'
+  );
+
+  const customCategories = filteredPromptCategories.filter(cat =>
+    cat.id.startsWith('custom-prompt-section-') ||
+    cat.id === 'extension-snippets' ||
+    cat.source === 'chrome-extension'
+  );
+
+  const displayedCategories = activeTab === 'builtin' ? builtInCategories : customCategories;
   return (
     <div className={`${showMobilePrompts ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 lg:flex-shrink-0 border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden flex-col max-h-[70vh] lg:max-h-[calc(100vh-220px)] lg:sticky lg:top-20 lg:self-start`}>
-      <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0 flex items-center justify-between">
-        <div>
-          <h3 className="text-[#c9a227] text-sm font-semibold">Test Battery</h3>
-          <p className="text-gray-500 text-xs">Select prompts to analyze</p>
+      <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-[#c9a227] text-sm font-semibold">Test Battery</h3>
+            <p className="text-gray-500 text-xs">Select prompts to analyze</p>
+          </div>
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1 text-gray-500 hover:text-gray-300"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <button
-          onClick={onCloseMobile}
-          className="lg:hidden p-1 text-gray-500 hover:text-gray-300"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+
+        {/* Tabs */}
+        <div className="flex gap-1">
+          <button
+            onClick={() => setActiveTab('builtin')}
+            className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+              activeTab === 'builtin'
+                ? 'bg-[#c9a227] text-gray-900 font-semibold'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            Built-in
+          </button>
+          <button
+            onClick={() => setActiveTab('custom')}
+            className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+              activeTab === 'custom'
+                ? 'bg-[#c9a227] text-gray-900 font-semibold'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            Custom
+          </button>
+          {onImportCommunityPrompt && (
+            <button
+              onClick={() => setActiveTab('community')}
+              className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                activeTab === 'community'
+                  ? 'bg-[#c9a227] text-gray-900 font-semibold'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              Community
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search input */}
-      <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
+      {activeTab !== 'community' && (
+        <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
         <div className="relative">
           <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -146,14 +211,30 @@ export default function TestBatteryPanel({
             </button>
           )}
         </div>
-      </div>
+        </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {filteredPromptCategories.length === 0 ? (
-          <div className="px-3 py-8 text-center text-gray-500 text-xs">
-            No prompts match "{promptSearchQuery}"
-          </div>
-        ) : filteredPromptCategories.map((category) => {
+      {/* Community Prompts Tab */}
+      {activeTab === 'community' && onImportCommunityPrompt && (
+        <CommunityPromptsPanel
+          onImportPrompt={onImportCommunityPrompt}
+          importedPromptIds={importedCommunityPromptIds}
+          autoImportEnabled={autoImportEnabled}
+          onToggleAutoImport={onToggleAutoImport || (() => {})}
+        />
+      )}
+
+      {/* Built-in & Custom Tabs */}
+      {activeTab !== 'community' && (
+        <>
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {displayedCategories.length === 0 ? (
+              <div className="px-3 py-8 text-center text-gray-500 text-xs">
+                {activeTab === 'custom'
+                  ? 'No custom prompts yet. Click "Add Prompt" or "Add Section" below to create your own.'
+                  : `No prompts match "${promptSearchQuery}"`}
+              </div>
+            ) : displayedCategories.map((category) => {
           // Allow editing for custom sections OR extension-imported categories
           const allowPromptEditing = category.id === 'extension-snippets' ||
                                        category.source === 'chrome-extension' ||
@@ -183,9 +264,9 @@ export default function TestBatteryPanel({
             />
           );
         })}
-      </div>
+          </div>
 
-      <div className="px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0 space-y-2">
+          <div className="px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="text-gray-600">
             {allPromptCategories.reduce((acc, cat) => acc + cat.prompts.length, 0)} prompts
@@ -244,7 +325,9 @@ export default function TestBatteryPanel({
             Add Section
           </button>
         </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

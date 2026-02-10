@@ -39,6 +39,8 @@ interface UsePersistedConfigReturn {
   setConfidenceThreshold: React.Dispatch<React.SetStateAction<number>>;
   autoImportCommunityRules: boolean;
   setAutoImportCommunityRules: React.Dispatch<React.SetStateAction<boolean>>;
+  autoImportCommunityPrompts: boolean;
+  setAutoImportCommunityPrompts: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Meta
   loadSource: LoadSource;
@@ -84,6 +86,7 @@ function loadInitialConfig(): {
   expandedPromptCategory: string | null;
   confidenceThreshold: number;
   autoImportCommunityRules: boolean;
+  autoImportCommunityPrompts: boolean;
 } {
   // Priority: URL > localStorage > defaults
   const urlConfig = getConfigFromUrl();
@@ -117,6 +120,7 @@ function loadInitialConfig(): {
       expandedPromptCategory: storedConfig?.ui?.expandedPromptCategory ?? null,
       confidenceThreshold: storedConfig?.ui?.confidenceThreshold ?? 50,
       autoImportCommunityRules: storedConfig?.ui?.autoImportCommunityRules ?? true,
+      autoImportCommunityPrompts: storedConfig?.ui?.autoImportCommunityPrompts ?? true,
     };
   }
 
@@ -134,6 +138,7 @@ function loadInitialConfig(): {
       expandedPromptCategory: storedConfig.ui?.expandedPromptCategory ?? null,
       confidenceThreshold: storedConfig.ui?.confidenceThreshold ?? 50,
       autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
+      autoImportCommunityPrompts: storedConfig.ui?.autoImportCommunityPrompts ?? true,
     };
   }
 
@@ -149,6 +154,7 @@ function loadInitialConfig(): {
     expandedPromptCategory: null,
     confidenceThreshold: 50,
     autoImportCommunityRules: true,
+    autoImportCommunityPrompts: true,
   };
 }
 
@@ -175,6 +181,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
   const [expandedPromptCategory, setExpandedPromptCategory] = useState<string | null>(initialConfig.expandedPromptCategory);
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(initialConfig.confidenceThreshold);
   const [autoImportCommunityRules, setAutoImportCommunityRules] = useState<boolean>(initialConfig.autoImportCommunityRules);
+  const [autoImportCommunityPrompts, setAutoImportCommunityPrompts] = useState<boolean>(initialConfig.autoImportCommunityPrompts);
 
   // Track if initial load is done (for debounce skip)
   const initialLoadDone = useRef(false);
@@ -217,6 +224,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
           expandedPromptCategory,
           confidenceThreshold,
           autoImportCommunityRules,
+          autoImportCommunityPrompts,
         },
       };
 
@@ -234,7 +242,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
         clearTimeout(saveTimerRef.current);
       }
     };
-  }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold, autoImportCommunityRules]);
+  }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold, autoImportCommunityRules, autoImportCommunityPrompts]);
 
   const handleGenerateShareUrl = useCallback((promptText?: string): string => {
     // For share URLs, only include custom/modified data to keep URLs shorter
@@ -302,6 +310,8 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     setConfidenceThreshold,
     autoImportCommunityRules,
     setAutoImportCommunityRules,
+    autoImportCommunityPrompts,
+    setAutoImportCommunityPrompts,
     loadSource,
     lastSaved,
     error,

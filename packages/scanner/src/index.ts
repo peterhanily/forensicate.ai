@@ -16,3 +16,14 @@ export {
   type CommunityRuleIndex,
   type CommunityRuleMetadata
 } from './communityRules';
+export {
+  fetchCommunityPromptsIndex,
+  fetchCommunityPrompt,
+  fetchAllCommunityPrompts,
+  communityPromptToPromptItem,
+  communityPromptsToCategory,
+  clearCommunityPromptsCache,
+  type CommunityPrompt,
+  type CommunityPromptIndex,
+  type CommunityPromptMetadata
+} from './communityPrompts';

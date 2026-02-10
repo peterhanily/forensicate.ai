@@ -22,6 +22,7 @@ export interface PersistedConfig {
     expandedPromptCategory?: string | null;
     confidenceThreshold?: number;
     autoImportCommunityRules?: boolean;
+    autoImportCommunityPrompts?: boolean;
   };
 }
 
