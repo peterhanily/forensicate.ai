@@ -942,11 +942,11 @@ export default function Scanner() {
       )}
 
       {/* Header */}
-      <div className="border border-gray-800 rounded-lg p-3 sm:p-4 bg-gray-900/30">
+      <div className="border border-gray-800 dark:border-gray-800 light:border-gray-200 rounded-lg p-3 sm:p-4 bg-gray-900/30 dark:bg-gray-900/30 light:bg-white">
         <h2 className="text-xl sm:text-2xl font-semibold text-[#c9a227] mb-1 tracking-wide" style={{ fontFamily: 'serif' }}>
           Prompt Scanner
         </h2>
-        <p className="text-gray-400 text-xs sm:text-sm">
+        <p className="text-gray-400 dark:text-gray-400 light:text-gray-600 text-xs sm:text-sm">
           Detect prompt injection attacks using keyword, regex, heuristic, and NLP-based analysis across {enabledRuleCount} active rules. Runs entirely in your browser, no API keys or server required.
         </p>
       </div>
@@ -958,7 +958,7 @@ export default function Scanner() {
           className={`flex-1 px-3 py-2 rounded-lg border transition-colors flex items-center justify-center gap-2 text-sm ${
             showMobileRules
               ? 'bg-[#c9a227]/20 border-[#c9a227]/50 text-[#c9a227]'
-              : 'bg-gray-800 border-gray-700 text-gray-400'
+              : 'bg-gray-800 dark:bg-gray-800 light:bg-gray-100 border-gray-700 dark:border-gray-700 light:border-gray-300 text-gray-400 dark:text-gray-400 light:text-gray-600'
           }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -971,7 +971,7 @@ export default function Scanner() {
           className={`flex-1 px-3 py-2 rounded-lg border transition-colors flex items-center justify-center gap-2 text-sm ${
             showMobilePrompts
               ? 'bg-[#c9a227]/20 border-[#c9a227]/50 text-[#c9a227]'
-              : 'bg-gray-800 border-gray-700 text-gray-400'
+              : 'bg-gray-800 dark:bg-gray-800 light:bg-gray-100 border-gray-700 dark:border-gray-700 light:border-gray-300 text-gray-400 dark:text-gray-400 light:text-gray-600'
           }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1170,28 +1170,28 @@ export default function Scanner() {
 
           {/* Annotated Prompt View */}
           {scanResult && promptText && (
-            <div className="border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden">
+            <div className="border border-gray-800 dark:border-gray-800 light:border-gray-200 rounded-lg bg-gray-900/30 dark:bg-gray-900/30 light:bg-white overflow-hidden">
               <button
                 onClick={() => setShowAnnotations(!showAnnotations)}
-                className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 transition-colors"
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 dark:hover:bg-gray-800/30 light:hover:bg-gray-100 transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <svg
-                    className={`w-4 h-4 text-gray-500 transition-transform ${showAnnotations ? 'rotate-90' : ''}`}
+                    className={`w-4 h-4 text-gray-500 dark:text-gray-500 light:text-gray-400 transition-transform ${showAnnotations ? 'rotate-90' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
-                  <span className="text-sm text-gray-200 font-medium">Annotated View</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-sm text-gray-200 dark:text-gray-200 light:text-gray-900 font-medium">Annotated View</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-500 light:text-gray-600">
                     (Click highlighted text for details)
                   </span>
                 </div>
               </button>
               {showAnnotations && (
-                <div className="px-3 py-2 border-t border-gray-800">
+                <div className="px-3 py-2 border-t border-gray-800 dark:border-gray-800 light:border-gray-200">
                   <AnnotatedPrompt
                     text={promptText}
                     scanResult={scanResult}
