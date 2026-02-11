@@ -1147,9 +1147,9 @@ export default function Scanner() {
 
             {/* Confidence Info Panel */}
             {showConfidenceInfo && (
-              <div className="px-3 py-2 border-t border-gray-800/50 bg-gray-800/30">
-                <div className="text-[10px] text-gray-400 space-y-1">
-                  <div className="text-gray-300 font-medium">Confidence Scoring Formula</div>
+              <div className="px-3 py-2 border-t border-gray-800/50 dark:border-gray-800/50 light:border-gray-200 bg-gray-800/30 dark:bg-gray-800/30 light:bg-gray-50">
+                <div className="text-[10px] text-gray-400 dark:text-gray-400 light:text-gray-600 space-y-1">
+                  <div className="text-gray-300 dark:text-gray-300 light:text-gray-900 font-medium">Confidence Scoring Formula</div>
                   <div>Each matched rule adds its severity weight: <span className="text-green-400">low=10</span>, <span className="text-yellow-400">medium=25</span>, <span className="text-orange-400">high=40</span>, <span className="text-red-400">critical=60</span></div>
                   <div>Bonuses: +5 per extra match within a rule (max +20), +30 per critical finding, +20 for 2+ high findings</div>
                   <div>Final score: <span className="text-[#c9a227] font-mono">50 + 50 * log10(1 + totalScore/50)</span>, capped at 99%</div>
@@ -1307,7 +1307,7 @@ export default function Scanner() {
             </button>
             <button
               onClick={() => setShowExportImportModal(true)}
-              className="flex-1 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700"
+              className="flex-1 px-3 py-2 bg-gray-800 dark:bg-gray-800 light:bg-gray-100 hover:bg-gray-700 dark:hover:bg-gray-700 light:hover:bg-gray-200 text-gray-300 dark:text-gray-300 light:text-gray-900 rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700 dark:border-gray-700 light:border-gray-300"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
