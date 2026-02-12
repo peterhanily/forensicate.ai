@@ -37,7 +37,7 @@ export function useTour({ onComplete, onSkip, onStart }: UseTourOptions = {}): U
       return;
     }
 
-    // Call beforeShow callback if it exists
+    // Call beforeShow callback if it exists (handles scrolling and panel expansion)
     if (currentStepData.beforeShow) {
       currentStepData.beforeShow();
     }
@@ -47,14 +47,12 @@ export function useTour({ onComplete, onSkip, onStart }: UseTourOptions = {}): U
       const element = document.querySelector<HTMLElement>(currentStepData.target);
       if (element) {
         setTargetElement(element);
-        // Scroll target into view with some padding
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     };
 
-    // Try immediately, then retry after a short delay to handle dynamic content
-    findTarget();
-    const timeoutId = setTimeout(findTarget, 100);
+    // Wait for beforeShow actions to complete (scrolling, expanding panels)
+    // Then find the target element
+    const timeoutId = setTimeout(findTarget, 300);
 
     return () => clearTimeout(timeoutId);
   }, [isActive, currentStep, currentStepData]);

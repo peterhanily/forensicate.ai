@@ -172,6 +172,23 @@ export default function TourTooltip({
           {step.description}
         </p>
 
+        {/* Progress Dots */}
+        <div className="flex gap-1 justify-center mb-3">
+          {Array.from({ length: totalSteps }).map((_, index) => (
+            <div
+              key={index}
+              className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                index === currentStep
+                  ? 'bg-[#c9a227]'
+                  : index < currentStep
+                  ? 'bg-[#c9a227]/50'
+                  : 'bg-gray-700'
+              }`}
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <button
@@ -186,22 +203,6 @@ export default function TourTooltip({
           >
             ← Previous
           </button>
-
-          <div className="flex gap-1">
-            {Array.from({ length: totalSteps }).map((_, index) => (
-              <div
-                key={index}
-                className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  index === currentStep
-                    ? 'bg-[#c9a227]'
-                    : index < currentStep
-                    ? 'bg-[#c9a227]/50'
-                    : 'bg-gray-700'
-                }`}
-                aria-hidden="true"
-              />
-            ))}
-          </div>
 
           <button
             onClick={onNext}
