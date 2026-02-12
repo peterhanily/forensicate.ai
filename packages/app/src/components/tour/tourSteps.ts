@@ -12,7 +12,7 @@ export const tourSteps: TourStep[] = [
     id: 'welcome',
     target: '[data-tour="header"]',
     title: 'Welcome to Forensicate.ai',
-    description: 'This scanner helps you detect prompt injection attacks using 78+ detection rules. Everything runs in your browser - no API keys or server required.',
+    description: 'This scanner helps you detect prompt injection attacks using 97 detection rules. Everything runs in your browser - no API keys or server required.',
     placement: 'bottom',
   },
   {
