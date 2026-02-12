@@ -201,7 +201,7 @@ By submitting a prompt, you agree to license it under Apache 2.0, the same licen
 - [Live Scanner](https://forensicate.ai/scanner)
 - [Documentation](https://github.com/peterhanily/forensicate.ai)
 - [Detection Rules](../community-rules/)
-- [Chrome Extension](https://chrome.google.com/webstore/[coming-soon])
+- [Chrome Extension](https://chromewebstore.google.com/detail/forensicateai-prompt-secu/ckohijglmbhlmbpiplcjhnlpijcbkapa)
 
 ## 🎓 Learning Resources
 

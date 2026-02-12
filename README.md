@@ -33,7 +33,7 @@ The Forensicate.ai browser extension brings prompt injection detection directly 
 ### Extension Installation
 
 **From Browser Stores:**
-- Chrome Web Store: `Coming soon - under review`
+- **Chrome Web Store**: [Install Forensicate.ai Extension](https://chromewebstore.google.com/detail/forensicateai-prompt-secu/ckohijglmbhlmbpiplcjhnlpijcbkapa)
 - Firefox Add-ons: `Coming soon - under review`
 
 **Manual Installation - Chrome (Developer Mode):**

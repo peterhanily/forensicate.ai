@@ -161,7 +161,7 @@ By submitting a rule, you agree to license it under Apache 2.0, the same license
 
 - [Live Scanner](https://forensicate.ai/scanner)
 - [Documentation](https://github.com/peterhanily/forensicate.ai)
-- [Chrome Extension](https://chrome.google.com/webstore/[coming-soon])
+- [Chrome Extension](https://chromewebstore.google.com/detail/forensicateai-prompt-secu/ckohijglmbhlmbpiplcjhnlpijcbkapa)
 
 ---
 
