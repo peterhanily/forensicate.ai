@@ -25,28 +25,6 @@ describe('Layout', () => {
     renderWithRouter(<Layout />);
 
     expect(screen.getByRole('link', { name: /prompt scanner/i })).toBeInTheDocument();
-    expect(screen.getByText(/ai jeopardy/i)).toBeInTheDocument();
-    expect(screen.getByText(/ai log constructor/i)).toBeInTheDocument();
-  });
-
-  it('has disabled navigation items rendered as spans', () => {
-    renderWithRouter(<Layout />);
-
-    // Enabled item is a link
-    const scannerLink = screen.getByRole('link', { name: /prompt scanner/i });
-    expect(scannerLink).toHaveAttribute('href', '/scanner');
-
-    // Disabled items are not links (they're spans)
-    expect(screen.queryByRole('link', { name: /ai jeopardy/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /ai log constructor/i })).not.toBeInTheDocument();
-  });
-
-  it('applies correct styling to disabled nav items', () => {
-    renderWithRouter(<Layout />);
-
-    const disabledItem = screen.getByText(/ai jeopardy/i);
-    expect(disabledItem).toHaveClass('cursor-not-allowed');
-    expect(disabledItem).toHaveClass('text-gray-600');
   });
 
   it('logo links to home page', () => {

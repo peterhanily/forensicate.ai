@@ -71,8 +71,6 @@ export default function Layout() {
  {/* Desktop Nav */}
  <nav className="hidden md:flex items-center gap-1">
  <NavItem to="/scanner" label="Prompt Scanner" />
- <NavItem to="/jeopardy" label="AI Jeopardy" disabled />
- <NavItem to="/log-constructor" label="AI Log Constructor" disabled />
  <button
  onClick={handleDownloadStandalone}
  className="ml-2 px-3 py-1.5 bg-gradient-to-r from-[#c9a227] to-[#d4b030] text-gray-900 text-sm font-semibold rounded-lg shadow-lg hover:shadow-[0_0_15px_rgba(201,162,39,0.5)] transition-all hover:scale-105 flex items-center gap-1.5"
@@ -134,8 +132,6 @@ export default function Layout() {
  {mobileMenuOpen && (
  <nav className="md:hidden mt-3 pt-3 border-t border-gray-800 space-y-1">
  <NavItem to="/scanner" label="Prompt Scanner" onClick={closeMobileMenu} />
- <NavItem to="/jeopardy" label="AI Jeopardy" disabled />
- <NavItem to="/log-constructor" label="AI Log Constructor" disabled />
  <button
  onClick={() => {
  handleDownloadStandalone();
