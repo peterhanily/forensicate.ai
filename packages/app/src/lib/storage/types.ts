@@ -23,6 +23,7 @@ export interface PersistedConfig {
     confidenceThreshold?: number;
     autoImportCommunityRules?: boolean;
     autoImportCommunityPrompts?: boolean;
+    tourCompleted?: boolean;
   };
 }
 

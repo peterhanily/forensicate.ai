@@ -154,6 +154,7 @@ export default function TestBatteryPanel({
  ? 'bg-[#c9a227] text-gray-900 font-semibold'
  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
  }`}
+ data-tour="community-prompts-tab"
  >
  Community
  </button>

@@ -110,6 +110,7 @@ export default function RulesPanel({
  ? 'bg-[#c9a227] text-gray-900'
  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
  }`}
+ data-tour="community-rules-tab"
  >
  Community
  </button>

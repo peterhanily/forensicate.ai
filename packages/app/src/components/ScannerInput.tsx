@@ -45,6 +45,7 @@ export default function ScannerInput({
  caretColor: '#22c55e',
  lineHeight: '1.6'
  }}
+ data-tour="prompt-input"
  />
  <div className="absolute bottom-2 right-2 text-gray-600 text-gray-600 text-xs font-mono">
  {promptText.length} chars

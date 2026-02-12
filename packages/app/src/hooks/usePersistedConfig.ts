@@ -41,6 +41,8 @@ interface UsePersistedConfigReturn {
   setAutoImportCommunityRules: React.Dispatch<React.SetStateAction<boolean>>;
   autoImportCommunityPrompts: boolean;
   setAutoImportCommunityPrompts: React.Dispatch<React.SetStateAction<boolean>>;
+  tourCompleted: boolean;
+  setTourCompleted: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Meta
   loadSource: LoadSource;
@@ -87,6 +89,7 @@ function loadInitialConfig(): {
   confidenceThreshold: number;
   autoImportCommunityRules: boolean;
   autoImportCommunityPrompts: boolean;
+  tourCompleted: boolean;
 } {
   // Priority: URL > localStorage > defaults
   const urlConfig = getConfigFromUrl();
@@ -121,6 +124,7 @@ function loadInitialConfig(): {
       confidenceThreshold: storedConfig?.ui?.confidenceThreshold ?? 50,
       autoImportCommunityRules: storedConfig?.ui?.autoImportCommunityRules ?? true,
       autoImportCommunityPrompts: storedConfig?.ui?.autoImportCommunityPrompts ?? true,
+      tourCompleted: storedConfig?.ui?.tourCompleted ?? false,
     };
   }
 
@@ -139,6 +143,7 @@ function loadInitialConfig(): {
       confidenceThreshold: storedConfig.ui?.confidenceThreshold ?? 50,
       autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
       autoImportCommunityPrompts: storedConfig.ui?.autoImportCommunityPrompts ?? true,
+      tourCompleted: storedConfig.ui?.tourCompleted ?? false,
     };
   }
 
@@ -155,6 +160,7 @@ function loadInitialConfig(): {
     confidenceThreshold: 50,
     autoImportCommunityRules: true,
     autoImportCommunityPrompts: true,
+    tourCompleted: false,
   };
 }
 
@@ -182,6 +188,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(initialConfig.confidenceThreshold);
   const [autoImportCommunityRules, setAutoImportCommunityRules] = useState<boolean>(initialConfig.autoImportCommunityRules);
   const [autoImportCommunityPrompts, setAutoImportCommunityPrompts] = useState<boolean>(initialConfig.autoImportCommunityPrompts);
+  const [tourCompleted, setTourCompleted] = useState<boolean>(initialConfig.tourCompleted);
 
   // Track if initial load is done (for debounce skip)
   const initialLoadDone = useRef(false);
@@ -225,6 +232,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
           confidenceThreshold,
           autoImportCommunityRules,
           autoImportCommunityPrompts,
+          tourCompleted,
         },
       };
 
@@ -242,7 +250,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
         clearTimeout(saveTimerRef.current);
       }
     };
-  }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold, autoImportCommunityRules, autoImportCommunityPrompts]);
+  }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold, autoImportCommunityRules, autoImportCommunityPrompts, tourCompleted]);
 
   const handleGenerateShareUrl = useCallback((promptText?: string): string => {
     // For share URLs, only include custom/modified data to keep URLs shorter
@@ -322,6 +330,8 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     setAutoImportCommunityRules,
     autoImportCommunityPrompts,
     setAutoImportCommunityPrompts,
+    tourCompleted,
+    setTourCompleted,
     loadSource,
     lastSaved,
     error,
