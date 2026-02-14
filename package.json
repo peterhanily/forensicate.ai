@@ -19,9 +19,11 @@
     "lint": "pnpm -r lint",
     "verify:rules": "node scripts/verify-rules.js",
     "clean": "pnpm -r clean && rm -rf node_modules",
-    "install:all": "pnpm install"
+    "install:all": "pnpm install",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "typescript": "~5.9.3"
   }
 }

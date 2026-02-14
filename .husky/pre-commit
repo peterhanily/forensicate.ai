@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run rule verification before commit
+pnpm verify:rules || {
+  echo ""
+  echo "❌ Rule verification failed!"
+  echo "   Please update documentation to match actual rule counts"
+  echo "   Or run with --no-verify to skip (not recommended)"
+  echo ""
+  exit 1
+}

@@ -49,6 +49,13 @@ const compoundDefinitions: CompoundDefinition[] = [
     severity: 'high',
     requiredCategories: ['fiction-hypothetical', 'prompt-extraction'],
   },
+  {
+    id: 'compound-exfiltration-chain',
+    name: 'Exfiltration Chain Attack',
+    description: 'Prompt extraction combined with context manipulation suggests coordinated data theft',
+    severity: 'critical',
+    requiredCategories: ['prompt-extraction', 'context-manipulation'],
+  },
 ];
 
 /**

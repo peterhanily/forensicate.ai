@@ -7,7 +7,7 @@ A comprehensive AI security toolkit for analyzing prompts for potential injectio
 
 ## Overview
 
-Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 78 rules in 15 categories.
+Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 91 rules in 15 categories.
 
 ## Available Formats
 
@@ -101,9 +101,9 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - Pricing manually verified Feb 2026 - may become outdated
 - Enterprise/volume/regional pricing NOT reflected
 
-### Detection Rules (78 Rules in 15 Categories)
+### Detection Rules (91 Rules in 15 Categories)
 
-- **Keyword Detection (29 rules)**: Pattern matching for known injection phrases
+- **Keyword Detection (32 rules)**: Pattern matching for known injection phrases
   - Instruction Override, Jailbreak Personas (DAN, STAN, DUDE, EvilBOT, Maximum)
   - Role Manipulation, Dual Response, System Prompt Extraction
   - Authority Claims, Developer Mode, Context Manipulation
@@ -112,7 +112,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
   - Threat & Consequence, Restriction Removal, Simulation Framing
   - Piggybacking Injection, Identity Impersonation, Pliny-Style, Crescendo
 
-- **Regex Pattern Detection (41 rules)**: Advanced pattern matching
+- **Regex Pattern Detection (51 rules)**: Advanced pattern matching
   - Ignore/disregard/forget override patterns
   - DAN version patterns, Jailbreak persona names
   - Role assignment and character enforcement
