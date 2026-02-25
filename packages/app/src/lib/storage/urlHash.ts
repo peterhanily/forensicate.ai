@@ -27,36 +27,26 @@ export function encodeConfig(config: PersistedConfig): string {
 export function decodeConfig(encoded: string): PersistedConfig | null {
   try {
     // Try lz-string decompression first (new format)
-    console.log('[Decode] Trying LZ-string decompression...');
     const decompressed = LZString.decompressFromEncodedURIComponent(encoded);
     if (decompressed) {
-      console.log('[Decode] LZ-string succeeded');
       const data = JSON.parse(decompressed);
       if (validateConfig(data)) {
-        console.log('[Decode] LZ-string config valid');
         return data;
       }
-      console.warn('[Decode] LZ-string config invalid');
     }
 
     // Fall back to legacy base64 format for backwards compatibility
-    console.log('[Decode] Trying legacy base64 format...');
     // The extension encodes as: btoa(encodeURIComponent(JSON.stringify(config)))
     // So we decode as: JSON.parse(decodeURIComponent(atob(base64)))
     const jsonString = decodeURIComponent(atob(encoded));
-    console.log('[Decode] Decoded JSON string:', jsonString.substring(0, 200) + '...');
     const data = JSON.parse(jsonString);
-    console.log('[Decode] Parsed data:', data);
 
     if (validateConfig(data)) {
-      console.log('[Decode] Base64 config valid');
       return data;
     }
 
-    console.warn('[Decode] Invalid config format in URL', data);
     return null;
-  } catch (error) {
-    console.warn('[Decode] Failed to decode config from URL:', error);
+  } catch {
     return null;
   }
 }
@@ -73,10 +63,7 @@ export function getConfigFromUrl(): PersistedConfig | null {
     const hashParams = new URLSearchParams(hashQuery);
     const hashConfig = hashParams.get(PARAM_NAME);
     if (hashConfig) {
-      console.log('[Config] Loading from hash query params');
-      const decoded = decodeConfig(hashConfig);
-      console.log('[Config] Decoded from hash:', decoded);
-      return decoded;
+      return decodeConfig(hashConfig);
     }
   }
 
@@ -84,11 +71,7 @@ export function getConfigFromUrl(): PersistedConfig | null {
   const searchParams = new URLSearchParams(window.location.search);
   const config = searchParams.get(PARAM_NAME);
   if (config) {
-    console.log('[Config] Loading from query params');
-    console.log('[Config] Raw config param:', config.substring(0, 100) + '...');
-    const decoded = decodeConfig(config);
-    console.log('[Config] Decoded config:', decoded);
-    return decoded;
+    return decodeConfig(config);
   }
 
   return null;

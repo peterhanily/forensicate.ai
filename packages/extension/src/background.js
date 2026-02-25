@@ -186,10 +186,12 @@ async function scanAndShowResult(text, sourceUrl) {
     };
 
     // Store result temporarily for detail page (compressed)
+    // fullScanResult expires after 10 minutes to limit sensitive data retention
     await chrome.storage.local.set({
       lastScanResult: resultData,
       fullScanResult: fullScanResult,
-      lastScanTimestamp: Date.now()
+      lastScanTimestamp: Date.now(),
+      fullScanResultExpiry: Date.now() + 10 * 60 * 1000
     });
 
     // Check storage quota before proceeding
@@ -468,6 +470,12 @@ chrome.alarms.create('cleanup', { periodInMinutes: 60 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'cleanup') {
     checkStorageQuota();
+    // Clear expired fullScanResult to limit sensitive data retention
+    chrome.storage.local.get(['fullScanResultExpiry'], ({ fullScanResultExpiry }) => {
+      if (fullScanResultExpiry && Date.now() > fullScanResultExpiry) {
+        chrome.storage.local.remove(['fullScanResult', 'fullScanResultExpiry']);
+      }
+    });
   }
 });
 

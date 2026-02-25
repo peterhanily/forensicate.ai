@@ -52,12 +52,12 @@ export async function handleScan(
     // Get enabled rules
     const rules = getEnabledRules();
 
-    // Scan with timeout protection
+    // Scan text against rules
+    // Note: scanPrompt runs synchronously so Promise.race cannot interrupt it mid-execution.
+    // The Cloudflare Workers CPU time limit (configured in wrangler.toml) is the real
+    // protection against long-running scans. This timeout only guards async operations.
     const result = await Promise.race<ReturnType<typeof scanPrompt>>([
-      // Actual scan
       Promise.resolve(scanPrompt(text, rules, confidenceThreshold)),
-
-      // Timeout
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Scan timeout exceeded')), SCAN_TIMEOUT_MS)
       ) as never
@@ -86,7 +86,6 @@ export async function handleScan(
     const response: ScanResponse = {
       success: true,
       data: {
-        text: text.substring(0, 1000), // Limit echoed text
         textLength: text.length,
         confidence: result.confidence,
         riskLevel,

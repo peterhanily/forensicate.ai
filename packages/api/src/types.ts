@@ -10,7 +10,6 @@ export interface ScanRequest {
 export interface ScanResponse {
   success: true;
   data: {
-    text: string;
     textLength: number;
     confidence: number;
     riskLevel: 'low' | 'medium' | 'high';

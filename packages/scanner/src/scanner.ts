@@ -248,10 +248,29 @@ function generateReasons(matchedRules: RuleMatch[]): string[] {
   return reasons;
 }
 
+// Maximum input length to prevent excessive CPU usage from regex scanning
+const MAX_SCAN_LENGTH = 1_000_000; // 1MB
+
 /**
  * Main scan function - analyzes text against all enabled rules
  */
 export function scanPrompt(text: string, customRules?: DetectionRule[], confidenceThreshold = 0): ScanResult {
+  // Guard against excessively large inputs
+  if (!text || typeof text !== 'string') {
+    return {
+      isPositive: false,
+      confidence: 0,
+      reasons: ['No text provided'],
+      timestamp: new Date(),
+      matchedRules: [],
+      totalRulesChecked: 0,
+    };
+  }
+
+  if (text.length > MAX_SCAN_LENGTH) {
+    text = text.substring(0, MAX_SCAN_LENGTH);
+  }
+
   const rules = customRules || getEnabledRules();
   const matchedRules: RuleMatch[] = [];
 

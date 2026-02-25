@@ -79,10 +79,10 @@ export async function authenticate(
 
   const tenant = tenantData as TenantMetadata;
 
-  // Update last used timestamp (fire-and-forget)
+  // Track last usage in a separate key to avoid resurrecting revoked tokens
   env.API_TOKENS.put(
-    tokenHash,
-    JSON.stringify({ ...apiToken, lastUsedAt: new Date().toISOString() }),
+    `usage:${tokenHash}`,
+    JSON.stringify({ lastUsedAt: new Date().toISOString() }),
     { expirationTtl: 31536000 } // 1 year
   ).catch(console.error);
 

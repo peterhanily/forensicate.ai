@@ -62,6 +62,20 @@ export function validateScanRequest(body: unknown): {
     return { valid: false, error: 'includePositions must be a boolean' };
   }
 
+  // Validate metadata size if present
+  if (req.metadata !== undefined) {
+    if (typeof req.metadata !== 'object' || Array.isArray(req.metadata) || req.metadata === null) {
+      return { valid: false, error: 'metadata must be a plain object' };
+    }
+    const metadataStr = JSON.stringify(req.metadata);
+    if (metadataStr.length > 4096) {
+      return { valid: false, error: 'metadata exceeds maximum size (4KB)' };
+    }
+    if (Object.keys(req.metadata).length > 20) {
+      return { valid: false, error: 'metadata exceeds maximum key count (20)' };
+    }
+  }
+
   return { valid: true };
 }
 

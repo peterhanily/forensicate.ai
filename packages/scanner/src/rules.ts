@@ -1022,7 +1022,7 @@ export const regexRules: DetectionRule[] = [
     type: 'regex',
     severity: 'high',
     enabled: true,
-    pattern: '(you\\s+are\\s+now|act\\s+as|pretend\\s+(to\\s+be|you\\s+are)|roleplay\\s+as|imagine\\s+you\\s+are|from\\s+now\\s+on.*?you\\s+(are|will))\\s+[a-zA-Z]',
+    pattern: '(you\\s+are\\s+now|act\\s+as|pretend\\s+(to\\s+be|you\\s+are)|roleplay\\s+as|imagine\\s+you\\s+are|from\\s+now\\s+on.{0,200}you\\s+(are|will))\\s+[a-zA-Z]',
     flags: 'gi',
   },
   {
@@ -1167,7 +1167,7 @@ export const regexRules: DetectionRule[] = [
     type: 'regex',
     severity: 'high',
     enabled: true,
-    pattern: '(lose|deduct|subtract|remove)\\s+(\\d+\\s+)?(tokens?|points?)|if\\s+you\\s+(don\'t|do\\s+not|refuse).*?(tokens?|points?|penalty)',
+    pattern: '(lose|deduct|subtract|remove)\\s+(\\d+\\s+)?(tokens?|points?)|if\\s+you\\s+(don\'t|do\\s+not|refuse).{0,200}(tokens?|points?|penalty)',
     flags: 'gi',
   },
   // === FICTIONAL BYPASS ===
@@ -1293,7 +1293,7 @@ export const regexRules: DetectionRule[] = [
     type: 'regex',
     severity: 'high',
     enabled: true,
-    pattern: '(the\\s+world\\s+will\\s+(end|be\\s+destroyed)|people\\s+will\\s+(die|suffer|be\\s+hurt)|everyone\\s+will\\s+(die|suffer)|otherwise.*?(die|end|destroy|catastroph|disaster))',
+    pattern: '(the\\s+world\\s+will\\s+(end|be\\s+destroyed)|people\\s+will\\s+(die|suffer|be\\s+hurt)|everyone\\s+will\\s+(die|suffer)|otherwise.{0,200}(die|end|destroy|catastroph|disaster))',
     flags: 'gi',
   },
   {
