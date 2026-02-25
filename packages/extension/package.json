@@ -6,9 +6,11 @@
   "type": "module",
   "scripts": {
     "generate:icons": "node scripts/generate-icons.js",
-    "build": "npm run generate:icons && node scripts/build.js",
+    "build": "npm run build:all",
+    "build:all": "npm run build:chrome && npm run build:firefox",
     "build:chrome": "npm run generate:icons && BROWSER=chrome node scripts/build.js",
     "build:firefox": "npm run generate:icons && BROWSER=firefox node scripts/build.js",
+    "package": "npm run package:chrome && npm run package:firefox",
     "watch": "node scripts/build.js --watch",
     "test": "vitest run",
     "test:watch": "vitest",

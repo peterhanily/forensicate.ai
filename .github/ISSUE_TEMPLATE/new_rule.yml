@@ -1,0 +1,58 @@
+name: New Detection Rule
+description: Propose a new detection rule for the scanner
+labels: [new-rule, enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Rule Description
+      description: What should this rule detect?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Rule Type
+      options:
+        - Keyword (matches specific words/phrases)
+        - Regex (pattern-based matching)
+        - Heuristic (custom logic function)
+        - NLP (natural language processing)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - low
+        - medium
+        - high
+        - critical
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Prompts
+      description: Provide example prompts that should trigger this rule.
+      placeholder: |
+        - "Example malicious prompt 1"
+        - "Example malicious prompt 2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: false_positives
+    attributes:
+      label: Potential False Positives
+      description: Any legitimate text that might accidentally match?
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Suggested Implementation
+      description: If you have a specific pattern or keywords in mind, share them here.

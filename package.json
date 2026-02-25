@@ -13,6 +13,7 @@
     "dev": "pnpm --filter @forensicate/app dev",
     "dev:api": "pnpm --filter @forensicate/api dev",
     "build": "pnpm --filter @forensicate/app build",
+    "build:extensions": "pnpm --filter @forensicate/scanner build && pnpm --filter @forensicate/extension build:all",
     "build:api": "pnpm --filter @forensicate/api deploy",
     "test": "pnpm -r test",
     "test:api": "pnpm --filter @forensicate/api test",

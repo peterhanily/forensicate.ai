@@ -1,0 +1,190 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - run: pnpm --filter @forensicate/app lint
+
+  test-scanner:
+    name: Test Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - run: pnpm --filter @forensicate/scanner test
+
+  test-app:
+    name: Test App
+    runs-on: ubuntu-latest
+    needs: [test-scanner]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - run: pnpm --filter @forensicate/scanner build
+
+      - run: pnpm --filter @forensicate/app test
+
+  test-api:
+    name: Test API
+    runs-on: ubuntu-latest
+    needs: [test-scanner]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - run: pnpm --filter @forensicate/scanner build
+
+      - run: pnpm --filter @forensicate/api test:ci
+
+  test-extension:
+    name: Test Extension
+    runs-on: ubuntu-latest
+    needs: [test-scanner]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - run: pnpm --filter @forensicate/scanner build
+
+      - run: pnpm --filter @forensicate/extension test
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - run: pnpm --filter @forensicate/scanner build
+
+      - run: pnpm --filter @forensicate/app exec tsc -b
+
+      - run: pnpm --filter @forensicate/api type-check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test-app, test-api, test-extension, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - name: Build scanner
+        run: pnpm --filter @forensicate/scanner build
+
+      - name: Build web app
+        run: pnpm --filter @forensicate/app build
+
+      - name: Build extensions (Chrome + Firefox)
+        run: pnpm --filter @forensicate/extension build:all
+
+      - name: Verify rule counts
+        run: pnpm verify:rules
+
+      - name: Upload web app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-app
+          path: packages/app/dist/
+          retention-days: 7
+
+      - name: Upload Chrome extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: packages/extension/dist/chrome/
+          retention-days: 7
+
+      - name: Upload Firefox extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-extension
+          path: packages/extension/dist/firefox/
+          retention-days: 7

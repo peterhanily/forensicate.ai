@@ -1,7 +1,7 @@
 {
   "name": "@forensicate/scanner",
   "version": "1.0.0",
-  "description": "AI prompt injection detection engine with 78 rules across keyword, regex, heuristic, and NLP-based detection",
+  "description": "AI prompt injection detection engine with 91 rules across keyword, regex, heuristic, and NLP-based detection",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",

@@ -1,4 +1,6 @@
+import { useState, useRef, useEffect } from 'react';
 import type { ScanResult, RuleMatch } from '@forensicate/scanner';
+import { exportReport, type ExportFormat } from '../lib/exportReport';
 
 interface ScannerResultsProps {
  scanResult: ScanResult | null;
@@ -17,6 +19,28 @@ export default function ScannerResults({
  isExpanded = true,
  onToggle,
 }: ScannerResultsProps) {
+ const [showExportMenu, setShowExportMenu] = useState(false);
+ const exportRef = useRef<HTMLDivElement>(null);
+
+ useEffect(() => {
+   function handleClickOutside(e: MouseEvent) {
+     if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+       setShowExportMenu(false);
+     }
+   }
+   if (showExportMenu) {
+     document.addEventListener('mousedown', handleClickOutside);
+     return () => document.removeEventListener('mousedown', handleClickOutside);
+   }
+ }, [showExportMenu]);
+
+ function handleExport(format: ExportFormat) {
+   if (scanResult) {
+     exportReport(format, scanResult, promptText);
+     setShowExportMenu(false);
+   }
+ }
+
  const headerContent = (
  <>
  <div className="flex items-center gap-2">
@@ -32,11 +56,45 @@ export default function ScannerResults({
  )}
  <span className="text-gray-400 text-gray-400 text-xs font-mono">scan_results</span>
  </div>
+ <div className="flex items-center gap-2">
+ {scanResult && scanResult.matchedRules.length > 0 && (
+ <div ref={exportRef} className="relative">
+   <button
+     onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu); }}
+     className="px-2 py-0.5 text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors flex items-center gap-1"
+     title="Export scan report"
+   >
+     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+     </svg>
+     Export
+   </button>
+   {showExportMenu && (
+     <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 min-w-[140px] py-1">
+       {([
+         ['html', 'HTML Report'],
+         ['json', 'JSON'],
+         ['csv', 'CSV'],
+         ['sarif', 'SARIF'],
+       ] as [ExportFormat, string][]).map(([format, label]) => (
+         <button
+           key={format}
+           onClick={(e) => { e.stopPropagation(); handleExport(format); }}
+           className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+         >
+           {label}
+         </button>
+       ))}
+     </div>
+   )}
+ </div>
+ )}
  {scanResult && (
  <span className="text-gray-500 text-gray-500 text-xs font-mono">
  {scanResult.totalRulesChecked} rules checked
  </span>
  )}
+ </div>
  </>
  );
 

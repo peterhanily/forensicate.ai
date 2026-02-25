@@ -52,7 +52,7 @@
 
 # FEATURES
 
-    - 78+ detection rules (keyword, regex, heuristic, NLP)
+    - 91 detection rules (keyword, regex, heuristic, NLP)
     - Real-time prompt injection scanning
     - Visual annotation with interactive highlights
     - Confidence scoring and threshold control

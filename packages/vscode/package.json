@@ -1,0 +1,103 @@
+{
+  "name": "forensicate-vscode",
+  "displayName": "Forensicate.ai - Prompt Security Scanner",
+  "description": "Detect prompt injection & jailbreak attempts in your editor. 91 detection rules, inline diagnostics, real-time scanning.",
+  "version": "0.1.0",
+  "publisher": "forensicate",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peterhanily/forensicate.ai"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "prompt injection",
+    "jailbreak",
+    "security",
+    "ai safety",
+    "llm"
+  ],
+  "icon": "assets/icon-128.png",
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "forensicate.scanSelection",
+        "title": "Forensicate: Scan Selected Text"
+      },
+      {
+        "command": "forensicate.scanFile",
+        "title": "Forensicate: Scan Current File"
+      },
+      {
+        "command": "forensicate.toggleDiagnostics",
+        "title": "Forensicate: Toggle Real-time Diagnostics"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "forensicate.scanSelection",
+        "key": "ctrl+shift+x",
+        "mac": "cmd+shift+x",
+        "when": "editorHasSelection"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "forensicate.scanSelection",
+          "when": "editorHasSelection",
+          "group": "forensicate"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Forensicate.ai",
+      "properties": {
+        "forensicate.enableDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable real-time prompt injection diagnostics"
+        },
+        "forensicate.confidenceThreshold": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum confidence percentage to show diagnostics"
+        },
+        "forensicate.scanOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically scan files on save"
+        },
+        "forensicate.filePatterns": {
+          "type": "array",
+          "default": ["**/*.md", "**/*.txt", "**/*.prompt", "**/*.json", "**/*.yaml", "**/*.yml"],
+          "description": "File patterns to scan for prompt injection"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
+    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
+    "package": "vsce package --no-dependencies",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@forensicate/scanner": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.7.3"
+  }
+}
