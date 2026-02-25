@@ -18,6 +18,12 @@ export async function handleScan(
   const startTime = Date.now();
 
   try {
+    // Validate Content-Type
+    const contentType = request.headers.get('Content-Type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return createErrorResponse('INVALID_CONTENT_TYPE', 'Content-Type must be application/json', 415);
+    }
+
     // Parse request body
     let body: ScanRequest;
     try {

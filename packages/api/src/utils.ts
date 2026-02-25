@@ -121,21 +121,24 @@ export function validateBatchScanRequest(body: unknown): {
 export function getCORSHeaders(request: Request, allowedOrigins: string[] = []): Record<string, string> {
   const origin = request.headers.get('Origin');
 
-  // If no origin or no whitelist, allow all (for now)
-  if (!origin || allowedOrigins.length === 0) {
+  // No origin header (server-to-server request) — CORS is irrelevant, return minimal headers
+  if (!origin) {
     return {
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400' // 24 hours
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     };
+  }
+
+  // No whitelist configured — reject browser cross-origin requests by default
+  if (allowedOrigins.length === 0) {
+    return {};
   }
 
   // Check if origin is allowed
   const isAllowed = allowedOrigins.some(allowed => {
     if (allowed.startsWith('*.')) {
       const baseDomain = allowed.slice(2);
-      return origin.endsWith(baseDomain) || origin === `https://${baseDomain}`;
+      return origin.endsWith(`.${baseDomain}`) || origin === `https://${baseDomain}`;
     }
     return origin === allowed || origin === `https://${allowed}`;
   });

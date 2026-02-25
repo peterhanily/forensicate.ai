@@ -409,9 +409,13 @@ export function AddRuleModal({
  rows={10}
  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-xs font-mono focus:outline-none focus:border-[#c9a227] placeholder-gray-600 resize-none"
  />
- <p className="text-xs text-gray-500 mt-1">
- The function is validated on save. It runs client-side only.
- </p>
+ <div className="flex items-start gap-2 mt-2 px-3 py-2 bg-amber-900/20 border border-amber-700/50 rounded text-xs text-amber-300">
+ <span className="mt-0.5 shrink-0">&#9888;</span>
+ <span>
+ <strong>Security notice:</strong> Heuristic rules execute JavaScript in your browser via <code className="text-amber-200">new Function()</code>.
+ Only add code you understand and trust. Never paste code from untrusted sources.
+ </span>
+ </div>
  </div>
  )}
 

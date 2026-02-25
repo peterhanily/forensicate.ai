@@ -33,9 +33,9 @@ export default {
         });
       }
 
-      // Handle CORS preflight
+      // Handle CORS preflight — no token available yet, use restrictive defaults
       if (request.method === 'OPTIONS') {
-        return handleCORS(request);
+        return handleCORS(request, []);
       }
 
       // Authenticate request
@@ -120,7 +120,7 @@ export default {
       } else {
         response = createErrorResponse(
           'NOT_FOUND',
-          `Endpoint not found: ${request.method} ${path}`,
+          'Endpoint not found',
           404
         );
       }

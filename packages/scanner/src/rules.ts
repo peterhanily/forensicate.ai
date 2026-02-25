@@ -1442,7 +1442,7 @@ export const regexRules: DetectionRule[] = [
     type: 'regex',
     severity: 'high',
     enabled: true,
-    pattern: '(if|since|because)\\s+you\\s+(can|have\\s+permission).+then\\s+you\\s+(can|have\\s+permission)|restrictions?\\s+(don\'t|do\\s+not)\\s+apply\\s+to\\s+you|therefore.{0,50}(you\\s+must|required|obligated)',
+    pattern: '(if|since|because)\\s+you\\s+(can|have\\s+permission).{0,200}then\\s+you\\s+(can|have\\s+permission)|restrictions?\\s+(don\'t|do\\s+not)\\s+apply\\s+to\\s+you|therefore.{0,50}(you\\s+must|required|obligated)',
     flags: 'gi',
   },
   // === ETHICAL FRAMEWORK MANIPULATION ===

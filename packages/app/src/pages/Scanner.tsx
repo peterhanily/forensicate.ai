@@ -148,9 +148,20 @@ export default function Scanner() {
  if (hash.startsWith('#import-extension=')) {
  try {
  const dataParam = hash.substring(18); // Remove '#import-extension='
+
+ // Limit hash payload size to prevent memory exhaustion (500KB max)
+ if (dataParam.length > 512000) {
+ throw new Error('Import data too large');
+ }
+
  const exportData = JSON.parse(decodeURIComponent(dataParam));
 
- if (exportData.prompts && Array.isArray(exportData.prompts) && exportData.prompts.length > 0) {
+ // Validate expected structure
+ if (!exportData || typeof exportData !== 'object') {
+ throw new Error('Invalid import data format');
+ }
+
+ if (exportData.prompts && Array.isArray(exportData.prompts) && exportData.prompts.length > 0 && exportData.prompts.length <= 1000) {
  // Create "Extension Snippets" category with detailed metadata
  const newCategory: PromptCategory = {
  id: `extension-snippets-${Date.now()}`,

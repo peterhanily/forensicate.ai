@@ -144,7 +144,7 @@ function createPromptCard(prompt) {
 
       ${prompt.sourceUrl ? `
         <div class="source-link">
-          🔗 Source: <a href="${escapeHtml(prompt.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(prompt.sourceUrl)}</a>
+          🔗 Source: ${/^https?:\/\//i.test(prompt.sourceUrl) ? `<a href="${escapeHtml(prompt.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(prompt.sourceUrl)}</a>` : escapeHtml(prompt.sourceUrl)}
         </div>
       ` : ''}
 

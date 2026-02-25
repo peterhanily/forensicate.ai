@@ -109,7 +109,7 @@ function createHistoryItem(item, index) {
         <div class="history-meta">
           <span>📅 ${date}</span>
           <span>🎯 ${item.matchCount || 0} matches</span>
-          ${item.sourceUrl ? `<span>🔗 <a href="${escapeHtml(item.sourceUrl)}" class="source-link" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceUrl)}</a></span>` : ''}
+          ${item.sourceUrl ? `<span>🔗 ${/^https?:\/\//i.test(item.sourceUrl) ? `<a href="${escapeHtml(item.sourceUrl)}" class="source-link" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceUrl)}</a>` : escapeHtml(item.sourceUrl)}</span>` : ''}
         </div>
         <div class="history-actions">
           <button class="btn-small btn-primary save-to-library-btn" data-index="${index}">💾 Save to Library</button>

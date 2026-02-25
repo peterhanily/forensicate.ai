@@ -334,7 +334,9 @@ export default function CommunityPromptsPanel({
  <div className="mb-3">
  <div className="text-gray-500 font-medium mb-1">References:</div>
  <div className="space-y-1">
- {details.references.map((ref, i) => (
+ {details.references.map((ref, i) => {
+ const isSafeUrl = /^https?:\/\//i.test(ref);
+ return isSafeUrl ? (
  <a
  key={i}
  href={ref}
@@ -344,7 +346,10 @@ export default function CommunityPromptsPanel({
  >
  {ref}
  </a>
- ))}
+ ) : (
+ <span key={i} className="block text-gray-500 truncate">{ref}</span>
+ );
+ })}
  </div>
  </div>
  )}

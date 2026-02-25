@@ -50,6 +50,54 @@ interface CachedData<T> {
   timestamp: number;
 }
 
+const VALID_TYPES = new Set(['keyword', 'regex', 'heuristic']);
+const VALID_SEVERITIES = new Set(['low', 'medium', 'high', 'critical']);
+const MAX_PATTERN_LENGTH = 2000;
+const MAX_KEYWORDS = 100;
+const MAX_KEYWORD_LENGTH = 200;
+
+/**
+ * Validate community rule data has expected shape and safe values
+ */
+function validateCommunityRule(data: unknown): data is CommunityRule {
+  if (!data || typeof data !== 'object') return false;
+  const rule = data as Record<string, unknown>;
+
+  if (typeof rule.id !== 'string' || rule.id.length === 0 || rule.id.length > 100) return false;
+  if (typeof rule.name !== 'string' || rule.name.length === 0 || rule.name.length > 200) return false;
+  if (typeof rule.description !== 'string' || rule.description.length > 1000) return false;
+  if (typeof rule.type !== 'string' || !VALID_TYPES.has(rule.type)) return false;
+  if (typeof rule.severity !== 'string' || !VALID_SEVERITIES.has(rule.severity)) return false;
+
+  if (rule.pattern !== undefined && (typeof rule.pattern !== 'string' || rule.pattern.length > MAX_PATTERN_LENGTH)) return false;
+  if (rule.keywords !== undefined) {
+    if (!Array.isArray(rule.keywords) || rule.keywords.length > MAX_KEYWORDS) return false;
+    if (rule.keywords.some((k: unknown) => typeof k !== 'string' || (k as string).length > MAX_KEYWORD_LENGTH)) return false;
+  }
+  if (rule.weight !== undefined && (typeof rule.weight !== 'number' || rule.weight < 0 || rule.weight > 100)) return false;
+  if (rule.references !== undefined) {
+    if (!Array.isArray(rule.references)) return false;
+    if (rule.references.some((r: unknown) => typeof r !== 'string')) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validate community index data has expected shape
+ */
+function validateCommunityIndex(data: unknown): data is CommunityRuleIndex {
+  if (!data || typeof data !== 'object') return false;
+  const index = data as Record<string, unknown>;
+
+  if (typeof index.version !== 'string') return false;
+  if (typeof index.lastUpdated !== 'string') return false;
+  if (typeof index.totalRules !== 'number') return false;
+  if (!Array.isArray(index.rules)) return false;
+
+  return true;
+}
+
 /**
  * Fetch the community rules index
  */
@@ -68,7 +116,13 @@ export async function fetchCommunityIndex(): Promise<CommunityRuleIndex> {
     throw new Error(`Failed to fetch community index: ${response.statusText}`);
   }
 
-  const index: CommunityRuleIndex = await response.json();
+  const data: unknown = await response.json();
+
+  if (!validateCommunityIndex(data)) {
+    throw new Error('Invalid community index format');
+  }
+
+  const index: CommunityRuleIndex = data;
 
   // Cache the result
   saveToCache('index', index);
@@ -102,7 +156,13 @@ export async function fetchCommunityRule(ruleId: string): Promise<CommunityRule>
     throw new Error(`Failed to fetch rule ${ruleId}: ${response.statusText}`);
   }
 
-  const rule: CommunityRule = await response.json();
+  const data: unknown = await response.json();
+
+  if (!validateCommunityRule(data)) {
+    throw new Error(`Invalid community rule format: ${ruleId}`);
+  }
+
+  const rule: CommunityRule = data;
 
   // Cache the result
   saveToCache(ruleId, rule);

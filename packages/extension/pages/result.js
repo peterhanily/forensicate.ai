@@ -58,7 +58,7 @@ function displayResult(result, fullResult) {
           <li class="match-item">
             <div class="match-header">
               <span class="match-name">${escapeHtml(match.ruleName)}</span>
-              <span class="severity ${match.severity}">${match.severity}</span>
+              <span class="severity ${escapeHtml(match.severity)}">${escapeHtml(match.severity)}</span>
             </div>
             ${match.matches && match.matches.length > 0 ? `
               <div class="match-examples">

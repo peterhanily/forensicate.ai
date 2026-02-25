@@ -75,11 +75,15 @@ export class RateLimiter implements DurableObject {
     } catch (error) {
       console.error('Rate limiter error:', error);
       return new Response(JSON.stringify({
-        allowed: true, // Fail open
+        allowed: false, // Fail closed — deny on error to prevent bypass
         tokens: 0,
-        retryAfter: null
+        retryAfter: 5
       }), {
-        headers: { 'Content-Type': 'application/json' }
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '5'
+        }
       });
     }
   }

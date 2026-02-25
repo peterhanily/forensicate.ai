@@ -227,8 +227,8 @@ function createBubbleElement(result, fullResult) {
     </div>
 
     <div class="forensicate-confidence">
-      <div class="forensicate-score ${riskClass}">${result.confidence}%</div>
-      <div class="forensicate-risk">${riskClass} Risk</div>
+      <div class="forensicate-score ${escapeHtml(riskClass)}">${result.confidence}%</div>
+      <div class="forensicate-risk">${escapeHtml(riskClass)} Risk</div>
     </div>
 
     <div class="forensicate-text">${escapeHtml(result.text.substring(0, 200))}${result.text.length > 200 ? '...' : ''}</div>
@@ -240,7 +240,7 @@ function createBubbleElement(result, fullResult) {
           <div class="forensicate-match">
             <div class="forensicate-match-name">
               ${escapeHtml(match.ruleName)}
-              <span class="forensicate-severity ${match.severity}">${match.severity}</span>
+              <span class="forensicate-severity ${escapeHtml(match.severity)}">${escapeHtml(match.severity)}</span>
             </div>
           </div>
         `).join('')}
