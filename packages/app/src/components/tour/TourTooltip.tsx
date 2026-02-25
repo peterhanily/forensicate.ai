@@ -108,7 +108,7 @@ export default function TourTooltip({
 
   useEffect(() => {
     const newPosition = calculatePosition(targetRect, step.placement);
-    setPosition(newPosition);
+    setTimeout(() => setPosition(newPosition), 0);
   }, [targetRect, step.placement]);
 
   const isFirstStep = currentStep === 0;

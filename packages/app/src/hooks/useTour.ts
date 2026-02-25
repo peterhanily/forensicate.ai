@@ -30,58 +30,7 @@ export function useTour({ onComplete, onSkip, onStart }: UseTourOptions = {}): U
     ? tourSteps[currentStep]
     : null;
 
-  // Update target element when step changes
-  useEffect(() => {
-    if (!isActive || !currentStepData) {
-      setTargetElement(null);
-      return;
-    }
-
-    // Call beforeShow callback if it exists (handles scrolling and panel expansion)
-    if (currentStepData.beforeShow) {
-      currentStepData.beforeShow();
-    }
-
-    // Find target element
-    const findTarget = () => {
-      const element = document.querySelector<HTMLElement>(currentStepData.target);
-      if (element) {
-        setTargetElement(element);
-      }
-    };
-
-    // Wait for beforeShow actions to complete (scrolling, expanding panels)
-    // Then find the target element
-    const timeoutId = setTimeout(findTarget, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [isActive, currentStep, currentStepData]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    if (!isActive) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case 'ArrowRight':
-          event.preventDefault();
-          nextStep();
-          break;
-        case 'ArrowLeft':
-          event.preventDefault();
-          previousStep();
-          break;
-        case 'Escape':
-          event.preventDefault();
-          skipTour();
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // Define all callbacks before effects that reference them
   const startTour = useCallback(() => {
     // Store currently focused element
     previousActiveElement.current = document.activeElement as HTMLElement;
@@ -132,6 +81,58 @@ export function useTour({ onComplete, onSkip, onStart }: UseTourOptions = {}): U
       setCurrentStep(stepIndex);
     }
   }, []);
+
+  // Update target element when step changes
+  useEffect(() => {
+    if (!isActive || !currentStepData) {
+      setTimeout(() => setTargetElement(null), 0);
+      return;
+    }
+
+    // Call beforeShow callback if it exists (handles scrolling and panel expansion)
+    if (currentStepData.beforeShow) {
+      currentStepData.beforeShow();
+    }
+
+    // Find target element
+    const findTarget = () => {
+      const element = document.querySelector<HTMLElement>(currentStepData.target);
+      if (element) {
+        setTargetElement(element);
+      }
+    };
+
+    // Wait for beforeShow actions to complete (scrolling, expanding panels)
+    // Then find the target element
+    const timeoutId = setTimeout(findTarget, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [isActive, currentStep, currentStepData]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      switch (event.key) {
+        case 'ArrowRight':
+          event.preventDefault();
+          nextStep();
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          previousStep();
+          break;
+        case 'Escape':
+          event.preventDefault();
+          skipTour();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isActive, nextStep, previousStep, skipTour]);
 
   return {
     isActive,

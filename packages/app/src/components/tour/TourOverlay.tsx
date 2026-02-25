@@ -31,7 +31,7 @@ export default function TourOverlay({
   // Update target rect and spotlight when target element changes
   useEffect(() => {
     if (!targetElement) {
-      setTargetRect(null);
+      setTimeout(() => setTargetRect(null), 0);
       return;
     }
 

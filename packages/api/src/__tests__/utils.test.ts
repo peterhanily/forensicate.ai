@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createErrorResponse, validateScanRequest, validateBatchScanRequest, getCORSHeaders, handleCORS } from '../utils';
+import type { ErrorResponse } from '../types';
 
 describe('createErrorResponse', () => {
   it('returns JSON response with correct status code', () => {
@@ -22,7 +23,7 @@ describe('createErrorResponse', () => {
 
   it('includes details when provided', async () => {
     const response = createErrorResponse('TEST_ERROR', 'msg', 400, { extra: 'info' });
-    const body = await response.json();
+    const body = await response.json() as ErrorResponse;
     expect(body.error.details).toEqual({ extra: 'info' });
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { ScanResult, RuleMatch } from '@forensicate/scanner';
 import { exportReport, type ExportFormat } from '../lib/exportReport';
 
@@ -22,17 +22,18 @@ export default function ScannerResults({
  const [showExportMenu, setShowExportMenu] = useState(false);
  const exportRef = useRef<HTMLDivElement>(null);
 
+ const closeExportMenu = useCallback((e: MouseEvent) => {
+   if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+     setTimeout(() => setShowExportMenu(false), 0);
+   }
+ }, []);
+
  useEffect(() => {
-   function handleClickOutside(e: MouseEvent) {
-     if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
-       setShowExportMenu(false);
-     }
-   }
    if (showExportMenu) {
-     document.addEventListener('mousedown', handleClickOutside);
-     return () => document.removeEventListener('mousedown', handleClickOutside);
+     document.addEventListener('mousedown', closeExportMenu);
+     return () => document.removeEventListener('mousedown', closeExportMenu);
    }
- }, [showExportMenu]);
+ }, [showExportMenu, closeExportMenu]);
 
  function handleExport(format: ExportFormat) {
    if (scanResult) {

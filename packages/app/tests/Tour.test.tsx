@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { useTour } from '../src/hooks/useTour';
-import TourOverlay from '../src/components/tour/TourOverlay';
 import TourTooltip from '../src/components/tour/TourTooltip';
 import { tourSteps } from '../src/components/tour/tourSteps';
 
@@ -224,7 +223,7 @@ describe('tourSteps configuration', () => {
   });
 
   it('should have valid step structure', () => {
-    tourSteps.forEach((step, index) => {
+    tourSteps.forEach((step) => {
       expect(step).toHaveProperty('id');
       expect(step).toHaveProperty('target');
       expect(step).toHaveProperty('title');
