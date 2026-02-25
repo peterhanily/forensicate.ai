@@ -153,7 +153,7 @@ function createPromptCard(prompt) {
           <div class="matched-rules-header">🎯 Matched Detection Rules:</div>
           <div>
             ${prompt.matchedRules.slice(0, 5).map(rule => `
-              <span class="rule-tag ${rule.severity}">${escapeHtml(rule.ruleName || rule.ruleId)}</span>
+              <span class="rule-tag ${escapeHtml(rule.severity)}">${escapeHtml(rule.ruleName || rule.ruleId)}</span>
             `).join('')}
             ${prompt.matchedRules.length > 5 ? `<span style="font-size: 11px; color: #9ca3af;">+${prompt.matchedRules.length - 5} more</span>` : ''}
           </div>
@@ -165,7 +165,7 @@ function createPromptCard(prompt) {
               <div class="rule-match">
                 <div class="rule-match-name">
                   ${escapeHtml(rule.ruleName || rule.ruleId)}
-                  <span class="rule-tag ${rule.severity}" style="margin-left: 8px;">${rule.severity}</span>
+                  <span class="rule-tag ${escapeHtml(rule.severity)}" style="margin-left: 8px;">${escapeHtml(rule.severity)}</span>
                 </div>
                 ${rule.matches && rule.matches.length > 0 ? `
                   <div class="rule-match-examples">

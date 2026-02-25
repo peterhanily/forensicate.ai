@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Forensicate.ai - Prompt Security Scanner",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Detect prompt injection & jailbreak attempts. Dozens of rules, prompt library, scan history. Privacy-focused.",
 
   "permissions": [

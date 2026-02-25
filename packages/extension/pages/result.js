@@ -280,7 +280,7 @@ function generateAnnotatedHTML(fullResult) {
 
     // Add annotated segment
     const segmentText = fullResult.text.substring(segment.start, segment.end);
-    html += `<span class="annotated-segment ${segment.severity}" title="${escapeHtml(segment.ruleName)}">${escapeHtml(segmentText)}</span>`;
+    html += `<span class="annotated-segment ${escapeHtml(segment.severity)}" title="${escapeHtml(segment.ruleName)}">${escapeHtml(segmentText)}</span>`;
 
     lastIndex = segment.end;
   });

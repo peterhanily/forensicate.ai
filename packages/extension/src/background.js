@@ -375,8 +375,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SCAN_TEXT') {
     (async () => {
       try {
+        if (!message.text || typeof message.text !== 'string') {
+          sendResponse({ success: false, error: 'Invalid input: text must be a string' });
+          return;
+        }
+        const text = message.text.trim();
+        if (text.length === 0) {
+          sendResponse({ success: false, error: 'Text is empty' });
+          return;
+        }
+        if (text.length > MAX_TEXT_LENGTH) {
+          sendResponse({ success: false, error: `Text too long (max ${MAX_TEXT_LENGTH} characters)` });
+          return;
+        }
         const rules = getCachedRules();
-        const result = await scanWithTimeout(message.text, rules, SCAN_TIMEOUT_MS);
+        const result = await scanWithTimeout(text, rules, SCAN_TIMEOUT_MS);
         sendResponse({ success: true, result });
       } catch (error) {
         sendResponse({ success: false, error: error.message });
