@@ -169,21 +169,21 @@ jobs:
         run: pnpm verify:rules
 
       - name: Upload web app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: web-app
           path: packages/app/dist/
           retention-days: 7
 
       - name: Upload Chrome extension
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: chrome-extension
           path: packages/extension/dist/chrome/
           retention-days: 7
 
       - name: Upload Firefox extension
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: firefox-extension
           path: packages/extension/dist/firefox/
