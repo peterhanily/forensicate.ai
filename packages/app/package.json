@@ -24,11 +24,11 @@
   },
   "dependencies": {
     "@forensicate/scanner": "workspace:*",
-    "compromise": "^14.14.5",
+    "compromise": "^14.15.0",
     "lz-string": "^1.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.13.0"
+    "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
