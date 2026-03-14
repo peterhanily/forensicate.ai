@@ -7,6 +7,16 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   // Custom domain (forensicate.ai) serves from root
   base: '/',
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-nlp': ['compromise'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

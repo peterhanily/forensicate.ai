@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import type { ScanResult } from '@forensicate/scanner';
 
 // ============================================================================
@@ -26,7 +26,7 @@ interface ScanHistoryProps {
  onClear: () => void;
 }
 
-export default function ScanHistory({
+function ScanHistory({
  entries,
  onSelectEntry,
  onClear,
@@ -39,6 +39,7 @@ export default function ScanHistory({
  <div className="border border-gray-800 rounded-lg bg-gray-900/50 overflow-hidden">
  <button
  onClick={() => setIsCollapsed(!isCollapsed)}
+ aria-expanded={!isCollapsed}
  className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 border-b border-gray-700 hover:bg-gray-800/70 transition-colors"
  >
  <div className="flex items-center gap-2">
@@ -112,3 +113,5 @@ export default function ScanHistory({
  </div>
  );
 }
+
+export default memo(ScanHistory);

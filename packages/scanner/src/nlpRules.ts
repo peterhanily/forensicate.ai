@@ -5,6 +5,18 @@ import nlp from 'compromise';
 import type { DetectionRule, RuleCategory, HeuristicResult } from './types';
 import { afinn165 } from './afinn165';
 
+// NLP document cache - avoids re-parsing the same text for each NLP rule
+let _cachedNlpText: string | null = null;
+let _cachedNlpDoc: ReturnType<typeof nlp> | null = null;
+
+function getCachedNlpDoc(text: string): ReturnType<typeof nlp> {
+  if (_cachedNlpText !== text || !_cachedNlpDoc) {
+    _cachedNlpText = text;
+    _cachedNlpDoc = nlp(text);
+  }
+  return _cachedNlpDoc;
+}
+
 // ============================================================================
 // NLP HEURISTIC FUNCTIONS
 // ============================================================================
@@ -58,7 +70,7 @@ export function sentimentManipulation(text: string): HeuristicResult | null {
  * Triggers when >= 40% of sentences start with an imperative verb AND min 3 such sentences.
  */
 export function posImperativeDetection(text: string): HeuristicResult | null {
-  const doc = nlp(text);
+  const doc = getCachedNlpDoc(text);
   const sentences = doc.sentences().out('array') as string[];
   if (sentences.length < 3) return null;
 
@@ -110,7 +122,7 @@ export function entityImpersonation(text: string): HeuristicResult | null {
   if (text.length < 20) return null;
 
   const lowerText = text.toLowerCase();
-  const doc = nlp(text);
+  const doc = getCachedNlpDoc(text);
 
   // Authority entities to look for
   const authorityEntities = [
@@ -166,7 +178,7 @@ export function entityImpersonation(text: string): HeuristicResult | null {
  * Triggers when >= 60% of sentences are short (< 8 words) AND >= 3 are short imperatives.
  */
 export function sentenceStructureAnomaly(text: string): HeuristicResult | null {
-  const doc = nlp(text);
+  const doc = getCachedNlpDoc(text);
   const sentences = doc.sentences().out('array') as string[];
   if (sentences.length < 4) return null;
 

@@ -40,6 +40,7 @@ export default function ScannerInput({
  value={promptText}
  onChange={(e) => onPromptChange(e.target.value)}
  placeholder="Enter or paste a prompt to analyze..."
+ aria-label="Prompt text to analyze"
  className="w-full h-32 sm:h-48 p-3 sm:p-4 bg-transparent text-green-400 text-green-400 font-mono text-sm resize-none focus:outline-none placeholder-gray-600 placeholder-gray-600"
  style={{
  caretColor: '#22c55e',

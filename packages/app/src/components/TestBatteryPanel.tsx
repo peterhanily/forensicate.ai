@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import type { PromptCategory, PromptItem } from '../data/samplePrompts';
 import CommunityPromptsPanel from './CommunityPromptsPanel';
 
@@ -90,7 +90,7 @@ interface TestBatteryPanelProps {
  onToggleAutoImport?: (enabled: boolean) => void;
 }
 
-export default function TestBatteryPanel({
+function TestBatteryPanel({
  showMobilePrompts,
  onCloseMobile,
  promptSearchQuery,
@@ -135,9 +135,11 @@ export default function TestBatteryPanel({
  </div>
 
  {/* Tabs */}
- <div className="flex gap-1">
+ <div className="flex gap-1" role="tablist">
  <button
  onClick={() => setActiveTab('builtin-custom')}
+ role="tab"
+ aria-selected={activeTab === 'builtin-custom'}
  className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
  activeTab === 'builtin-custom'
  ? 'bg-[#c9a227] text-gray-900 font-semibold'
@@ -149,6 +151,8 @@ export default function TestBatteryPanel({
  {onImportCommunityPrompt && (
  <button
  onClick={() => setActiveTab('community')}
+ role="tab"
+ aria-selected={activeTab === 'community'}
  className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
  activeTab === 'community'
  ? 'bg-[#c9a227] text-gray-900 font-semibold'
@@ -306,6 +310,8 @@ export default function TestBatteryPanel({
  );
 }
 
+export default memo(TestBatteryPanel);
+
 // ============================================================================
 // Test Battery Category Section Component
 // ============================================================================
@@ -341,6 +347,7 @@ function CategorySection({
  <div className="border-b border-gray-800 last:border-b-0">
  <button
  onClick={onToggle}
+ aria-expanded={isExpanded}
  className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 transition-colors"
  >
  <div className="text-left">

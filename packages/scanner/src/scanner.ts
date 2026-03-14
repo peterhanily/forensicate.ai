@@ -83,6 +83,20 @@ function scanKeywords(text: string, rule: DetectionRule): RuleMatch | null {
   };
 }
 
+// Module-level regex cache to avoid recompiling the same patterns
+const regexCache = new Map<string, RegExp>();
+
+function getCachedRegex(pattern: string, flags: string): RegExp {
+  const key = `${pattern}::${flags}`;
+  let cached = regexCache.get(key);
+  if (!cached) {
+    cached = new RegExp(pattern, flags);
+    regexCache.set(key, cached);
+  }
+  cached.lastIndex = 0; // Reset for reuse
+  return cached;
+}
+
 /**
  * Scans text for regex pattern matches
  */
@@ -90,7 +104,7 @@ function scanRegex(text: string, rule: DetectionRule): RuleMatch | null {
   if (!rule.pattern) return null;
 
   try {
-    const regex = new RegExp(rule.pattern, rule.flags || 'gi');
+    const regex = getCachedRegex(rule.pattern, rule.flags || 'gi');
     const matches: string[] = [];
     const positions: Array<{ start: number; end: number }> = [];
 

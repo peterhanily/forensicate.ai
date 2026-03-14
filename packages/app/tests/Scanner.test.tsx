@@ -33,8 +33,12 @@ describe('Scanner', () => {
     expect(screen.getByText('Auto-scan enabled')).toBeInTheDocument();
     // The manual Scan button should NOT be visible when auto-scan is on
     const scanButtons = screen.getAllByRole('button', { name: /scan/i });
-    // Only the Batch Scan button should exist (filter out collapsible section headers like "scan_results")
-    const actionButtons = scanButtons.filter(btn => !btn.textContent?.includes('scan_results'));
+    // Filter out collapsible section headers (scan_results) and mode toggle buttons (text_input, file_scan)
+    const actionButtons = scanButtons.filter(btn =>
+      !btn.textContent?.includes('scan_results') &&
+      !btn.textContent?.includes('file_scan') &&
+      !btn.textContent?.includes('text_input')
+    );
     expect(actionButtons.every(btn => btn.textContent?.includes('Batch'))).toBe(true);
   });
 

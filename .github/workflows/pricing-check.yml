@@ -1,0 +1,60 @@
+name: Pricing Data Check
+
+on:
+  schedule:
+    - cron: '0 9 1 * *'  # Monthly on the 1st at 9am UTC
+  workflow_dispatch:
+
+jobs:
+  check-pricing:
+    name: Check Pricing Freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install
+
+      - name: Check pricing age
+        id: check
+        run: |
+          LAST_UPDATED=$(grep -oP "PRICING_LAST_UPDATED = '\K[^']+" packages/app/src/lib/pricing/pricingDatabase.ts)
+          LAST_EPOCH=$(date -d "$LAST_UPDATED" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_UPDATED" +%s)
+          NOW_EPOCH=$(date +%s)
+          AGE_DAYS=$(( (NOW_EPOCH - LAST_EPOCH) / 86400 ))
+          echo "age_days=$AGE_DAYS" >> $GITHUB_OUTPUT
+          echo "Pricing data is ${AGE_DAYS} days old (last updated: ${LAST_UPDATED})"
+          if [ "$AGE_DAYS" -gt 30 ]; then
+            echo "stale=true" >> $GITHUB_OUTPUT
+          else
+            echo "stale=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue if stale
+        if: steps.check.outputs.stale == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'pricing-stale',
+              state: 'open'
+            });
+            if (existing.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Pricing data is stale (>30 days old)',
+                body: `The LLM pricing database in \`packages/app/src/lib/pricing/pricingDatabase.ts\` is **${{ steps.check.outputs.age_days }} days old**.\n\nPlease update the pricing data from official provider websites and update \`PRICING_LAST_UPDATED\`.`,
+                labels: ['pricing-stale', 'maintenance']
+              });
+            }

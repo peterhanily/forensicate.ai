@@ -4,7 +4,7 @@
 import type { Env } from './types';
 import { authenticate, checkIPWhitelist, checkDomainWhitelist } from './auth';
 import { handleScan } from './handlers/scan';
-import { createErrorResponse, handleCORS, getCORSHeaders } from './utils';
+import { createErrorResponse, handleCORS, getCORSHeaders, addSecurityHeaders } from './utils';
 
 export { RateLimiter } from './rate-limiter';
 
@@ -134,6 +134,9 @@ export default {
       // Add standard headers
       response.headers.set('X-API-Version', env.API_VERSION || 'v1');
       response.headers.set('X-Rate-Limit-Remaining', rateLimitResult.tokens.toString());
+
+      // Add security headers
+      addSecurityHeaders(response);
 
       return response;
 

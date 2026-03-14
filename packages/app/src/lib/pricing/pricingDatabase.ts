@@ -457,9 +457,9 @@ export function getAllProviders(): string[] {
 }
 
 /**
- * Check if pricing data is stale (>60 days old)
+ * Check if pricing data is stale (>30 days old)
  */
-export function isPricingStale(lastUpdated: string, maxAgeDays = 60): boolean {
+export function isPricingStale(lastUpdated: string, maxAgeDays = 30): boolean {
   const age = Date.now() - new Date(lastUpdated).getTime();
   const ageInDays = age / (1000 * 60 * 60 * 24);
   return ageInDays > maxAgeDays;

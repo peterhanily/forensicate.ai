@@ -48,6 +48,8 @@ function createBubbleElement(result, fullResult) {
   const riskClass = result.confidence < 30 ? 'low' :
                    result.confidence < 70 ? 'medium' : 'high';
 
+  // SECURITY REVIEW: All user-controlled data is escaped via escapeHtml() which uses
+  // textContent→innerHTML pattern (safe against XSS). Template is static HTML structure.
   bubble.innerHTML = `
     <style>
       .forensicate-ai-bubble {

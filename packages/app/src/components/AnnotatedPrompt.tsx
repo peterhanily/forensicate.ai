@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import type { ScanResult, MatchPosition, RuleMatch, AnnotatedSegment } from '@forensicate/scanner';
 import AnnotationPopover from './AnnotationPopover';
 import OverviewMap from './OverviewMap';
@@ -10,7 +10,7 @@ interface AnnotatedPromptProps {
  onRuleClick?: (match: RuleMatch) => void;
 }
 
-export default function AnnotatedPrompt({
+function AnnotatedPrompt({
  text,
  scanResult,
  onSegmentClick,
@@ -112,6 +112,7 @@ export default function AnnotatedPrompt({
  <span
  key={`segment-${idx}`}
  className={`annotated-text ${severityClass} ${underlineClass} cursor-pointer transition-colors`}
+ tabIndex={0}
  onMouseEnter={(e) => {
  setHoveredSegment(segment);
  const rect = e.currentTarget.getBoundingClientRect();
@@ -121,6 +122,15 @@ export default function AnnotatedPrompt({
  });
  }}
  onMouseLeave={() => setHoveredSegment(null)}
+ onFocus={(e) => {
+ setHoveredSegment(segment);
+ const rect = e.currentTarget.getBoundingClientRect();
+ setPopoverPosition({
+ x: rect.left + rect.width / 2,
+ y: rect.bottom + 8,
+ });
+ }}
+ onBlur={() => setHoveredSegment(null)}
  onClick={() => onSegmentClick?.(segment)}
  >
  {segment.text}
@@ -215,3 +225,5 @@ export default function AnnotatedPrompt({
  </div>
  );
 }
+
+export default memo(AnnotatedPrompt);

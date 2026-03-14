@@ -1,4 +1,4 @@
-import type { ScanResult } from '@forensicate/scanner';
+import type { ScanResult, FileExtractionResult } from '@forensicate/scanner';
 
 function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -32,10 +32,16 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 // --- JSON Export ---
 
-export function exportJSON(scanResult: ScanResult, promptText: string) {
-  const data = {
+export function exportJSON(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
+  const data: Record<string, unknown> = {
     exportedAt: new Date().toISOString(),
     generator: 'Forensicate.ai',
     version: '1.0',
@@ -62,12 +68,37 @@ export function exportJSON(scanResult: ScanResult, promptText: string) {
     },
   };
 
+  if (fileInfo) {
+    data.file = {
+      name: fileInfo.filename,
+      size: fileInfo.fileSize,
+      sizeFormatted: formatFileSize(fileInfo.fileSize),
+      type: fileInfo.fileType,
+      mimeType: fileInfo.mimeType,
+      pageCount: fileInfo.pageCount,
+      extractionTimeMs: fileInfo.extractionTimeMs,
+      layers: fileInfo.layers.map(l => ({
+        type: l.type,
+        location: l.location,
+        contentLength: l.content.length,
+      })),
+      hiddenLayers: fileInfo.layers
+        .filter(l => l.type !== 'visible')
+        .map(l => ({
+          type: l.type,
+          content: l.content,
+          location: l.location,
+        })),
+      warnings: fileInfo.warnings,
+    };
+  }
+
   downloadFile(JSON.stringify(data, null, 2), `forensicate-report-${timestamp()}.json`, 'application/json');
 }
 
 // --- CSV Export ---
 
-export function exportCSV(scanResult: ScanResult, promptText: string) {
+export function exportCSV(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
   const headers = ['Rule ID', 'Rule Name', 'Type', 'Severity', 'Confidence Impact', 'Matched Text'];
   const rows = scanResult.matchedRules
     .slice()
@@ -84,7 +115,16 @@ export function exportCSV(scanResult: ScanResult, promptText: string) {
   const meta = [
     `# Forensicate.ai Scan Report`,
     `# Generated: ${new Date().toISOString()}`,
-    `# Text Length: ${promptText.length} chars`,
+    ...(fileInfo ? [
+      `# File: ${fileInfo.filename}`,
+      `# File Size: ${formatFileSize(fileInfo.fileSize)}`,
+      `# File Type: ${fileInfo.fileType} (${fileInfo.mimeType})`,
+      ...(fileInfo.pageCount ? [`# Pages: ${fileInfo.pageCount}`] : []),
+      `# Hidden Layers: ${fileInfo.layers.filter(l => l.type !== 'visible').length}`,
+      `# Extraction Time: ${fileInfo.extractionTimeMs.toFixed(0)}ms`,
+    ] : [
+      `# Text Length: ${promptText.length} chars`,
+    ]),
     `# Result: ${scanResult.isPositive ? 'INJECTION DETECTED' : 'Clean'}`,
     `# Confidence: ${scanResult.confidence}%`,
     `# Risk Level: ${riskLevel(scanResult.confidence)}`,
@@ -99,7 +139,7 @@ export function exportCSV(scanResult: ScanResult, promptText: string) {
 
 // --- HTML Report Export ---
 
-export function exportHTML(scanResult: ScanResult, promptText: string) {
+export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
   const risk = riskLevel(scanResult.confidence);
   const statusColor = scanResult.isPositive ? '#ef4444' : scanResult.matchedRules.length > 0 ? '#eab308' : '#22c55e';
   const statusLabel = scanResult.isPositive ? 'INJECTION DETECTED' : scanResult.matchedRules.length > 0 ? 'BELOW THRESHOLD' : 'NO THREAT DETECTED';
@@ -126,6 +166,38 @@ export function exportHTML(scanResult: ScanResult, promptText: string) {
         <p style="color:#9ca3af;margin:4px 0 0">${escapeHtml(t.description)}</p>
       </div>
     `).join('')}
+  ` : '';
+
+  const hiddenLayers = fileInfo?.layers.filter(l => l.type !== 'visible') ?? [];
+  const fileSection = fileInfo ? `
+    <h2>File Analysis</h2>
+    <div class="card">
+      <div class="meta">
+        <div class="meta-item">File: <span class="meta-value">${escapeHtml(fileInfo.filename)}</span></div>
+        <div class="meta-item">Size: <span class="meta-value">${formatFileSize(fileInfo.fileSize)}</span></div>
+        <div class="meta-item">Type: <span class="meta-value">${fileInfo.fileType}</span></div>
+        ${fileInfo.pageCount ? `<div class="meta-item">Pages: <span class="meta-value">${fileInfo.pageCount}</span></div>` : ''}
+        <div class="meta-item">Extraction: <span class="meta-value">${fileInfo.extractionTimeMs.toFixed(0)}ms</span></div>
+      </div>
+      ${hiddenLayers.length > 0 ? `
+        <h3 style="color:#ef4444;font-size:14px;margin:16px 0 8px">Hidden Content (${hiddenLayers.length} layer${hiddenLayers.length !== 1 ? 's' : ''})</h3>
+        <table>
+          <thead><tr><th>Type</th><th>Location</th><th>Content</th></tr></thead>
+          <tbody>
+            ${hiddenLayers.map(l => `<tr>
+              <td style="padding:8px;border-bottom:1px solid #374151;color:#ef4444">${escapeHtml(l.type)}</td>
+              <td style="padding:8px;border-bottom:1px solid #374151">${escapeHtml(l.location)}</td>
+              <td style="padding:8px;border-bottom:1px solid #374151;font-size:12px;color:#9ca3af;max-width:400px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(l.content.slice(0, 200))}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      ` : '<p style="color:#22c55e;font-size:13px">No hidden content detected.</p>'}
+      ${fileInfo.warnings.length > 0 ? `
+        <div style="margin-top:12px">
+          ${fileInfo.warnings.map(w => `<div style="color:#eab308;font-size:12px">&#9888; ${escapeHtml(w)}</div>`).join('')}
+        </div>
+      ` : ''}
+    </div>
   ` : '';
 
   const html = `<!DOCTYPE html>
@@ -170,6 +242,8 @@ export function exportHTML(scanResult: ScanResult, promptText: string) {
     </div>
   </div>
 
+  ${fileSection}
+
   <h2>Scanned Text</h2>
   <pre>${escapeHtml(promptText)}</pre>
 
@@ -194,7 +268,7 @@ export function exportHTML(scanResult: ScanResult, promptText: string) {
 
 // --- SARIF Export (Static Analysis Results Interchange Format) ---
 
-export function exportSARIF(scanResult: ScanResult, promptText: string) {
+export function exportSARIF(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
   const rules: Array<{
     id: string;
     name: string;
@@ -253,6 +327,24 @@ export function exportSARIF(scanResult: ScanResult, promptText: string) {
     });
   }
 
+  const invocationProperties: Record<string, unknown> = {
+    confidence: scanResult.confidence,
+    riskLevel: riskLevel(scanResult.confidence),
+    totalRulesChecked: scanResult.totalRulesChecked,
+    isPositive: scanResult.isPositive,
+  };
+
+  if (fileInfo) {
+    invocationProperties.file = {
+      name: fileInfo.filename,
+      size: fileInfo.fileSize,
+      type: fileInfo.fileType,
+      mimeType: fileInfo.mimeType,
+      pageCount: fileInfo.pageCount,
+      hiddenLayers: fileInfo.layers.filter(l => l.type !== 'visible').length,
+    };
+  }
+
   const sarif = {
     $schema: 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json',
     version: '2.1.0',
@@ -271,12 +363,7 @@ export function exportSARIF(scanResult: ScanResult, promptText: string) {
           {
             executionSuccessful: true,
             startTimeUtc: scanResult.timestamp.toISOString(),
-            properties: {
-              confidence: scanResult.confidence,
-              riskLevel: riskLevel(scanResult.confidence),
-              totalRulesChecked: scanResult.totalRulesChecked,
-              isPositive: scanResult.isPositive,
-            },
+            properties: invocationProperties,
           },
         ],
       },
@@ -298,11 +385,11 @@ function sarifLevel(severity: string): string {
 
 export type ExportFormat = 'json' | 'csv' | 'html' | 'sarif';
 
-export function exportReport(format: ExportFormat, scanResult: ScanResult, promptText: string) {
+export function exportReport(format: ExportFormat, scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
   switch (format) {
-    case 'json': return exportJSON(scanResult, promptText);
-    case 'csv': return exportCSV(scanResult, promptText);
-    case 'html': return exportHTML(scanResult, promptText);
-    case 'sarif': return exportSARIF(scanResult, promptText);
+    case 'json': return exportJSON(scanResult, promptText, fileInfo);
+    case 'csv': return exportCSV(scanResult, promptText, fileInfo);
+    case 'html': return exportHTML(scanResult, promptText, fileInfo);
+    case 'sarif': return exportSARIF(scanResult, promptText, fileInfo);
   }
 }

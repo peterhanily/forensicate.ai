@@ -255,6 +255,7 @@ export const heuristicCategory: RuleCategory = {
  * Used to reattach functions after JSON deserialization strips them.
  */
 import { nlpHeuristicFunctionMap } from './nlpRules';
+import { fileHeuristicFunctionMap } from './fileRules';
 
 const heuristicFunctionMap: Record<string, (text: string) => HeuristicResult | null> = {
   'h-entropy-analysis': entropyAnalysis,
@@ -262,6 +263,7 @@ const heuristicFunctionMap: Record<string, (text: string) => HeuristicResult | n
   'h-nested-delimiters': nestedDelimiterDetection,
   'h-language-switch': languageSwitchDetection,
   ...nlpHeuristicFunctionMap,
+  ...fileHeuristicFunctionMap,
 };
 
 /**

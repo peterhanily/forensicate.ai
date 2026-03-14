@@ -3,7 +3,7 @@
  * Shows estimated API costs for prompts across different providers
  */
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import {
  calculateMultiProviderCost,
  formatCost,
@@ -59,7 +59,7 @@ const DEFAULT_PROVIDERS = [
  ...ALL_OTHER_MODELS,
 ];
 
-export default function CostEstimator({
+function CostEstimator({
  promptText,
  providers = DEFAULT_PROVIDERS,
  mode = 'single',
@@ -93,6 +93,7 @@ export default function CostEstimator({
  {/* Collapsed Summary View - Terminal Style */}
  <button
  onClick={() => setIsExpanded(!isExpanded)}
+ aria-expanded={isExpanded}
  className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-900 transition-colors group"
  >
  <div className="flex items-center gap-3">
@@ -159,6 +160,7 @@ export default function CostEstimator({
  <div className="pt-3">
  <button
  onClick={() => setIsDisclaimerExpanded(!isDisclaimerExpanded)}
+ aria-expanded={isDisclaimerExpanded}
  className="w-full bg-yellow-900/20 border border-yellow-700/50 rounded p-2 hover:bg-yellow-900/30 transition-colors"
  >
  <div className="flex items-center justify-between">
@@ -361,7 +363,7 @@ export default function CostEstimator({
  </span>
  </div>
  {isStale && (
- <span className="text-yellow-500 text-xs">DATA STALE (&gt;60d)</span>
+ <span className="text-yellow-500 text-xs">DATA STALE (&gt;30d)</span>
  )}
  </div>
  </div>
@@ -403,6 +405,8 @@ export default function CostEstimator({
  </div>
  );
 }
+
+export default memo(CostEstimator);
 
 // Helper to extract pricing from estimate (for display purposes)
 function getPricingFromEstimate(estimate: CostEstimate): { inputCostPer1M: number; outputCostPer1M: number } {

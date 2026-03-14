@@ -5,6 +5,12 @@ export * from './rules';
 export * from './scanner';
 export { rehydrateHeuristics, heuristicRules } from './heuristicRules';
 export { nlpRules, nlpCategory } from './nlpRules';
+export {
+  fileRules, fileRuleCategory, fileHeuristicFunctionMap,
+  bidiOverrideDetection, zwcBinaryEncodingDetection,
+  normalizationBypassDetection, markdownExfiltrationDetection,
+  pdfJavascriptDetection,
+} from './fileRules';
 export { detectCompoundThreats } from './compoundDetector';
 export {
   fetchCommunityIndex,

@@ -159,8 +159,19 @@ export function AddRuleModal({
  try {
  // Dynamic function creation needed for user-defined heuristics
  const fn = new Function('text', heuristicBody.trim()) as (text: string) => import('@forensicate/scanner').HeuristicResult | null;
- // Validate: test with empty string to check it doesn't throw
- fn('');
+ // Validate and time the test execution
+ const startTime = performance.now();
+ try {
+  fn('');
+ } catch (testErr) {
+  throw new Error(`Heuristic function threw an error: ${testErr instanceof Error ? testErr.message : String(testErr)}`);
+ }
+ const elapsed = performance.now() - startTime;
+ if (elapsed > 500) {
+  if (!confirm(`Warning: heuristic function took ${elapsed.toFixed(0)}ms to execute on an empty string. This may cause UI freezes. Continue anyway?`)) {
+   return;
+  }
+ }
 
  const rule: DetectionRule = {
  id: `custom-hr-${Date.now()}`,

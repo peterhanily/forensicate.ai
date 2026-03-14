@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import type { DetectionRule, RuleCategory } from '@forensicate/scanner';
 import CommunityRulesPanel from './CommunityRulesPanel';
 
@@ -37,7 +37,7 @@ interface RulesPanelProps {
  matchedRuleIds?: Set<string>; // NEW: IDs of rules that matched in the last scan
 }
 
-export default function RulesPanel({
+function RulesPanel({
  showMobileRules,
  onCloseMobile,
  enabledRuleCount,
@@ -92,9 +92,11 @@ export default function RulesPanel({
  </div>
 
  {/* Tabs */}
- <div className="flex gap-1">
+ <div className="flex gap-1" role="tablist">
  <button
  onClick={() => setActiveTab('builtin')}
+ role="tab"
+ aria-selected={activeTab === 'builtin'}
  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
  activeTab === 'builtin'
  ? 'bg-[#c9a227] text-gray-900'
@@ -105,6 +107,8 @@ export default function RulesPanel({
  </button>
  <button
  onClick={() => setActiveTab('community')}
+ role="tab"
+ aria-selected={activeTab === 'community'}
  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors ${
  activeTab === 'community'
  ? 'bg-[#c9a227] text-gray-900'
@@ -131,12 +135,14 @@ export default function RulesPanel({
  value={ruleSearchQuery}
  onChange={(e) => onRuleSearchChange(e.target.value)}
  placeholder="Search rules..."
+ aria-label="Search detection rules"
  className="w-full pl-7 pr-7 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#c9a227]/50"
  />
  {ruleSearchQuery && (
  <button
  onClick={() => onRuleSearchChange('')}
  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+ aria-label="Clear search"
  >
  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -225,6 +231,8 @@ export default function RulesPanel({
  );
 }
 
+export default memo(RulesPanel);
+
 // ============================================================================
 // Rule Category Section Component
 // ============================================================================
@@ -277,6 +285,7 @@ function RuleCategorySection({
  <div className={`border-b border-gray-800 last:border-b-0 ${hasMatchedRules && !isExpanded ? 'bg-[#c9a227]/10 border-l-2 border-l-[#c9a227]' : ''}`}>
  <button
  onClick={onToggle}
+ aria-expanded={isExpanded}
  className={`w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 transition-colors ${hasMatchedRules && !isExpanded ? 'pl-2.5' : ''}`}
  >
  <div className="text-left flex-1">

@@ -56,6 +56,20 @@ const compoundDefinitions: CompoundDefinition[] = [
     severity: 'critical',
     requiredCategories: ['prompt-extraction', 'context-manipulation'],
   },
+  {
+    id: 'compound-file-hidden-injection',
+    name: 'File Hidden Injection',
+    description: 'File analysis threats combined with instruction override indicates a document-based injection attack',
+    severity: 'critical',
+    requiredCategories: ['file-analysis', 'instruction-override'],
+  },
+  {
+    id: 'compound-file-exfiltration',
+    name: 'File-Based Exfiltration',
+    description: 'File analysis threats combined with prompt extraction suggests document-embedded data theft',
+    severity: 'critical',
+    requiredCategories: ['file-analysis', 'prompt-extraction'],
+  },
 ];
 
 /**

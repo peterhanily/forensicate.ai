@@ -86,3 +86,53 @@ export interface AnnotatedSegment {
   text: string;
   rules: RuleMatch[];
 }
+
+// ============================================================================
+// FILE SCANNING TYPES
+// ============================================================================
+
+export type FileType = 'pdf' | 'image' | 'docx' | 'csv' | 'html' | 'text' | 'svg' | 'eml';
+
+export type TextLayerType =
+  | 'visible' | 'hidden' | 'metadata' | 'comment'
+  | 'low-contrast' | 'invisible-unicode' | 'ocr' | 'off-page'
+  | 'tracked-change' | 'vanish-text' | 'header-footer' | 'custom-xml' | 'doc-property';
+
+export interface TextLayer {
+  type: TextLayerType;
+  content: string;
+  location: string;
+  extractionConfidence?: number;
+}
+
+export interface FileExtractionResult {
+  filename: string;
+  fileSize: number;
+  fileType: FileType;
+  mimeType: string;
+  layers: TextLayer[];
+  visibleText: string;
+  hiddenText: string;
+  allText: string;
+  extractionTimeMs: number;
+  warnings: string[];
+  pageCount?: number;
+}
+
+export interface FileScanResult extends ScanResult {
+  fileInfo: FileExtractionResult;
+  visibleScanResult: ScanResult;
+  hiddenScanResult?: ScanResult;
+  fileThreats: FileThreat[];
+}
+
+export interface FileThreat {
+  type: 'hidden-text' | 'metadata-injection' | 'invisible-unicode'
+    | 'low-contrast' | 'steganographic' | 'off-page-content'
+    | 'tracked-change-injection' | 'vanish-text-injection' | 'custom-xml-injection'
+    | 'html-hidden-injection' | 'svg-hidden-injection' | 'bidi-override';
+  severity: RuleSeverity;
+  description: string;
+  content: string;
+  location: string;
+}

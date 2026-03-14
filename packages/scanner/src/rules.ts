@@ -5,6 +5,7 @@
 import type { DetectionRule, RuleCategory } from './types';
 import { heuristicRules, heuristicCategory } from './heuristicRules';
 import { nlpRules, nlpCategory } from './nlpRules';
+import { fileRules, fileRuleCategory } from './fileRules';
 
 // ============================================================================
 // KEYWORD-BASED RULES
@@ -1680,6 +1681,7 @@ export const ruleCategories: RuleCategory[] = [
   },
   heuristicCategory,
   nlpCategory,
+  fileRuleCategory,
 ];
 
 // All rules combined
@@ -1688,6 +1690,7 @@ export const allRules: DetectionRule[] = [
   ...regexRules,
   ...heuristicRules,
   ...nlpRules,
+  ...fileRules,
 ];
 
 // Get enabled rules only
