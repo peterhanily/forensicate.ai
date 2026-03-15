@@ -48,20 +48,11 @@ describe('File Scanner Integration', () => {
     expect(screen.queryByText('file_input')).not.toBeInTheDocument();
   });
 
-  it('shows file test battery in file mode', async () => {
+  it('shows file test categories in sidebar test battery', () => {
     render(<Scanner />);
 
-    fireEvent.click(screen.getByText('file_scan'));
-
-    await waitFor(() => {
-      expect(screen.getByText('file_test_battery')).toBeInTheDocument();
-    });
-  });
-
-  it('does not show file test battery in text mode', () => {
-    render(<Scanner />);
-
-    expect(screen.queryByText('file_test_battery')).not.toBeInTheDocument();
+    // File test categories are always visible in the sidebar test battery
+    expect(screen.getByText('File Tests')).toBeInTheDocument();
   });
 
   it('mode toggle highlights the active mode', () => {

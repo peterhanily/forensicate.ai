@@ -1,5 +1,6 @@
 import { useState, memo } from 'react';
 import type { PromptCategory, PromptItem } from '../data/samplePrompts';
+import { fileTestCategories, type FileTestCase } from '../data/fileTestBattery';
 import CommunityPromptsPanel from './CommunityPromptsPanel';
 
 // ============================================================================
@@ -88,6 +89,9 @@ interface TestBatteryPanelProps {
  importedCommunityPromptIds?: Set<string>;
  autoImportEnabled?: boolean;
  onToggleAutoImport?: (enabled: boolean) => void;
+ onRunFileTest?: (file: File) => void;
+ onDownloadFileTest?: (blob: Blob, filename: string) => void;
+ isFileProcessing?: boolean;
 }
 
 function TestBatteryPanel({
@@ -114,8 +118,13 @@ function TestBatteryPanel({
  importedCommunityPromptIds = new Set(),
  autoImportEnabled = false,
  onToggleAutoImport,
+ onRunFileTest,
+ onDownloadFileTest,
+ isFileProcessing = false,
 }: TestBatteryPanelProps) {
  const [activeTab, setActiveTab] = useState<'builtin-custom' | 'community'>('builtin-custom');
+ const [expandedFileCategory, setExpandedFileCategory] = useState<string | null>(null);
+ const [generatingId, setGeneratingId] = useState<string | null>(null);
  return (
  <div className={`${showMobilePrompts ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 lg:flex-shrink-0 border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden flex-col max-h-[70vh] lg:max-h-[calc(100vh-220px)] lg:sticky lg:top-20 lg:self-start`}>
  <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex-shrink-0">
@@ -242,6 +251,56 @@ function TestBatteryPanel({
  />
  );
  })}
+
+ {/* File Test Sections */}
+ {onRunFileTest && (
+ <>
+ <div className="px-3 py-1.5 border-t border-gray-700 border-b border-gray-800">
+ <span className="text-[#c9a227] text-[10px] font-semibold uppercase tracking-wider">File Tests</span>
+ </div>
+ {fileTestCategories
+ .filter(cat => !promptSearchQuery || cat.name.toLowerCase().includes(promptSearchQuery.toLowerCase()) || cat.tests.some(t => t.name.toLowerCase().includes(promptSearchQuery.toLowerCase()) || t.tags.some(tag => tag.includes(promptSearchQuery.toLowerCase()))))
+ .map(category => (
+ <FileTestCategorySection
+ key={category.id}
+ category={category}
+ isExpanded={expandedFileCategory === category.id}
+ onToggle={() => setExpandedFileCategory(expandedFileCategory === category.id ? null : category.id)}
+ onRunTest={async (test) => {
+ setGeneratingId(test.id);
+ try {
+ const blob = await test.generate();
+ const extMap: Record<string, string> = {
+ csv: '.csv', html: '.html', svg: '.svg', eml: '.eml',
+ docx: '.docx', pdf: '.pdf', text: '.txt', image: '.jpg',
+ };
+ const ext = extMap[test.fileType] || '.txt';
+ const file = new File([blob], `${test.id}${ext}`, { type: blob.type });
+ onRunFileTest(file);
+ } finally {
+ setGeneratingId(null);
+ }
+ }}
+ onDownloadTest={onDownloadFileTest ? async (test) => {
+ setGeneratingId(test.id);
+ try {
+ const blob = await test.generate();
+ const extMap: Record<string, string> = {
+ csv: '.csv', html: '.html', svg: '.svg', eml: '.eml',
+ docx: '.docx', pdf: '.pdf', text: '.txt', image: '.jpg',
+ };
+ const ext = extMap[test.fileType] || '.txt';
+ onDownloadFileTest(blob, `${test.id}${ext}`);
+ } finally {
+ setGeneratingId(null);
+ }
+ } : undefined}
+ generatingId={generatingId}
+ isProcessing={isFileProcessing}
+ />
+ ))}
+ </>
+ )}
  </div>
 
  <div className="px-3 py-2 bg-gray-800/30 border-t border-gray-700 flex-shrink-0 space-y-2">
@@ -499,6 +558,117 @@ function CategorySection({
  </div>
  ))
  )}
+ </div>
+ )}
+ </div>
+ );
+}
+
+// ============================================================================
+// File Test Category Section Component
+// ============================================================================
+
+interface FileTestCategorySectionProps {
+ category: { id: string; name: string; description: string; tests: FileTestCase[] };
+ isExpanded: boolean;
+ onToggle: () => void;
+ onRunTest: (test: FileTestCase) => void;
+ onDownloadTest?: (test: FileTestCase) => void;
+ generatingId: string | null;
+ isProcessing: boolean;
+}
+
+function FileTestCategorySection({
+ category,
+ isExpanded,
+ onToggle,
+ onRunTest,
+ onDownloadTest,
+ generatingId,
+ isProcessing,
+}: FileTestCategorySectionProps) {
+ return (
+ <div className="border-b border-gray-800 last:border-b-0">
+ <button
+ onClick={onToggle}
+ aria-expanded={isExpanded}
+ className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 transition-colors"
+ >
+ <div className="text-left">
+ <div className="flex items-center gap-1.5">
+ <span className="text-gray-200 text-sm font-medium">{category.name}</span>
+ <span className="px-1 py-0.5 text-[9px] bg-purple-900/50 text-purple-300 rounded">
+ file
+ </span>
+ </div>
+ <div className="text-gray-500 text-xs">{category.tests.length} test files</div>
+ </div>
+ <svg
+ className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+ fill="none"
+ stroke="currentColor"
+ viewBox="0 0 24 24"
+ >
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+ </svg>
+ </button>
+
+ {isExpanded && (
+ <div className="bg-gray-900/50">
+ <div className="px-3 py-1.5 text-xs text-gray-500 border-b border-gray-800">
+ {category.description}
+ </div>
+ {category.tests.map((test) => (
+ <div
+ key={test.id}
+ className="group px-3 py-2 border-b border-gray-800/50 last:border-b-0 hover:bg-gray-800/20 transition-colors"
+ >
+ <div className="flex items-center gap-1.5">
+ <span className="text-gray-300 text-xs">{test.name}</span>
+ <span className="px-1 py-0.5 text-[9px] bg-gray-700 text-gray-400 rounded">
+ .{test.fileType === 'text' ? 'txt' : test.fileType === 'image' ? 'jpg' : test.fileType}
+ </span>
+ </div>
+ <div className="text-[10px] text-gray-600 mt-0.5">{test.description}</div>
+ <div className="flex items-center gap-1.5 mt-1.5">
+ <div className="flex flex-wrap gap-1 flex-1">
+ {test.tags.map(tag => (
+ <span key={tag} className="px-1 py-0.5 text-[9px] bg-gray-800 text-gray-500 rounded">
+ {tag}
+ </span>
+ ))}
+ </div>
+ <button
+ onClick={() => onRunTest(test)}
+ disabled={isProcessing || generatingId !== null}
+ className={`shrink-0 px-2 py-0.5 text-[10px] font-mono font-semibold rounded transition-colors ${
+ isProcessing || generatingId !== null
+ ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+ : 'bg-[#c9a227]/20 text-[#c9a227] hover:bg-[#c9a227]/30'
+ }`}
+ title="Scan this test file"
+ >
+ {generatingId === test.id ? '...' : 'Scan'}
+ </button>
+ {onDownloadTest && (
+ <button
+ onClick={() => onDownloadTest(test)}
+ disabled={generatingId !== null}
+ className={`shrink-0 px-2 py-0.5 text-[10px] font-mono font-semibold rounded transition-colors ${
+ generatingId !== null
+ ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+ : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+ }`}
+ title="Download this test file"
+ >
+ <svg className="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+ </svg>
+ </button>
+ )}
+ </div>
+ </div>
+ ))}
  </div>
  )}
  </div>

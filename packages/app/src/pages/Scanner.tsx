@@ -39,7 +39,7 @@ import RuleDetailsModal from '../components/RuleDetailsModal';
 const CostEstimator = lazy(() => import('../components/CostEstimator'));
 const FileDropZone = lazy(() => import('../components/FileDropZone'));
 const FileComparisonView = lazy(() => import('../components/FileComparisonView'));
-import FileTestBattery from '../components/FileTestBattery';
+// FileTestBattery is integrated into TestBatteryPanel sidebar
 import { useFileScanner } from '../hooks/useFileScanner';
 
 // Extension export item type
@@ -1262,23 +1262,6 @@ export default function Scanner() {
  /></Suspense>
  )}
 
- {/* File Test Battery - shown in file scan mode */}
- {scanMode === 'file_scan' && (
- <FileTestBattery
- onRunTest={async (file) => {
- try {
- await handleFileSelected(file, localRules, confidenceThreshold);
- } catch (error) {
- showToastMessage(
- `Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
- 5000,
- );
- }
- }}
- isProcessing={isExtracting}
- />
- )}
-
  {/* Annotated Prompt View */}
  {scanResult && promptText && (
  <div className="border border-gray-800 border-gray-800 rounded-lg bg-gray-900/30 bg-gray-900/30 overflow-hidden" data-tour="annotated-view">
@@ -1392,6 +1375,28 @@ export default function Scanner() {
  )}
  autoImportEnabled={autoImportCommunityPrompts}
  onToggleAutoImport={setAutoImportCommunityPrompts}
+ onRunFileTest={async (file) => {
+ setScanMode('file_scan');
+ try {
+ await handleFileSelected(file, localRules, confidenceThreshold);
+ } catch (error) {
+ showToastMessage(
+ `Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+ 5000,
+ );
+ }
+ }}
+ onDownloadFileTest={(blob, filename) => {
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url;
+ a.download = filename;
+ document.body.appendChild(a);
+ a.click();
+ document.body.removeChild(a);
+ URL.revokeObjectURL(url);
+ }}
+ isFileProcessing={isExtracting}
  />
  </div>
  </div>
