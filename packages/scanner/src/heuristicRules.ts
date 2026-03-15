@@ -1,7 +1,7 @@
 // Heuristic detection rules for prompt injection scanning
 // These use algorithmic analysis rather than keyword/regex matching
 
-import type { DetectionRule, RuleCategory, HeuristicResult } from './types';
+import type { DetectionRule, RuleCategory, HeuristicResult } from './types.js';
 
 // ============================================================================
 // HEURISTIC FUNCTIONS
@@ -254,8 +254,8 @@ export const heuristicCategory: RuleCategory = {
  * Map of rule IDs to their heuristic functions.
  * Used to reattach functions after JSON deserialization strips them.
  */
-import { nlpHeuristicFunctionMap } from './nlpRules';
-import { fileHeuristicFunctionMap } from './fileRules';
+import { nlpHeuristicFunctionMap } from './nlpRules.js';
+import { fileHeuristicFunctionMap } from './fileRules.js';
 
 const heuristicFunctionMap: Record<string, (text: string) => HeuristicResult | null> = {
   'h-entropy-analysis': entropyAnalysis,

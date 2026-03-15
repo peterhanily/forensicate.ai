@@ -1,7 +1,7 @@
 // Community Rules Loader
 // Fetches and caches community-contributed detection rules from GitHub
 
-import type { DetectionRule } from './types';
+import type { DetectionRule } from './types.js';
 
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/peterhanily/forensicate.ai/main/community-rules';
 const CACHE_KEY = 'forensicate_community_rules_cache';

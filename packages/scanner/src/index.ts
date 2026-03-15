@@ -1,17 +1,17 @@
 // Scanner module exports
 
-export * from './types';
-export * from './rules';
-export * from './scanner';
-export { rehydrateHeuristics, heuristicRules } from './heuristicRules';
-export { nlpRules, nlpCategory } from './nlpRules';
+export * from './types.js';
+export * from './rules.js';
+export * from './scanner.js';
+export { rehydrateHeuristics, heuristicRules } from './heuristicRules.js';
+export { nlpRules, nlpCategory } from './nlpRules.js';
 export {
   fileRules, fileRuleCategory, fileHeuristicFunctionMap,
   bidiOverrideDetection, zwcBinaryEncodingDetection,
   normalizationBypassDetection, markdownExfiltrationDetection,
   pdfJavascriptDetection,
-} from './fileRules';
-export { detectCompoundThreats } from './compoundDetector';
+} from './fileRules.js';
+export { detectCompoundThreats } from './compoundDetector.js';
 export {
   fetchCommunityIndex,
   fetchCommunityRule,
@@ -21,7 +21,7 @@ export {
   type CommunityRule,
   type CommunityRuleIndex,
   type CommunityRuleMetadata
-} from './communityRules';
+} from './communityRules.js';
 export {
   fetchCommunityPromptsIndex,
   fetchCommunityPrompt,
@@ -32,4 +32,4 @@ export {
   type CommunityPrompt,
   type CommunityPromptIndex,
   type CommunityPromptMetadata
-} from './communityPrompts';
+} from './communityPrompts.js';

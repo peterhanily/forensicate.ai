@@ -2,8 +2,8 @@
 // Uses compromise.js for POS tagging and NER, AFINN-165 for sentiment analysis
 
 import nlp from 'compromise';
-import type { DetectionRule, RuleCategory, HeuristicResult } from './types';
-import { afinn165 } from './afinn165';
+import type { DetectionRule, RuleCategory, HeuristicResult } from './types.js';
+import { afinn165 } from './afinn165.js';
 
 // NLP document cache - avoids re-parsing the same text for each NLP rule
 let _cachedNlpText: string | null = null;

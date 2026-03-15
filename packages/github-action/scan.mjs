@@ -14,10 +14,7 @@ import { fileURLToPath } from 'node:url';
 // ---------------------------------------------------------------------------
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const scannerPath = join(__dirname, 'node_modules', '@forensicate', 'scanner', 'dist', 'index.js');
-const { scanPrompt, rehydrateHeuristics } = await import(scannerPath);
-
-// Rehydrate heuristic rule functions after module load
-rehydrateHeuristics();
+const { scanPrompt } = await import(scannerPath);
 
 // ---------------------------------------------------------------------------
 // Configuration from environment (set by action.yml)

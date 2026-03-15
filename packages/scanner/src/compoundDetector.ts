@@ -2,8 +2,8 @@
 // Identifies when multiple attack categories are present simultaneously,
 // indicating sophisticated multi-vector attacks.
 
-import type { RuleMatch, CompoundThreat, RuleSeverity } from './types';
-import { ruleCategories } from './rules';
+import type { RuleMatch, CompoundThreat, RuleSeverity } from './types.js';
+import { ruleCategories } from './rules.js';
 
 interface CompoundDefinition {
   id: string;

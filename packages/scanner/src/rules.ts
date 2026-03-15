@@ -2,10 +2,10 @@
 // Based on research from OWASP, security researchers, jailbreakchat.com,
 // L1B3RT4S, Lakera, and known attack patterns
 
-import type { DetectionRule, RuleCategory } from './types';
-import { heuristicRules, heuristicCategory } from './heuristicRules';
-import { nlpRules, nlpCategory } from './nlpRules';
-import { fileRules, fileRuleCategory } from './fileRules';
+import type { DetectionRule, RuleCategory } from './types.js';
+import { heuristicRules, heuristicCategory } from './heuristicRules.js';
+import { nlpRules, nlpCategory } from './nlpRules.js';
+import { fileRules, fileRuleCategory } from './fileRules.js';
 
 // ============================================================================
 // KEYWORD-BASED RULES

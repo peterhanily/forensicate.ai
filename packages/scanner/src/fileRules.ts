@@ -2,7 +2,7 @@
 // These detect attack vectors unique to file-based injection:
 // hidden text in PDFs, invisible unicode, metadata injection, etc.
 
-import type { DetectionRule, RuleCategory, HeuristicResult } from './types';
+import type { DetectionRule, RuleCategory, HeuristicResult } from './types.js';
 
 // ============================================================================
 // ZERO-WIDTH / INVISIBLE UNICODE DETECTION

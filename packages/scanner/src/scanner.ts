@@ -1,9 +1,9 @@
 // Prompt Injection Scanner Engine
 // Executes detection rules and generates scan results
 
-import type { DetectionRule, RuleMatch, ScanResult, MatchPosition } from './types';
-import { getEnabledRules } from './rules';
-import { detectCompoundThreats } from './compoundDetector';
+import type { DetectionRule, RuleMatch, ScanResult, MatchPosition } from './types.js';
+import { getEnabledRules } from './rules.js';
+import { detectCompoundThreats } from './compoundDetector.js';
 
 // Severity weights for confidence calculation
 export const SEVERITY_WEIGHTS = {
