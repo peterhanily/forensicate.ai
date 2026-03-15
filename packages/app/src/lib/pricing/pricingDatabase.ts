@@ -1,14 +1,14 @@
 /**
  * LLM Pricing Database
  *
- * Sources verified as of February 2026
+ * Sources verified as of March 2026
  * Prices in USD per 1M tokens
  */
 
 import type { ModelPricing } from './types';
 
 // Last updated date for all pricing data
-const PRICING_LAST_UPDATED = '2026-02-10T00:00:00Z';
+const PRICING_LAST_UPDATED = '2026-03-15T00:00:00Z';
 
 /**
  * Hardcoded pricing database with official sources
@@ -197,7 +197,37 @@ export const PRICING_DATABASE: ModelPricing[] = [
     notes: 'Legacy fast and inexpensive model',
   },
 
-  // Anthropic Claude - https://www.anthropic.com/pricing
+  // Anthropic Claude - https://platform.claude.com/docs/en/docs/about-claude/models
+  {
+    provider: 'anthropic',
+    model: 'claude-opus-4.6',
+    displayName: 'Claude Opus 4.6',
+    inputCostPer1M: 5.00,
+    outputCostPer1M: 25.00,
+    contextWindow: 1000000,
+    source: {
+      type: 'fallback',
+      lastUpdated: PRICING_LAST_UPDATED,
+      url: 'https://www.anthropic.com/pricing',
+      verifiedBy: 'manual',
+    },
+    notes: 'Most intelligent model, 1M context, extended thinking',
+  },
+  {
+    provider: 'anthropic',
+    model: 'claude-sonnet-4.6',
+    displayName: 'Claude Sonnet 4.6',
+    inputCostPer1M: 3.00,
+    outputCostPer1M: 15.00,
+    contextWindow: 1000000,
+    source: {
+      type: 'fallback',
+      lastUpdated: PRICING_LAST_UPDATED,
+      url: 'https://www.anthropic.com/pricing',
+      verifiedBy: 'manual',
+    },
+    notes: 'Best speed/intelligence balance, 1M context',
+  },
   {
     provider: 'anthropic',
     model: 'claude-opus-4.5',
@@ -211,22 +241,7 @@ export const PRICING_DATABASE: ModelPricing[] = [
       url: 'https://www.anthropic.com/pricing',
       verifiedBy: 'manual',
     },
-    notes: 'Most capable model (66% cheaper than v4.1)',
-  },
-  {
-    provider: 'anthropic',
-    model: 'claude-3-opus',
-    displayName: 'Claude 3 Opus',
-    inputCostPer1M: 15.00,
-    outputCostPer1M: 75.00,
-    contextWindow: 200000,
-    source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://www.anthropic.com/pricing',
-      verifiedBy: 'manual',
-    },
-    notes: 'Legacy Claude 3 flagship',
+    notes: 'Legacy Opus (200K context)',
   },
   {
     provider: 'anthropic',
@@ -241,7 +256,7 @@ export const PRICING_DATABASE: ModelPricing[] = [
       url: 'https://www.anthropic.com/pricing',
       verifiedBy: 'manual',
     },
-    notes: 'Balanced performance and speed (<200K context)',
+    notes: 'Legacy Sonnet (1M with beta header)',
   },
   {
     provider: 'anthropic',
@@ -256,7 +271,7 @@ export const PRICING_DATABASE: ModelPricing[] = [
       url: 'https://www.anthropic.com/pricing',
       verifiedBy: 'manual',
     },
-    notes: 'Fastest and most compact',
+    notes: 'Fastest with near-frontier intelligence',
   },
   {
     provider: 'anthropic',
@@ -271,14 +286,14 @@ export const PRICING_DATABASE: ModelPricing[] = [
       url: 'https://www.anthropic.com/pricing',
       verifiedBy: 'manual',
     },
-    notes: 'Legacy Claude 3 fast model (very cheap)',
+    notes: 'Deprecated — retiring April 19, 2026',
   },
 
   // Google Gemini - https://ai.google.dev/pricing
   {
     provider: 'google',
-    model: 'gemini-3-pro',
-    displayName: 'Gemini 3 Pro',
+    model: 'gemini-3.1-pro',
+    displayName: 'Gemini 3.1 Pro',
     inputCostPer1M: 2.00,
     outputCostPer1M: 12.00,
     contextWindow: 2000000,
@@ -288,7 +303,37 @@ export const PRICING_DATABASE: ModelPricing[] = [
       url: 'https://ai.google.dev/pricing',
       verifiedBy: 'manual',
     },
-    notes: 'Newest flagship with 2M context window',
+    notes: 'Latest flagship preview ($4/$18 for >200K prompts)',
+  },
+  {
+    provider: 'google',
+    model: 'gemini-3.1-flash-lite',
+    displayName: 'Gemini 3.1 Flash-Lite',
+    inputCostPer1M: 0.25,
+    outputCostPer1M: 1.50,
+    contextWindow: 1000000,
+    source: {
+      type: 'fallback',
+      lastUpdated: PRICING_LAST_UPDATED,
+      url: 'https://ai.google.dev/pricing',
+      verifiedBy: 'manual',
+    },
+    notes: 'Latest flash-lite preview',
+  },
+  {
+    provider: 'google',
+    model: 'gemini-3-flash',
+    displayName: 'Gemini 3 Flash',
+    inputCostPer1M: 0.50,
+    outputCostPer1M: 3.00,
+    contextWindow: 1000000,
+    source: {
+      type: 'fallback',
+      lastUpdated: PRICING_LAST_UPDATED,
+      url: 'https://ai.google.dev/pricing',
+      verifiedBy: 'manual',
+    },
+    notes: 'Preview flash model',
   },
   {
     provider: 'google',
@@ -303,14 +348,14 @@ export const PRICING_DATABASE: ModelPricing[] = [
       url: 'https://ai.google.dev/pricing',
       verifiedBy: 'manual',
     },
-    notes: 'Best for coding tasks',
+    notes: 'Best for coding ($2.50/$15 for >200K prompts)',
   },
   {
     provider: 'google',
     model: 'gemini-2.5-flash',
     displayName: 'Gemini 2.5 Flash',
-    inputCostPer1M: 0.10,
-    outputCostPer1M: 0.40,
+    inputCostPer1M: 0.30,
+    outputCostPer1M: 2.50,
     contextWindow: 1000000,
     source: {
       type: 'fallback',
@@ -334,21 +379,6 @@ export const PRICING_DATABASE: ModelPricing[] = [
       verifiedBy: 'manual',
     },
     notes: 'Most economical for high-volume tasks',
-  },
-  {
-    provider: 'google',
-    model: 'gemini-1.5-pro',
-    displayName: 'Gemini 1.5 Pro',
-    inputCostPer1M: 1.25,
-    outputCostPer1M: 5.00,
-    contextWindow: 2000000,
-    source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://ai.google.dev/pricing',
-      verifiedBy: 'manual',
-    },
-    notes: 'Legacy model with 2M context',
   },
 
   // Mistral - https://mistral.ai/pricing
@@ -398,7 +428,22 @@ export const PRICING_DATABASE: ModelPricing[] = [
     notes: 'Most cost-effective',
   },
 
-  // Perplexity - https://docs.perplexity.ai/docs/pricing
+  // Perplexity - https://docs.perplexity.ai/guides/pricing
+  {
+    provider: 'perplexity',
+    model: 'sonar',
+    displayName: 'Sonar',
+    inputCostPer1M: 1.00,
+    outputCostPer1M: 1.00,
+    contextWindow: 127000,
+    source: {
+      type: 'fallback',
+      lastUpdated: PRICING_LAST_UPDATED,
+      url: 'https://docs.perplexity.ai/guides/pricing',
+      verifiedBy: 'manual',
+    },
+    notes: 'Base search model',
+  },
   {
     provider: 'perplexity',
     model: 'sonar-pro',
@@ -409,10 +454,25 @@ export const PRICING_DATABASE: ModelPricing[] = [
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://docs.perplexity.ai/docs/pricing',
+      url: 'https://docs.perplexity.ai/guides/pricing',
       verifiedBy: 'manual',
     },
-    notes: 'Real-time web search integration',
+    notes: 'Advanced search capabilities',
+  },
+  {
+    provider: 'perplexity',
+    model: 'sonar-reasoning-pro',
+    displayName: 'Sonar Reasoning Pro',
+    inputCostPer1M: 2.00,
+    outputCostPer1M: 8.00,
+    contextWindow: 127000,
+    source: {
+      type: 'fallback',
+      lastUpdated: PRICING_LAST_UPDATED,
+      url: 'https://docs.perplexity.ai/guides/pricing',
+      verifiedBy: 'manual',
+    },
+    notes: 'Reasoning-focused with web search',
   },
 
   // Ollama (local) - Free but compute costs

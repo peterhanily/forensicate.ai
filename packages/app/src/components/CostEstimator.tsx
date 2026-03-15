@@ -22,38 +22,42 @@ interface CostEstimatorProps {
 
 // Top 5 models by performance/cost factor (highlighted by default)
 const TOP_5_MODELS = [
- { provider: 'google', model: 'gemini-2.5-flash', badge: '🏆 Best Value' },
+ { provider: 'google', model: 'gemini-2.5-flash-lite', badge: '🏆 Best Value' },
  { provider: 'openai', model: 'gpt-4o-mini', badge: '💰 Cheapest' },
- { provider: 'openai', model: 'gpt-5.1', badge: '🧠 Adaptive' },
- { provider: 'openai', model: 'gpt-5.2-pro', badge: '🚀 Latest' },
- { provider: 'anthropic', model: 'claude-sonnet-4.5', badge: '⚖️ Balanced' },
+ { provider: 'anthropic', model: 'claude-sonnet-4.6', badge: '🧠 Latest Sonnet' },
+ { provider: 'openai', model: 'gpt-5.2-pro', badge: '🚀 Latest GPT' },
+ { provider: 'anthropic', model: 'claude-opus-4.6', badge: '🔬 Most Capable' },
 ];
 
 // All other tracked models (shown in dropdown)
 const ALL_OTHER_MODELS = [
- { provider: 'anthropic', model: 'claude-3-haiku' },
  { provider: 'anthropic', model: 'claude-haiku-4.5' },
+ { provider: 'anthropic', model: 'claude-sonnet-4.5' },
+ { provider: 'anthropic', model: 'claude-opus-4.5' },
+ { provider: 'anthropic', model: 'claude-3-haiku' },
+ { provider: 'openai', model: 'gpt-5.2' },
+ { provider: 'openai', model: 'gpt-5.1' },
+ { provider: 'openai', model: 'gpt-5' },
+ { provider: 'openai', model: 'gpt-4o' },
  { provider: 'openai', model: 'o3-mini' },
  { provider: 'openai', model: 'o1-mini' },
- { provider: 'openai', model: 'gpt-5' },
- { provider: 'openai', model: 'gpt-5.2' },
- { provider: 'mistral', model: 'mistral-small-3.1' },
- { provider: 'google', model: 'gemini-2.5-flash-lite' },
- { provider: 'anthropic', model: 'claude-3-opus' },
- { provider: 'google', model: 'gemini-1.5-pro' },
+ { provider: 'google', model: 'gemini-3.1-pro' },
+ { provider: 'google', model: 'gemini-3-flash' },
+ { provider: 'google', model: 'gemini-3.1-flash-lite' },
  { provider: 'google', model: 'gemini-2.5-pro' },
- { provider: 'google', model: 'gemini-3-pro' },
- { provider: 'openai', model: 'gpt-4o' },
+ { provider: 'google', model: 'gemini-2.5-flash' },
+ { provider: 'mistral', model: 'mistral-small-3.1' },
  { provider: 'mistral', model: 'mistral-medium-3' },
  { provider: 'mistral', model: 'mistral-large-2411' },
- { provider: 'anthropic', model: 'claude-opus-4.5' },
+ { provider: 'perplexity', model: 'sonar' },
+ { provider: 'perplexity', model: 'sonar-pro' },
+ { provider: 'perplexity', model: 'sonar-reasoning-pro' },
  { provider: 'openai', model: 'gpt-4-turbo' },
  { provider: 'openai', model: 'o1-preview' },
  { provider: 'openai', model: 'gpt-4' },
- { provider: 'perplexity', model: 'sonar-pro' },
 ];
 
-// Default providers to show if none specified (updated Feb 2026)
+// Default providers to show if none specified (updated Mar 2026)
 const DEFAULT_PROVIDERS = [
  ...TOP_5_MODELS.map(m => ({ provider: m.provider, model: m.model })),
  ...ALL_OTHER_MODELS,
