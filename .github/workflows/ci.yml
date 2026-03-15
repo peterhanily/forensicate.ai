@@ -184,9 +184,9 @@ jobs:
 
       - name: Check bundle size
         run: |
-          # Check total JS bundle size (budget: 1MB)
+          # Check total JS bundle size (budget: 2MB — compromise.js NLP alone is ~800KB)
           TOTAL_JS=$(find packages/app/dist/assets -name '*.js' -exec wc -c {} + | tail -1 | awk '{print $1}')
-          BUDGET=1048576
+          BUDGET=2097152
           echo "Total JS size: ${TOTAL_JS} bytes (budget: ${BUDGET} bytes)"
           if [ "$TOTAL_JS" -gt "$BUDGET" ]; then
             echo "::error::Bundle size ${TOTAL_JS} exceeds budget ${BUDGET}"
