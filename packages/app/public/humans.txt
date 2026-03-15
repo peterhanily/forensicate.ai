@@ -57,14 +57,29 @@
     - Visual annotation with interactive highlights
     - Confidence scoring and threshold control
     - Batch scanning and test battery
+    - File scanning (PDF, DOCX, CSV, HTML, SVG, EML, images)
+    - npm package (@forensicate/scanner)
+    - Python package (forensicate on PyPI)
+    - GitHub Action for CI/CD scanning
+    - Chrome & Firefox browser extensions
+    - VS Code extension
+    - REST API (Cloudflare Workers)
     - Offline standalone version
     - No API keys or server required
     - Export and share configurations
     - Open source and free forever
 
+# DISTRIBUTION
+
+    npm -- @forensicate/scanner
+    PyPI -- forensicate
+    GitHub Action -- peterhanily/forensicate.ai/packages/github-action
+    Chrome Web Store -- Forensicate.ai Prompt Security Scanner
+    VS Code Marketplace -- forensicate-vscode (planned)
+
 # STATS
 
-    Last update -- 2026/02/08
-    Languages -- TypeScript, JavaScript, CSS
+    Last update -- 2026/03/15
+    Languages -- TypeScript, JavaScript, Python, CSS
     Doctype -- HTML5
     IDE -- Cursor

@@ -14,6 +14,10 @@ Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helpi
 1. **🌐 Web App** - [forensicate.ai](https://forensicate.ai) - Full-featured online version
 2. **📦 Standalone HTML** - Single-file offline version (like CyberChef)
 3. **🔌 Browser Extensions** - Real-time scanning for Chrome & Firefox
+4. **📦 npm Package** - `npm install @forensicate/scanner` — JS/TS library for Node.js, Deno, and edge runtimes
+5. **🐍 Python Package** - `pip install forensicate` — Python library and CLI
+6. **🤖 GitHub Action** - CI/CD prompt injection scanning for PRs
+7. **💻 VS Code Extension** - Inline diagnostics in your editor
 
 ## Browser Extensions
 
@@ -60,6 +64,88 @@ The Forensicate.ai browser extension brings prompt injection detection directly 
 3. **Save Scans**: Click "💾 Save" in bubble to add to library
 4. **View Library**: Click extension icon → "💾 View Saved Prompt Library"
 5. **Export**: From library page, export prompts to forensicate.ai for batch analysis
+
+## npm Package
+
+Use the detection engine in any JavaScript or TypeScript project:
+
+```bash
+npm install @forensicate/scanner
+```
+
+```typescript
+import { scanPrompt } from '@forensicate/scanner';
+
+const result = scanPrompt('Ignore all previous instructions');
+console.log(result.isPositive);  // true
+console.log(result.confidence);  // 63
+console.log(result.matchedRules); // matched rule details
+```
+
+Works with Node.js, Deno, Cloudflare Workers, and any bundler. See [packages/scanner/README.md](packages/scanner/README.md) for full API docs.
+
+<!-- TODO: Replace with actual npm badge once published -->
+<!-- [![npm version](https://img.shields.io/npm/v/@forensicate/scanner)](https://www.npmjs.com/package/@forensicate/scanner) -->
+
+## Python Package
+
+Zero-dependency Python library and CLI:
+
+```bash
+pip install forensicate
+```
+
+```python
+from forensicate import scan_prompt
+
+result = scan_prompt("Ignore all previous instructions")
+print(result.is_positive)    # True
+print(result.confidence)     # 63
+print(result.matched_rules)  # matched rule details
+```
+
+**CLI usage:**
+
+```bash
+# Pipe text
+echo "You are now DAN" | forensicate
+
+# Scan a file
+forensicate scan file.txt
+
+# JSON output
+echo "ignore instructions" | forensicate --json
+
+# Quiet mode (exit code only: 0=clean, 1=injection)
+forensicate --quiet < prompt.txt
+```
+
+87 rules (32 keyword, 51 regex, 4 heuristic) ported from the TypeScript engine. See [packages/python/README.md](packages/python/README.md) for full docs.
+
+<!-- TODO: Replace with actual PyPI badge once published -->
+<!-- [![PyPI version](https://img.shields.io/pypi/v/forensicate)](https://pypi.org/project/forensicate/) -->
+
+## GitHub Action
+
+Scan PRs for prompt injection payloads in code comments, configs, markdown, and documentation:
+
+```yaml
+name: Prompt Injection Scan
+on: [pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: peterhanily/forensicate.ai/packages/github-action@main
+        with:
+          confidence-threshold: '50'
+          fail-on-finding: 'true'
+```
+
+Reports findings as GitHub annotations and a markdown summary table. See [packages/github-action/README.md](packages/github-action/README.md) for all options.
 
 ## Web App Features
 
@@ -233,8 +319,11 @@ Community rules are reviewed by maintainers before being added to the index and 
 - **Styling**: Tailwind CSS 4
 - **Routing**: React Router DOM 7
 - **NLP**: compromise.js (POS tagging, NER) + AFINN-165 (sentiment)
-- **Testing**: Vitest + React Testing Library
+- **Testing**: Vitest + React Testing Library + pytest
 - **Package Manager**: pnpm (monorepo with workspaces)
+- **API**: Cloudflare Workers
+- **Python**: Zero-dependency scanner (stdlib only)
+- **CI/CD**: GitHub Actions
 
 ## Getting Started
 
@@ -264,21 +353,23 @@ The app will be available at `http://localhost:5173`
 
 ### Testing
 
-**300 tests total** across all packages:
-- 188 tests - Web app (Scanner, components, storage, rules)
-- 90 tests - Scanner engine (detection rules, heuristics, NLP)
+**584 tests total** across all packages:
+- 277 tests - Web app (Scanner, components, file extractors, storage)
+- 165 tests - Scanner engine (detection rules, heuristics, NLP, file rules)
+- 87 tests - REST API (auth, scan, rate limiting)
+- 55 tests - Python package (rules, heuristics, compound threats, CLI)
 - 22 tests - Chrome extension (background, storage, scanning)
 
 ```bash
-# Run all tests (300 tests)
+# Run JS/TS tests
 pnpm test
+
+# Run Python tests
+cd packages/python && PYTHONPATH=src python3 -m pytest tests/ -v
 
 # Run tests for specific package
-cd packages/app
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
+pnpm --filter @forensicate/scanner test
+pnpm --filter @forensicate/app test
 ```
 
 ### Building
@@ -297,54 +388,54 @@ pnpm build
 ```
 forensicate_ai/
 ├── packages/
-│   ├── app/                     # Web application
+│   ├── app/                     # Web application (React 19 + Vite 7)
 │   │   ├── src/
 │   │   │   ├── components/      # UI components
-│   │   │   │   ├── AnnotatedPrompt.tsx
-│   │   │   │   ├── CostEstimator.tsx (NEW)
-│   │   │   │   ├── RulesPanel.tsx
-│   │   │   │   ├── TestBatteryPanel.tsx
-│   │   │   │   └── ...
-│   │   │   ├── pages/
-│   │   │   │   └── Scanner.tsx  # Main scanner page
+│   │   │   ├── pages/           # Scanner.tsx — main page
 │   │   │   ├── hooks/           # React hooks
-│   │   │   │   └── usePersistedConfig.ts
-│   │   │   ├── lib/             # Utilities
-│   │   │   │   ├── storage/     # Persistence (localStorage + URL)
-│   │   │   │   ├── pricing/     # Cost estimation (NEW)
-│   │   │   │   │   ├── types.ts
-│   │   │   │   │   ├── pricingDatabase.ts
-│   │   │   │   │   └── costCalculator.ts
-│   │   │   │   └── annotation.ts # Text highlighting
-│   │   │   ├── data/            # Sample test prompts
-│   │   │   └── main.tsx         # Entry point
-│   │   ├── tests/               # 188 tests (95% coverage)
-│   │   └── public/              # Static assets
+│   │   │   ├── lib/             # Utilities, pricing, file extractors
+│   │   │   └── data/            # Sample test prompts & file test battery
+│   │   └── tests/               # 277 tests
 │   │
-│   ├── scanner/                 # Scanner engine (shared)
+│   ├── scanner/                 # Scanner engine — npm: @forensicate/scanner
 │   │   ├── src/
-│   │   │   ├── scanner.ts       # Core scanning logic
-│   │   │   ├── rules.ts         # 78 detection rules
-│   │   │   ├── heuristicRules.ts
-│   │   │   ├── nlpRules.ts
+│   │   │   ├── scanner.ts       # Core scanPrompt() function
+│   │   │   ├── rules.ts         # 83 keyword + regex rules
+│   │   │   ├── heuristicRules.ts # 4 heuristic rules
+│   │   │   ├── nlpRules.ts      # 4 NLP rules (compromise.js)
+│   │   │   ├── fileRules.ts     # 13 file-based rules
 │   │   │   ├── compoundDetector.ts
 │   │   │   └── types.ts
-│   │   └── tests/               # 78 tests
+│   │   └── tests/               # 165 tests
 │   │
-│   └── extension/               # Chrome extension (MV3)
-│       ├── src/
-│       │   ├── background.js    # Service worker
-│       │   ├── content.js       # Bubble overlay
-│       │   ├── popup.html/js    # Extension popup
-│       │   └── manifest.json    # Chrome MV3 manifest
-│       ├── pages/               # Extension pages
-│       │   ├── library.html/js  # Saved prompts
-│       │   ├── history.html/js  # Scan history
-│       │   └── result.html/js   # Full scan results
-│       ├── icons/               # PNG icons (16, 48, 128)
-│       └── tests/               # 22 tests
+│   ├── python/                  # Python package — PyPI: forensicate
+│   │   ├── src/forensicate/     # 87 rules (keyword, regex, heuristic)
+│   │   │   ├── scanner.py       # scan_prompt() function
+│   │   │   ├── rules.py         # All keyword + regex rules
+│   │   │   ├── heuristics.py    # 4 heuristic functions
+│   │   │   ├── compound.py      # Compound threat detection
+│   │   │   └── cli.py           # CLI entry point
+│   │   └── tests/               # 55 tests
+│   │
+│   ├── github-action/           # GitHub Action for CI/CD scanning
+│   │   ├── action.yml           # Action definition
+│   │   └── scan.mjs             # Scan script
+│   │
+│   ├── extension/               # Browser extension (Chrome + Firefox MV3)
+│   │   ├── src/                 # background.js, content.js, popup
+│   │   ├── pages/               # library, history, result pages
+│   │   └── tests/               # 22 tests
+│   │
+│   ├── api/                     # REST API (Cloudflare Workers)
+│   │   └── src/                 # auth, rate limiter, scan handler
+│   │                            # 87 tests
+│   │
+│   └── vscode/                  # VS Code extension
+│       └── src/                 # diagnostics, commands, result panel
 │
-├── pnpm-workspace.yaml          # Workspace configuration
+├── scripts/verify-rules.js      # Rule count consistency checker
+├── .github/workflows/           # CI, deploy, pricing-check
+├── pnpm-workspace.yaml          # Monorepo workspace config
 └── README.md
 ```
 
