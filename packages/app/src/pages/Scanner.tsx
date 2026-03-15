@@ -39,7 +39,7 @@ import RuleDetailsModal from '../components/RuleDetailsModal';
 const CostEstimator = lazy(() => import('../components/CostEstimator'));
 const FileDropZone = lazy(() => import('../components/FileDropZone'));
 const FileComparisonView = lazy(() => import('../components/FileComparisonView'));
-const FileTestBattery = lazy(() => import('../components/FileTestBattery'));
+import FileTestBattery from '../components/FileTestBattery';
 import { useFileScanner } from '../hooks/useFileScanner';
 
 // Extension export item type
@@ -1264,7 +1264,7 @@ export default function Scanner() {
 
  {/* File Test Battery - shown in file scan mode */}
  {scanMode === 'file_scan' && (
- <Suspense fallback={null}><FileTestBattery
+ <FileTestBattery
  onRunTest={async (file) => {
  try {
  await handleFileSelected(file, localRules, confidenceThreshold);
@@ -1276,7 +1276,7 @@ export default function Scanner() {
  }
  }}
  isProcessing={isExtracting}
- /></Suspense>
+ />
  )}
 
  {/* Annotated Prompt View */}
