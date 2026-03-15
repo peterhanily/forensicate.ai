@@ -1,0 +1,55 @@
+name: 'Forensicate.ai Prompt Injection Scanner'
+description: 'Scan files and PR diffs for prompt injection attacks, jailbreaks, and hidden payloads'
+author: 'Forensicate.ai'
+branding:
+  icon: 'shield'
+  color: 'yellow'
+
+inputs:
+  paths:
+    description: 'Glob patterns to scan (space-separated). Default scans changed files in PR.'
+    required: false
+    default: ''
+  confidence-threshold:
+    description: 'Minimum confidence percentage to report (0-100)'
+    required: false
+    default: '50'
+  fail-on-finding:
+    description: 'Fail the action if injection is detected'
+    required: false
+    default: 'true'
+  scan-mode:
+    description: 'What to scan: "changed" (PR diff only), "all" (all matching files)'
+    required: false
+    default: 'changed'
+
+outputs:
+  findings-count:
+    description: 'Number of files with detected injections'
+  total-files-scanned:
+    description: 'Total number of files scanned'
+  max-confidence:
+    description: 'Highest confidence score found'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Install scanner
+      shell: bash
+      run: npm install --no-save @forensicate/scanner@latest
+      working-directory: ${{ github.action_path }}
+
+    - name: Run scan
+      id: scan
+      shell: bash
+      run: node ${{ github.action_path }}/scan.mjs
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_CONFIDENCE_THRESHOLD: ${{ inputs.confidence-threshold }}
+        INPUT_FAIL_ON_FINDING: ${{ inputs.fail-on-finding }}
+        INPUT_SCAN_MODE: ${{ inputs.scan-mode }}

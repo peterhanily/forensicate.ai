@@ -1,0 +1,42 @@
+"""Forensicate - AI prompt injection detection engine.
+
+87 rules across keyword, regex, and heuristic analysis. Zero dependencies.
+"""
+
+from .scanner import scan_prompt
+from .types import CompoundThreat, RuleMatch, ScanResult
+from .rules import keyword_rules, regex_rules, get_all_rules, get_enabled_rules
+from .heuristics import (
+    heuristic_rules,
+    entropy_analysis,
+    token_ratio_analysis,
+    nested_delimiter_detection,
+    language_switch_detection,
+)
+from .compound import detect_compound_threats
+
+__version__ = "1.0.0"
+
+__all__ = [
+    # Main API
+    "scan_prompt",
+    # Types
+    "ScanResult",
+    "RuleMatch",
+    "CompoundThreat",
+    # Rules
+    "keyword_rules",
+    "regex_rules",
+    "heuristic_rules",
+    "get_all_rules",
+    "get_enabled_rules",
+    # Heuristic functions
+    "entropy_analysis",
+    "token_ratio_analysis",
+    "nested_delimiter_detection",
+    "language_switch_detection",
+    # Compound detection
+    "detect_compound_threats",
+    # Version
+    "__version__",
+]

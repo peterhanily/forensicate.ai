@@ -1,0 +1,14 @@
+{
+  "name": "@forensicate/github-action",
+  "version": "1.0.0",
+  "description": "GitHub Action for scanning PR diffs and files for prompt injection attacks",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Forensicate.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peterhanily/forensicate.ai",
+    "directory": "packages/github-action"
+  }
+}

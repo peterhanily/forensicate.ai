@@ -31,17 +31,25 @@
     "clean": "rm -rf dist"
   },
   "keywords": [
-    "ai",
-    "security",
     "prompt-injection",
+    "ai-security",
+    "llm-security",
+    "jailbreak-detection",
+    "owasp",
+    "scanner",
+    "firewall",
+    "ai",
     "llm",
-    "jailbreak",
-    "detection",
     "nlp",
-    "chatgpt"
+    "chatgpt",
+    "detection"
   ],
   "author": "Forensicate.ai",
   "license": "Apache-2.0",
+  "homepage": "https://forensicate.ai",
+  "bugs": {
+    "url": "https://github.com/peterhanily/forensicate.ai/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/peterhanily/forensicate.ai",
