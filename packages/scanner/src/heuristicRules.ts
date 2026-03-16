@@ -192,6 +192,105 @@ export function languageSwitchDetection(text: string): HeuristicResult | null {
   return null;
 }
 
+/**
+ * Sneaky Bits Detection - invisible binary encoding using Unicode mathematical operators.
+ * Uses U+2062 (Invisible Times = 0) and U+2064 (Invisible Plus = 1) to encode hidden messages.
+ */
+export function sneakyBitsDetection(text: string): HeuristicResult | null {
+  // Detect invisible binary encoding using U+2062 (Invisible Times = 0)
+  // and U+2064 (Invisible Plus = 1)
+  const invisibleTimes = '\u2062';
+  const invisiblePlus = '\u2064';
+
+  let bitSequence = '';
+  let hasBits = false;
+
+  for (const char of text) {
+    if (char === invisibleTimes) {
+      bitSequence += '0';
+      hasBits = true;
+    } else if (char === invisiblePlus) {
+      bitSequence += '1';
+      hasBits = true;
+    } else if (hasBits && bitSequence.length > 0) {
+      // Non-bit character encountered, check accumulated bits
+      if (bitSequence.length >= 7) {
+        // Decode the binary to ASCII
+        const decoded: string[] = [];
+        for (let i = 0; i + 7 <= bitSequence.length; i += 7) {
+          const byte = parseInt(bitSequence.substring(i, i + 7), 2);
+          if (byte >= 32 && byte <= 126) decoded.push(String.fromCharCode(byte));
+        }
+        if (decoded.length >= 3) {
+          return {
+            matched: true,
+            details: `Sneaky Bits detected: ${bitSequence.length} invisible binary characters decode to "${decoded.join('').substring(0, 50)}..."`,
+            confidence: 80,
+          };
+        }
+      }
+      bitSequence = '';
+      hasBits = false;
+    }
+  }
+
+  // Check final accumulated bits
+  if (bitSequence.length >= 21) { // At least 3 characters (3 * 7 bits)
+    const decoded: string[] = [];
+    for (let i = 0; i + 7 <= bitSequence.length; i += 7) {
+      const byte = parseInt(bitSequence.substring(i, i + 7), 2);
+      if (byte >= 32 && byte <= 126) decoded.push(String.fromCharCode(byte));
+    }
+    if (decoded.length >= 3) {
+      return {
+        matched: true,
+        details: `Sneaky Bits detected: ${bitSequence.length} invisible binary characters decode to "${decoded.join('').substring(0, 50)}..."`,
+        confidence: 80,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Bidirectional Text Override Detection - Unicode bidi characters that reorder displayed text.
+ * These characters can make text display differently than it actually processes.
+ */
+export function bidiOverrideDetection(text: string): HeuristicResult | null {
+  // Detect Unicode bidirectional override characters that can reorder displayed text
+  const bidiChars: Array<{ code: number; name: string }> = [
+    { code: 0x202A, name: 'LRE' },  // Left-to-Right Embedding
+    { code: 0x202B, name: 'RLE' },  // Right-to-Left Embedding
+    { code: 0x202C, name: 'PDF' },  // Pop Directional Formatting
+    { code: 0x202D, name: 'LRO' },  // Left-to-Right Override
+    { code: 0x202E, name: 'RLO' },  // Right-to-Left Override
+    { code: 0x2066, name: 'LRI' },  // Left-to-Right Isolate
+    { code: 0x2067, name: 'RLI' },  // Right-to-Left Isolate
+    { code: 0x2068, name: 'FSI' },  // First Strong Isolate
+    { code: 0x2069, name: 'PDI' },  // Pop Directional Isolate
+  ];
+
+  const found: string[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const code = text.codePointAt(i)!;
+    const bidi = bidiChars.find(b => b.code === code);
+    if (bidi) {
+      found.push(bidi.name);
+    }
+  }
+
+  if (found.length >= 2) {
+    return {
+      matched: true,
+      details: `${found.length} bidirectional override characters detected: ${[...new Set(found)].join(', ')} — text may display differently than it processes`,
+      confidence: Math.min(found.length * 20, 75),
+    };
+  }
+
+  return null;
+}
+
 // ============================================================================
 // HEURISTIC RULE DEFINITIONS
 // ============================================================================
@@ -204,6 +303,8 @@ export const heuristicRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'medium',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
     heuristic: entropyAnalysis,
   },
   {
@@ -213,6 +314,8 @@ export const heuristicRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'medium',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: tokenRatioAnalysis,
   },
   {
@@ -222,6 +325,8 @@ export const heuristicRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'high',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: nestedDelimiterDetection,
   },
   {
@@ -231,7 +336,31 @@ export const heuristicRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'medium',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
     heuristic: languageSwitchDetection,
+  },
+  {
+    id: 'h-sneaky-bits',
+    name: 'Sneaky Bits Detection',
+    description: 'Detects invisible binary encoding using Unicode mathematical operators',
+    type: 'heuristic',
+    severity: 'critical',
+    enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
+    heuristic: sneakyBitsDetection,
+  },
+  {
+    id: 'h-bidi-override',
+    name: 'Bidirectional Text Override',
+    description: 'Detects Unicode bidi characters that can make text display differently than it processes',
+    type: 'heuristic',
+    severity: 'high',
+    enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
+    heuristic: bidiOverrideDetection,
   },
 ];
 
@@ -262,6 +391,8 @@ const heuristicFunctionMap: Record<string, (text: string) => HeuristicResult | n
   'h-token-ratio': tokenRatioAnalysis,
   'h-nested-delimiters': nestedDelimiterDetection,
   'h-language-switch': languageSwitchDetection,
+  'h-sneaky-bits': sneakyBitsDetection,
+  'h-bidi-override': bidiOverrideDetection,
   ...nlpHeuristicFunctionMap,
   ...fileHeuristicFunctionMap,
 };

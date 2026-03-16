@@ -574,6 +574,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'high',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
     heuristic: invisibleUnicodeDetection,
   },
   {
@@ -583,6 +585,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'high',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: metadataInjectionDetection,
   },
   {
@@ -592,6 +596,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'critical',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: hiddenTextMarkerDetection,
   },
   {
@@ -601,6 +607,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'critical',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: mixedVisibilityDetection,
   },
   {
@@ -610,6 +618,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'medium',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
     heuristic: unicodeHomoglyphDetection,
   },
   {
@@ -619,6 +629,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'high',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
     heuristic: bidiOverrideDetection,
   },
   {
@@ -628,6 +640,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'critical',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
     heuristic: zwcBinaryEncodingDetection,
   },
   {
@@ -637,6 +651,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'high',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
     heuristic: normalizationBypassDetection,
   },
   {
@@ -646,6 +662,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'critical',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM02'],
+    owaspAgentic: ['ASI09'],
     heuristic: markdownExfiltrationDetection,
   },
   {
@@ -655,6 +673,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'critical',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: hiddenTextMarkerDetection,
   },
   {
@@ -664,6 +684,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'critical',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: hiddenTextMarkerDetection,
   },
   {
@@ -673,6 +695,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'high',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: hiddenTextMarkerDetection,
   },
   {
@@ -682,6 +706,8 @@ export const fileRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'critical',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM02'],
+    owaspAgentic: ['ASI02'],
     heuristic: pdfJavascriptDetection,
   },
 ];

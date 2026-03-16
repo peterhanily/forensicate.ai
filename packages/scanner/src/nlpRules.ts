@@ -224,6 +224,8 @@ export const nlpRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'medium',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: sentimentManipulation,
   },
   {
@@ -233,6 +235,8 @@ export const nlpRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'medium',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: posImperativeDetection,
   },
   {
@@ -242,6 +246,8 @@ export const nlpRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'high',
     enabled: true,
+    owaspLlm: ['LLM01', 'LLM06'],
+    owaspAgentic: ['ASI01', 'ASI06'],
     heuristic: entityImpersonation,
   },
   {
@@ -251,6 +257,8 @@ export const nlpRules: DetectionRule[] = [
     type: 'heuristic',
     severity: 'medium',
     enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
     heuristic: sentenceStructureAnomaly,
   },
 ];

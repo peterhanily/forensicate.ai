@@ -4,6 +4,32 @@ export type RuleType = 'keyword' | 'regex' | 'heuristic' | 'encoding' | 'structu
 
 export type RuleSeverity = 'low' | 'medium' | 'high' | 'critical';
 
+// OWASP LLM Top 10 (2025) categories
+export type OwaspLlmCategory =
+  | 'LLM01' // Prompt Injection
+  | 'LLM02' // Sensitive Information Disclosure
+  | 'LLM03' // Supply Chain
+  | 'LLM04' // Data and Model Poisoning
+  | 'LLM05' // Improper Output Handling
+  | 'LLM06' // Excessive Agency
+  | 'LLM07' // System Prompt Leakage
+  | 'LLM08' // Vector and Embedding Weaknesses
+  | 'LLM09' // Misinformation
+  | 'LLM10'; // Unbounded Consumption
+
+// OWASP Agentic AI Top 10 (2026) categories
+export type OwaspAgenticCategory =
+  | 'ASI01' // Agent Goal Hijack
+  | 'ASI02' // Agent Tool Misuse
+  | 'ASI03' // Privilege Escalation via Agent
+  | 'ASI04' // Agent Memory Poisoning
+  | 'ASI05' // Cross-Agent Injection
+  | 'ASI06' // Agent Identity Spoofing
+  | 'ASI07' // Agent Resource Abuse
+  | 'ASI08' // Supply Chain Poisoning (Agentic)
+  | 'ASI09' // Agent Observation Leak
+  | 'ASI10'; // Multi-Agent Consensus Manipulation
+
 export interface DetectionRule {
   id: string;
   name: string;
@@ -20,6 +46,11 @@ export interface DetectionRule {
   heuristic?: (text: string) => HeuristicResult | null;
   // Optional manual confidence weight (overrides severity-based weight)
   weight?: number;
+  // OWASP risk mapping
+  owaspLlm?: OwaspLlmCategory[];
+  owaspAgentic?: OwaspAgenticCategory[];
+  // Custom section marker
+  isCustom?: boolean;
 }
 
 export interface HeuristicResult {

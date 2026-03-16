@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/npm/l/@forensicate/scanner)](https://github.com/peterhanily/forensicate.ai/blob/main/LICENSE)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/@forensicate/scanner)](https://bundlephobia.com/package/@forensicate/scanner)
 
-AI prompt injection detection engine with 104 rules across keyword, regex, heuristic, NLP, and file-based detection in 16 categories.
+AI prompt injection detection engine with 122 rules across keyword, regex, heuristic, NLP, and file-based detection in 19 categories.
 
 ## Installation
 
@@ -208,7 +208,7 @@ The 104 built-in rules cover five detection strategies:
 | **NLP** | 4 | Natural language processing via compromise.js and AFINN-165 sentiment analysis to detect manipulative language |
 | **File** | 13 | Detection of hidden content in files: invisible Unicode, BiDi overrides, markdown exfiltration, PDF JavaScript |
 
-Rules are organized into 16 categories including instruction override, role manipulation, jailbreak, prompt extraction, context manipulation, safety removal, compliance forcing, and more.
+Rules are organized into 19 categories including instruction override, role manipulation, jailbreak, prompt extraction, context manipulation, safety removal, compliance forcing, MCP & agent security, exfiltration & supply chain, and more.
 
 ## Use Cases
 

@@ -110,7 +110,7 @@ jobs:
 
 1. **Setup**: Installs Node.js 22 and the `@forensicate/scanner` package.
 2. **File discovery**: In `changed` mode, reads the PR event payload and uses `git diff` to find modified files. In `all` mode, recursively lists files matching the specified glob patterns.
-3. **Scanning**: Each file is read and analyzed by the Forensicate.ai detection engine, which checks against 104 rules across keyword, regex, heuristic, NLP, and file-based detection categories.
+3. **Scanning**: Each file is read and analyzed by the Forensicate.ai detection engine, which checks against 118 rules across keyword, regex, heuristic, NLP, and file-based detection categories.
 4. **Reporting**: Findings appear as inline PR annotations (errors, warnings, or notices depending on severity) and a summary table is added to the GitHub Actions step summary.
 
 ## Supported File Types

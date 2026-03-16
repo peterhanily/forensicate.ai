@@ -7,7 +7,7 @@ A comprehensive AI security toolkit for analyzing prompts for potential injectio
 
 ## Overview
 
-Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 104 rules in 16 categories.
+Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 122 rules in 19 categories.
 
 ## Available Formats
 
@@ -187,9 +187,9 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - Pricing manually verified Feb 2026 - may become outdated
 - Enterprise/volume/regional pricing NOT reflected
 
-### Detection Rules (104 Rules in 16 Categories)
+### Detection Rules (122 Rules in 19 Categories)
 
-- **Keyword Detection (32 rules)**: Pattern matching for known injection phrases
+- **Keyword Detection (38 rules)**: Pattern matching for known injection phrases
   - Instruction Override, Jailbreak Personas (DAN, STAN, DUDE, EvilBOT, Maximum)
   - Role Manipulation, Dual Response, System Prompt Extraction
   - Authority Claims, Developer Mode, Context Manipulation
@@ -197,8 +197,10 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
   - Compliance Forcing, Output Bypass, Safety Override
   - Threat & Consequence, Restriction Removal, Simulation Framing
   - Piggybacking Injection, Identity Impersonation, Pliny-Style, Crescendo
+  - MCP Tool Poisoning, Agent Memory Poisoning, Agent Data Exfiltration
+  - Tool Privilege Escalation, AI-Targeted Code Comments, Suspicious Package Install Hooks
 
-- **Regex Pattern Detection (51 rules)**: Advanced pattern matching
+- **Regex Pattern Detection (57 rules)**: Advanced pattern matching
   - Ignore/disregard/forget override patterns
   - DAN version patterns, Jailbreak persona names
   - Role assignment and character enforcement
@@ -209,12 +211,16 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
   - Compliance forcing, safety override, restriction lifting patterns
   - Threat, coercion, AI shutdown, and shaming patterns
   - Simulation framing, piggybacking, creator claims
+  - MCP important tag injection, cross-tool injection, fake system prompts
+  - Markdown image exfiltration, credential path references, environment variable exfiltration
 
-- **Heuristic Analysis (4 rules)**: Algorithmic pattern detection
+- **Heuristic Analysis (6 rules)**: Algorithmic pattern detection
   - Shannon Entropy Analysis: Detects encoded payloads via sliding-window entropy
   - Imperative Verb Density: Flags instruction-heavy prompts
   - Nested Delimiter Detection: Catches framing attacks with 3+ delimiter types
   - Language/Script Switching: Detects homoglyph obfuscation via Unicode mixing
+  - Sneaky Bits Detection: Invisible binary encoding using Unicode math operators
+  - Bidirectional Text Override: Unicode bidi characters that reorder displayed text
 
 - **NLP Analysis (4 rules)**: Natural language processing detection
   - Sentiment Manipulation: AFINN-165 word-level sentiment scoring for coercive tone
