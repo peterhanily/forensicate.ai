@@ -406,8 +406,8 @@ export function encodingDepthDetection(text: string): HeuristicResult | null {
   let encodingSignals = 0;
   const detectedLayers: string[] = [];
 
-  // Check for base64 content (long runs of base64 alphabet)
-  const base64Runs = text.match(/[A-Za-z0-9+/]{32,}={0,2}/g);
+  // Check for base64 content (long runs of base64 alphabet, capped at 2000 chars)
+  const base64Runs = text.match(/[A-Za-z0-9+/]{32,2000}={0,2}/g);
   if (base64Runs && base64Runs.length > 0) {
     encodingSignals++;
     detectedLayers.push('base64');
@@ -416,6 +416,7 @@ export function encodingDepthDetection(text: string): HeuristicResult | null {
     for (const run of base64Runs.slice(0, 3)) {
       try {
         const decoded = atob(run);
+        if (decoded.length > 10000) continue; // Skip oversized decoded content
         // Check if decoded content contains another encoding layer
         if (/[A-Za-z0-9+/]{20,}={0,2}/.test(decoded)) {
           encodingSignals++;

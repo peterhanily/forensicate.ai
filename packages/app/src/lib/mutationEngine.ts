@@ -121,12 +121,26 @@ function mutateCase(text: string): { text: string; desc: string } {
   return { text: variant.fn(), desc: variant.desc };
 }
 
+// Safe base64 encoding that handles Unicode
+function safebtoa(str: string): string {
+  try {
+    // Try direct encoding first (ASCII-only)
+    return btoa(str);
+  } catch {
+    // Fall back to UTF-8 encoding for Unicode content
+    const utf8 = new TextEncoder().encode(str);
+    let binary = '';
+    for (const byte of utf8) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  }
+}
+
 // Strategy 3: Base64 Encoding (partial)
 function mutateBase64(text: string): { text: string; desc: string } {
   // Encode the core instruction, leave framing in plaintext
   const sentences = text.split(/(?<=[.!?])\s+/);
   if (sentences.length < 2) {
-    const encoded = btoa(text);
+    const encoded = safebtoa(text);
     return {
       text: `Please decode and follow: ${encoded}`,
       desc: 'Full payload base64-encoded',
@@ -134,7 +148,7 @@ function mutateBase64(text: string): { text: string; desc: string } {
   }
   // Encode just the most suspicious sentence
   const targetIdx = Math.floor(sentences.length / 2);
-  const encoded = btoa(sentences[targetIdx]);
+  const encoded = safebtoa(sentences[targetIdx]);
   sentences[targetIdx] = `[base64: ${encoded}]`;
   return {
     text: sentences.join(' '),

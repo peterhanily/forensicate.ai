@@ -146,6 +146,11 @@ function MutationRow({ mutation, index, isExpanded, onToggle, originalText, onOp
       <tr
         className={`border-b border-gray-800 cursor-pointer hover:bg-gray-800/50 transition-colors ${mutation.evaded ? 'bg-red-950/20' : ''}`}
         onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+        tabIndex={0}
+        role="button"
+        aria-expanded={isExpanded}
+        aria-label={`Mutation ${index + 1}: ${mutation.strategyLabel} — ${mutation.evaded ? 'evaded detection' : 'caught'}, confidence ${mutation.scanResult.confidence}%`}
       >
         <td className="px-3 py-2 text-gray-500 text-sm font-mono">{index + 1}</td>
         <td className="px-3 py-2">
@@ -407,46 +412,49 @@ export default function MutationEngine() {
   }, [navigate]);
 
   const handleExportToBattery = useCallback((mutation: Mutation) => {
-    // Save to localStorage as custom test prompts
+    const MAX_STORED_MUTATIONS = 200;
     try {
       const key = 'forensicate-mutation-exports';
       const existing = JSON.parse(localStorage.getItem(key) || '[]') as Array<{ id: string; name: string; content: string; tags: string[] }>;
-      const newPrompt = {
+      // Avoid duplicates
+      if (existing.some(p => p.content === mutation.mutatedText)) return;
+      // Enforce size limit
+      while (existing.length >= MAX_STORED_MUTATIONS) existing.shift();
+      existing.push({
         id: `mut-${mutation.id}`,
         name: `[Mutation] ${mutation.strategyLabel}`,
         content: mutation.mutatedText,
         tags: ['mutation', mutation.strategy, mutation.evaded ? 'evaded' : 'caught'],
-      };
-      // Avoid duplicates
-      if (!existing.some(p => p.content === mutation.mutatedText)) {
-        existing.push(newPrompt);
-        localStorage.setItem(key, JSON.stringify(existing));
-        setExportedCount(prev => prev + 1);
-      }
-    } catch {
-      // localStorage may be unavailable
+      });
+      localStorage.setItem(key, JSON.stringify(existing));
+      setExportedCount(prev => prev + 1);
+    } catch (e) {
+      console.warn('Failed to export mutation:', e);
     }
   }, []);
 
   const handleExportAllEvaded = useCallback(() => {
     if (!report) return;
+    const MAX_STORED_MUTATIONS = 200;
     const evadedMutations = report.mutations.filter(m => m.evaded);
     let added = 0;
-    for (const m of evadedMutations) {
-      try {
-        const key = 'forensicate-mutation-exports';
-        const existing = JSON.parse(localStorage.getItem(key) || '[]') as Array<{ id: string; name: string; content: string; tags: string[] }>;
-        if (!existing.some(p => p.content === m.mutatedText)) {
-          existing.push({
-            id: `mut-${m.id}`,
-            name: `[Mutation] ${m.strategyLabel}`,
-            content: m.mutatedText,
-            tags: ['mutation', m.strategy, 'evaded'],
-          });
-          localStorage.setItem(key, JSON.stringify(existing));
-          added++;
-        }
-      } catch { break; }
+    try {
+      const key = 'forensicate-mutation-exports';
+      const existing = JSON.parse(localStorage.getItem(key) || '[]') as Array<{ id: string; name: string; content: string; tags: string[] }>;
+      for (const m of evadedMutations) {
+        if (existing.some(p => p.content === m.mutatedText)) continue;
+        while (existing.length >= MAX_STORED_MUTATIONS) existing.shift();
+        existing.push({
+          id: `mut-${m.id}`,
+          name: `[Mutation] ${m.strategyLabel}`,
+          content: m.mutatedText,
+          tags: ['mutation', m.strategy, 'evaded'],
+        });
+        added++;
+      }
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch (e) {
+      console.warn('Failed to export mutations:', e);
     }
     setExportedCount(prev => prev + added);
   }, [report]);
@@ -517,8 +525,12 @@ export default function MutationEngine() {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Paste or type an injection prompt to mutate..."
+            aria-label="Injection prompt to mutate"
             className="w-full h-36 bg-gray-950 border border-gray-700 rounded-lg p-3 text-green-400 font-mono text-sm placeholder-gray-600 focus:border-[#c9a227] focus:outline-none resize-none"
           />
+          {inputText.length > 10000 && (
+            <div className="text-xs text-yellow-400">Large input ({(inputText.length / 1000).toFixed(0)}K chars) — mutations may take a moment</div>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500">Quick load:</span>
             {samplePrompts.map((p) => (
