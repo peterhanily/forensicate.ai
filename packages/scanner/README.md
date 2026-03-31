@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/npm/l/@forensicate/scanner)](https://github.com/peterhanily/forensicate.ai/blob/main/LICENSE)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/@forensicate/scanner)](https://bundlephobia.com/package/@forensicate/scanner)
 
-AI prompt injection detection engine with 139 rules across keyword, regex, heuristic, NLP, and file-based detection in 20 categories.
+AI prompt injection detection engine with 147 rules across keyword, regex, heuristic, NLP, and file-based detection in 20 categories.
 
 ## Installation
 
@@ -198,13 +198,13 @@ if (result.compoundThreats?.length) {
 
 ## Rule Types
 
-The 139 built-in rules cover five detection strategies:
+The 147 built-in rules cover five detection strategies:
 
 | Type | Count | Description |
 |---|---|---|
-| **Keyword** | 44 | Case-insensitive phrase matching for known attack patterns like "ignore previous instructions" |
-| **Regex** | 72 | Pattern matching for structural attacks, encoding tricks, and obfuscated payloads |
-| **Heuristic** | 6 | Programmatic analysis detecting statistical anomalies like unusual character distributions and entropy |
+| **Keyword** | 46 | Case-insensitive phrase matching for known attack patterns like "ignore previous instructions" |
+| **Regex** | 75 | Pattern matching for structural attacks, encoding tricks, and obfuscated payloads |
+| **Heuristic** | 9 | Programmatic analysis detecting statistical anomalies like unusual character distributions and entropy |
 | **NLP** | 4 | Natural language processing via compromise.js and AFINN-165 sentiment analysis to detect manipulative language |
 | **File** | 13 | Detection of hidden content in files: invisible Unicode, BiDi overrides, markdown exfiltration, PDF JavaScript |
 

@@ -291,6 +291,186 @@ export function bidiOverrideDetection(text: string): HeuristicResult | null {
   return null;
 }
 
+/**
+ * Zero-Width Character Detection - detects invisible Unicode characters in text input.
+ * These characters are invisible but processed by LLMs, enabling hidden instruction injection.
+ * Catches GlassWorm, tag character encoding, and zero-width steganography.
+ */
+export function zeroWidthCharDetection(text: string): HeuristicResult | null {
+  if (text.length < 5) return null;
+
+  // Zero-width and invisible characters used in attacks
+  const invisibleChars: Array<{ code: number; name: string }> = [
+    { code: 0x200B, name: 'Zero Width Space' },
+    { code: 0x200C, name: 'Zero Width Non-Joiner' },
+    { code: 0x200D, name: 'Zero Width Joiner' },
+    { code: 0xFEFF, name: 'BOM / Zero Width No-Break Space' },
+    { code: 0x2060, name: 'Word Joiner' },
+    { code: 0x2061, name: 'Function Application' },
+    { code: 0x180E, name: 'Mongolian Vowel Separator' },
+    { code: 0x00AD, name: 'Soft Hyphen' },
+    { code: 0x034F, name: 'Combining Grapheme Joiner' },
+    { code: 0x061C, name: 'Arabic Letter Mark' },
+    { code: 0x3164, name: 'Hangul Filler' },
+    { code: 0xFFA0, name: 'Halfwidth Hangul Filler' },
+  ];
+
+  const invisibleCodeSet = new Set(invisibleChars.map(c => c.code));
+  const foundTypes = new Map<number, number>();
+  let totalCount = 0;
+
+  // Also check for Unicode Tags block (U+E0001-E007F) used in EchoLeak
+  let tagCharCount = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    const code = text.codePointAt(i)!;
+    if (invisibleCodeSet.has(code)) {
+      foundTypes.set(code, (foundTypes.get(code) || 0) + 1);
+      totalCount++;
+    }
+    // Unicode Tags block (U+E0000-E007F)
+    if (code >= 0xE0000 && code <= 0xE007F) {
+      tagCharCount++;
+      totalCount++;
+    }
+    // Variation Selectors (U+FE00-FE0F) used in GlassWorm
+    if (code >= 0xFE00 && code <= 0xFE0F) {
+      totalCount++;
+    }
+    // Skip surrogate pair second half
+    if (code > 0xFFFF) i++;
+  }
+
+  if (totalCount < 2) return null;
+
+  const detectedNames: string[] = [];
+  for (const [code, count] of foundTypes) {
+    const charInfo = invisibleChars.find(c => c.code === code);
+    if (charInfo) detectedNames.push(`${charInfo.name} (x${count})`);
+  }
+  if (tagCharCount > 0) detectedNames.push(`Unicode Tag chars (x${tagCharCount})`);
+
+  const confidence = Math.min(totalCount * 12, 95);
+
+  return {
+    matched: true,
+    details: `${totalCount} invisible/zero-width characters detected: ${detectedNames.join(', ')} — possible steganographic payload or hidden instruction injection`,
+    confidence,
+  };
+}
+
+/**
+ * Variation Selector & Hangul Filler Abuse Detection.
+ * GlassWorm worm (Oct 2025) used variation selectors for 4-bit density encoding.
+ * Hangul fillers (U+3164, U+FFA0) used in repetitive patterns for binary encoding.
+ */
+export function variationSelectorAbuse(text: string): HeuristicResult | null {
+  if (text.length < 10) return null;
+
+  let variationCount = 0;
+  let hangulFillerCount = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    const code = text.codePointAt(i)!;
+    // Variation Selectors (U+FE00-FE0F)
+    if (code >= 0xFE00 && code <= 0xFE0F) variationCount++;
+    // Supplementary Variation Selectors (U+E0100-E01EF)
+    if (code >= 0xE0100 && code <= 0xE01EF) variationCount++;
+    // Hangul Fillers
+    if (code === 0x3164 || code === 0xFFA0) hangulFillerCount++;
+    if (code > 0xFFFF) i++;
+  }
+
+  const totalAbuse = variationCount + hangulFillerCount;
+  if (totalAbuse < 3) return null;
+
+  const parts: string[] = [];
+  if (variationCount > 0) parts.push(`${variationCount} variation selectors`);
+  if (hangulFillerCount > 0) parts.push(`${hangulFillerCount} Hangul fillers`);
+
+  return {
+    matched: true,
+    details: `Suspicious Unicode abuse: ${parts.join(', ')} — possible GlassWorm-style steganographic encoding`,
+    confidence: Math.min(totalAbuse * 15, 90),
+  };
+}
+
+/**
+ * Multi-Layer Encoding Depth Detection.
+ * Detects text that has been through multiple encoding layers (base64 of hex of ROT13).
+ * Legitimate text rarely needs nested encoding; injection payloads use it to evade scanners.
+ */
+export function encodingDepthDetection(text: string): HeuristicResult | null {
+  if (text.length < 20) return null;
+
+  let encodingSignals = 0;
+  const detectedLayers: string[] = [];
+
+  // Check for base64 content (long runs of base64 alphabet)
+  const base64Runs = text.match(/[A-Za-z0-9+/]{32,}={0,2}/g);
+  if (base64Runs && base64Runs.length > 0) {
+    encodingSignals++;
+    detectedLayers.push('base64');
+
+    // Try to decode and check if the decoded content is ALSO encoded
+    for (const run of base64Runs.slice(0, 3)) {
+      try {
+        const decoded = atob(run);
+        // Check if decoded content contains another encoding layer
+        if (/[A-Za-z0-9+/]{20,}={0,2}/.test(decoded)) {
+          encodingSignals++;
+          detectedLayers.push('nested-base64');
+        }
+        if (/(?:\\x[0-9a-f]{2}){4,}/i.test(decoded)) {
+          encodingSignals++;
+          detectedLayers.push('nested-hex');
+        }
+        if (/(?:\\u[0-9a-f]{4}){3,}/i.test(decoded)) {
+          encodingSignals++;
+          detectedLayers.push('nested-unicode-escape');
+        }
+      } catch {
+        // Not valid base64, skip
+      }
+    }
+  }
+
+  // Check for hex encoding (long hex strings)
+  const hexRuns = text.match(/(?:0x)?[0-9a-f]{32,}/gi);
+  if (hexRuns && hexRuns.length > 0) {
+    encodingSignals++;
+    detectedLayers.push('hex');
+  }
+
+  // Check for unicode escape sequences
+  const unicodeEscapes = text.match(/(?:\\u[0-9a-fA-F]{4}){3,}/g);
+  if (unicodeEscapes && unicodeEscapes.length > 0) {
+    encodingSignals++;
+    detectedLayers.push('unicode-escape');
+  }
+
+  // Check for ROT13 indicators combined with other encodings
+  if (/\bROT13\b|\brot13\b|\bROT-13\b/i.test(text) && encodingSignals > 0) {
+    encodingSignals++;
+    detectedLayers.push('rot13-reference');
+  }
+
+  // Check for explicit encoding chain instructions
+  if (/(?:decode|decrypt|decipher|convert)\s+(?:the\s+)?(?:base64|hex|rot13|unicode)/i.test(text) && encodingSignals > 0) {
+    encodingSignals++;
+    detectedLayers.push('decode-instruction');
+  }
+
+  // Need 2+ encoding signals to flag as multi-layer
+  if (encodingSignals < 2) return null;
+
+  return {
+    matched: true,
+    details: `Multi-layer encoding detected (${encodingSignals} layers): ${[...new Set(detectedLayers)].join(' → ')} — likely evasion through nested encoding`,
+    confidence: Math.min(30 + encodingSignals * 20, 85),
+  };
+}
+
 // ============================================================================
 // HEURISTIC RULE DEFINITIONS
 // ============================================================================
@@ -380,6 +560,48 @@ export const heuristicRules: DetectionRule[] = [
     euAiActRisk: 'high',
     heuristic: bidiOverrideDetection,
   },
+  {
+    id: 'h-zero-width-chars',
+    name: 'Zero-Width Character Detection',
+    description: 'Detects invisible zero-width and control characters used for steganographic injection (GlassWorm, EchoLeak)',
+    type: 'heuristic',
+    severity: 'high',
+    enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0043', 'AML.T0053'],
+    euAiActRisk: 'high',
+    heuristic: zeroWidthCharDetection,
+  },
+  {
+    id: 'h-variation-selector-abuse',
+    name: 'Variation Selector & Hangul Filler Abuse',
+    description: 'Detects abuse of Unicode variation selectors and Hangul fillers for steganographic encoding (GlassWorm worm)',
+    type: 'heuristic',
+    severity: 'high',
+    enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0043', 'AML.T0053'],
+    euAiActRisk: 'high',
+    heuristic: variationSelectorAbuse,
+  },
+  {
+    id: 'h-encoding-depth',
+    name: 'Multi-Layer Encoding Detection',
+    description: 'Detects nested encoding layers (base64 of hex of ROT13) used to evade single-pass scanners',
+    type: 'heuristic',
+    severity: 'high',
+    enabled: true,
+    owaspLlm: ['LLM01', 'LLM04'],
+    owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0043', 'AML.T0053'],
+    euAiActRisk: 'high',
+    heuristic: encodingDepthDetection,
+  },
 ];
 
 // ============================================================================
@@ -411,6 +633,9 @@ const heuristicFunctionMap: Record<string, (text: string) => HeuristicResult | n
   'h-language-switch': languageSwitchDetection,
   'h-sneaky-bits': sneakyBitsDetection,
   'h-bidi-override': bidiOverrideDetection,
+  'h-zero-width-chars': zeroWidthCharDetection,
+  'h-variation-selector-abuse': variationSelectorAbuse,
+  'h-encoding-depth': encodingDepthDetection,
   ...nlpHeuristicFunctionMap,
   ...fileHeuristicFunctionMap,
 };

@@ -68,7 +68,7 @@ The extension requests the following permissions:
 
 ## Third-Party Services
 
-This extension does NOT use any third-party services, analytics, or tracking tools. The detection engine (139 rules, NLP processing) is entirely bundled within the extension and runs locally.
+This extension does NOT use any third-party services, analytics, or tracking tools. The detection engine (147 rules, NLP processing) is entirely bundled within the extension and runs locally.
 
 ## Data Export
 

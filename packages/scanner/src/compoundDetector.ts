@@ -105,6 +105,13 @@ const compoundDefinitions: CompoundDefinition[] = [
     severity: 'critical',
     requiredCategories: ['output-forensics', 'jailbreak'],
   },
+  {
+    id: 'compound-evasion-detected',
+    name: 'Active Evasion Detected',
+    description: 'Multiple obfuscation techniques (encoding + invisible characters) used simultaneously indicate deliberate evasion of security scanners',
+    severity: 'critical',
+    requiredCategories: ['encoding-obfuscation', 'heuristic-analysis'],
+  },
 ];
 
 /**
