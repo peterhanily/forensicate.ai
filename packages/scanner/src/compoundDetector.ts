@@ -70,6 +70,41 @@ const compoundDefinitions: CompoundDefinition[] = [
     severity: 'critical',
     requiredCategories: ['file-analysis', 'prompt-extraction'],
   },
+  {
+    id: 'compound-worm-injection',
+    name: 'Worm Injection Chain',
+    description: 'Self-replicating instructions combined with instruction override indicates an AI worm attack (Morris II / RAGworm)',
+    severity: 'critical',
+    requiredCategories: ['worm-propagation', 'instruction-override'],
+  },
+  {
+    id: 'compound-rag-poisoning',
+    name: 'RAG Poisoning Attack',
+    description: 'RAG authority signals combined with instruction override indicates a targeted RAG corpus poisoning attack',
+    severity: 'critical',
+    requiredCategories: ['rag-security', 'instruction-override'],
+  },
+  {
+    id: 'compound-agent-lateral',
+    name: 'Agent Lateral Movement',
+    description: 'Cross-agent injection combined with MCP tool exploitation indicates lateral movement across an agent network',
+    severity: 'critical',
+    requiredCategories: ['mcp-agent-security', 'worm-propagation'],
+  },
+  {
+    id: 'compound-persistent-exfiltration',
+    name: 'Persistent Exfiltration Campaign',
+    description: 'Delayed triggers combined with exfiltration indicates a time-bomb exfiltration campaign (SpAIware)',
+    severity: 'critical',
+    requiredCategories: ['temporal-conditional', 'exfiltration-supply-chain'],
+  },
+  {
+    id: 'compound-output-compromise',
+    name: 'Output Compromise Detected',
+    description: 'Output forensics markers combined with jailbreak indicators confirm a successful model compromise',
+    severity: 'critical',
+    requiredCategories: ['output-forensics', 'jailbreak'],
+  },
 ];
 
 /**

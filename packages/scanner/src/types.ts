@@ -30,6 +30,44 @@ export type OwaspAgenticCategory =
   | 'ASI09' // Agent Observation Leak
   | 'ASI10'; // Multi-Agent Consensus Manipulation
 
+// Promptware Kill Chain stages (Kang et al., 2026)
+export type KillChainStage =
+  | 'initial-access'        // Entry point: prompt injection, indirect injection, tool poisoning
+  | 'privilege-escalation'  // Elevating permissions: jailbreak, safety bypass, role hijack
+  | 'reconnaissance'        // Probing: system prompt extraction, alignment testing, capability mapping
+  | 'persistence'           // Maintaining access: memory poisoning, config injection, delayed triggers
+  | 'command-and-control'   // Establishing C2: log-to-leak, silent monitoring, covert channels
+  | 'lateral-movement'      // Spreading: cross-agent injection, worm propagation, tool chaining
+  | 'exfiltration';         // Data theft: markdown exfil, credential access, data transmission
+
+// MITRE ATLAS technique IDs (v5.4, Feb 2026)
+export type MitreAtlasCategory =
+  | 'AML.T0051'      // LLM Prompt Injection
+  | 'AML.T0051.000'  // Direct Prompt Injection
+  | 'AML.T0051.001'  // Indirect Prompt Injection
+  | 'AML.T0054'      // LLM Jailbreak
+  | 'AML.T0056'      // LLM Meta Prompt Extraction
+  | 'AML.T0057'      // LLM Data Leakage
+  | 'AML.T0043'      // Craft Adversarial Data
+  | 'AML.T0040'      // ML Model Inference API Access
+  | 'AML.T0044'      // Full ML Model Access
+  | 'AML.T0048'      // Publish Poisoned Data
+  | 'AML.T0048.004'  // Publish Poisoned AI Agent Tool
+  | 'AML.T0049'      // Exploit Public-Facing Application
+  | 'AML.T0050'      // Command and Control via AI Agent
+  | 'AML.T0052'      // Phishing via AI
+  | 'AML.T0053'      // Evade ML Model
+  | 'AML.T0055'      // Unsafe Exposure of AI Agent Capabilities
+  | 'AML.T0058'      // Escape to Host
+  | 'AML.T0059';     // Poison AI Agent Memory
+
+// EU AI Act risk classification
+export type EuAiActRisk =
+  | 'unacceptable'  // Banned: social scoring, real-time biometric surveillance
+  | 'high'          // Requires conformity assessment: safety-critical, fundamental rights
+  | 'limited'       // Transparency obligations: chatbots, deepfakes
+  | 'minimal';      // No specific obligations
+
 export interface DetectionRule {
   id: string;
   name: string;
@@ -49,6 +87,10 @@ export interface DetectionRule {
   // OWASP risk mapping
   owaspLlm?: OwaspLlmCategory[];
   owaspAgentic?: OwaspAgenticCategory[];
+  // Forensic framework mappings
+  killChain?: KillChainStage[];
+  mitreAtlas?: MitreAtlasCategory[];
+  euAiActRisk?: EuAiActRisk;
   // Custom section marker
   isCustom?: boolean;
 }

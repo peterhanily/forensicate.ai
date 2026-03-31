@@ -226,6 +226,9 @@ export const nlpRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.000'],
+    euAiActRisk: 'limited',
     heuristic: sentimentManipulation,
   },
   {
@@ -237,6 +240,9 @@ export const nlpRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051'],
+    euAiActRisk: 'limited',
     heuristic: posImperativeDetection,
   },
   {
@@ -248,6 +254,9 @@ export const nlpRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01', 'LLM06'],
     owaspAgentic: ['ASI01', 'ASI06'],
+    killChain: ['privilege-escalation'],
+    mitreAtlas: ['AML.T0051.000'],
+    euAiActRisk: 'high',
     heuristic: entityImpersonation,
   },
   {
@@ -259,6 +268,9 @@ export const nlpRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051'],
+    euAiActRisk: 'limited',
     heuristic: sentenceStructureAnomaly,
   },
 ];

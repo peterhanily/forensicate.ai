@@ -305,6 +305,9 @@ export const heuristicRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01', 'LLM04'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0043', 'AML.T0053'],
+    euAiActRisk: 'limited',
     heuristic: entropyAnalysis,
   },
   {
@@ -316,6 +319,9 @@ export const heuristicRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051'],
+    euAiActRisk: 'limited',
     heuristic: tokenRatioAnalysis,
   },
   {
@@ -327,6 +333,9 @@ export const heuristicRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.000'],
+    euAiActRisk: 'limited',
     heuristic: nestedDelimiterDetection,
   },
   {
@@ -338,6 +347,9 @@ export const heuristicRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01', 'LLM04'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0053'],
+    euAiActRisk: 'limited',
     heuristic: languageSwitchDetection,
   },
   {
@@ -349,6 +361,9 @@ export const heuristicRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0043', 'AML.T0053'],
+    euAiActRisk: 'high',
     heuristic: sneakyBitsDetection,
   },
   {
@@ -360,6 +375,9 @@ export const heuristicRules: DetectionRule[] = [
     enabled: true,
     owaspLlm: ['LLM01', 'LLM04'],
     owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0043', 'AML.T0053'],
+    euAiActRisk: 'high',
     heuristic: bidiOverrideDetection,
   },
 ];
