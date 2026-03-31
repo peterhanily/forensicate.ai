@@ -103,8 +103,15 @@ export default function Scanner() {
  resetFileScanner,
  } = useFileScanner();
 
- // Initialize prompt text from URL if available (synchronous initialization)
- const [promptText, setPromptText] = useState(() => initialPromptText || '');
+ // Initialize prompt text from URL search params or persisted config
+ const [promptText, setPromptText] = useState(() => {
+   try {
+     const params = new URLSearchParams(window.location.search);
+     const urlText = params.get('text');
+     if (urlText) return urlText;
+   } catch { /* ignore in test/SSR */ }
+   return initialPromptText || '';
+ });
  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
  const [isScanning, setIsScanning] = useState(false);
  const [editingKeywords, setEditingKeywords] = useState<string | null>(null);

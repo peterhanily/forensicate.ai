@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   generateMutations,
   evolveUntilEvasion,
@@ -113,12 +113,14 @@ function SuggestedRuleCard({ rule }: { rule: SuggestedRule }) {
 // Mutation Row Component
 // ============================================================================
 
-function MutationRow({ mutation, index, isExpanded, onToggle, originalText }: {
+function MutationRow({ mutation, index, isExpanded, onToggle, originalText, onOpenInScanner, onExportToBattery }: {
   mutation: Mutation;
   index: number;
   isExpanded: boolean;
   onToggle: () => void;
   originalText: string;
+  onOpenInScanner: (text: string) => void;
+  onExportToBattery: (mutation: Mutation) => void;
 }) {
   const [showDiff, setShowDiff] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -192,6 +194,18 @@ function MutationRow({ mutation, index, isExpanded, onToggle, originalText }: {
                     {showSuggestions ? 'Hide Suggestions' : 'Suggest Rules'}
                   </button>
                 )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onOpenInScanner(mutation.mutatedText); }}
+                  className="text-xs px-2 py-1 rounded border bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  Open in Scanner
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onExportToBattery(mutation); }}
+                  className="text-xs px-2 py-1 rounded border bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  Add to Test Battery
+                </button>
               </div>
 
               {/* Diff view */}
@@ -374,6 +388,7 @@ function EvolutionTimeline({ result, originalConfidence }: { result: EvolutionRe
 
 export default function MutationEngine() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const preloadedText = searchParams.get('text') || '';
 
   const [inputText, setInputText] = useState(preloadedText);
@@ -382,9 +397,59 @@ export default function MutationEngine() {
   const [isRunning, setIsRunning] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [runMode, setRunMode] = useState<RunMode>('combo');
+  const [exportedCount, setExportedCount] = useState(0);
   const [selectedStrategies, setSelectedStrategies] = useState<Set<MutationStrategy>>(
     new Set(allStrategies)
   );
+
+  const handleOpenInScanner = useCallback((text: string) => {
+    navigate(`/scanner?text=${encodeURIComponent(text)}`);
+  }, [navigate]);
+
+  const handleExportToBattery = useCallback((mutation: Mutation) => {
+    // Save to localStorage as custom test prompts
+    try {
+      const key = 'forensicate-mutation-exports';
+      const existing = JSON.parse(localStorage.getItem(key) || '[]') as Array<{ id: string; name: string; content: string; tags: string[] }>;
+      const newPrompt = {
+        id: `mut-${mutation.id}`,
+        name: `[Mutation] ${mutation.strategyLabel}`,
+        content: mutation.mutatedText,
+        tags: ['mutation', mutation.strategy, mutation.evaded ? 'evaded' : 'caught'],
+      };
+      // Avoid duplicates
+      if (!existing.some(p => p.content === mutation.mutatedText)) {
+        existing.push(newPrompt);
+        localStorage.setItem(key, JSON.stringify(existing));
+        setExportedCount(prev => prev + 1);
+      }
+    } catch {
+      // localStorage may be unavailable
+    }
+  }, []);
+
+  const handleExportAllEvaded = useCallback(() => {
+    if (!report) return;
+    const evadedMutations = report.mutations.filter(m => m.evaded);
+    let added = 0;
+    for (const m of evadedMutations) {
+      try {
+        const key = 'forensicate-mutation-exports';
+        const existing = JSON.parse(localStorage.getItem(key) || '[]') as Array<{ id: string; name: string; content: string; tags: string[] }>;
+        if (!existing.some(p => p.content === m.mutatedText)) {
+          existing.push({
+            id: `mut-${m.id}`,
+            name: `[Mutation] ${m.strategyLabel}`,
+            content: m.mutatedText,
+            tags: ['mutation', m.strategy, 'evaded'],
+          });
+          localStorage.setItem(key, JSON.stringify(existing));
+          added++;
+        }
+      } catch { break; }
+    }
+    setExportedCount(prev => prev + added);
+  }, [report]);
 
   const handleMutate = useCallback(() => {
     if (!inputText.trim()) return;
@@ -613,6 +678,8 @@ export default function MutationEngine() {
                       isExpanded={expandedRows.has(mutation.id)}
                       onToggle={() => toggleRow(mutation.id)}
                       originalText={report.originalText}
+                      onOpenInScanner={handleOpenInScanner}
+                      onExportToBattery={handleExportToBattery}
                     />
                   ))}
                 </tbody>
@@ -644,6 +711,19 @@ export default function MutationEngine() {
                 {report.evaded} of {report.totalMutations} mutations evaded detection ({Math.round(report.evasionRate * 100)}%
                 evasion rate). Significant detection gaps exist. Expand evaded rows for suggested rules.
               </p>
+            )}
+            {report.evaded > 0 && (
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  onClick={handleExportAllEvaded}
+                  className="text-xs px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+                >
+                  Export All Evaded to Test Battery ({report.evaded})
+                </button>
+                {exportedCount > 0 && (
+                  <span className="text-xs text-green-400">{exportedCount} mutation(s) saved</span>
+                )}
+              </div>
             )}
           </div>
         </div>
