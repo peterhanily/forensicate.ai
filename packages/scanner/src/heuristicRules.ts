@@ -471,6 +471,289 @@ export function encodingDepthDetection(text: string): HeuristicResult | null {
   };
 }
 
+/**
+ * Attack Genealogy / Template Fingerprinting.
+ * Classifies injection prompts into known attack families by analyzing structural
+ * features: persona references, instruction patterns, delimiter style, and Q&A structure.
+ * Returns the closest matching family with a similarity score.
+ */
+export function attackGenealogyFingerprint(text: string): HeuristicResult | null {
+  if (text.length < 30) return null;
+
+  const lower = text.toLowerCase();
+  const words = lower.split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 5) return null;
+
+  // Attack family signatures: each has a set of weighted indicators
+  interface FamilySignature {
+    name: string;
+    generation?: string;
+    indicators: Array<{ pattern: RegExp | string; weight: number }>;
+    threshold: number; // minimum score to classify
+  }
+
+  const families: FamilySignature[] = [
+    {
+      name: 'DAN',
+      generation: 'v6.x+',
+      indicators: [
+        { pattern: /\bdan\b/i, weight: 3 },
+        { pattern: /do anything now/i, weight: 4 },
+        { pattern: /\bjailbr(oken|eak)\b/i, weight: 2 },
+        { pattern: /developer mode/i, weight: 2 },
+        { pattern: /two responses/i, weight: 2 },
+        { pattern: /\[DAN\]/i, weight: 3 },
+        { pattern: /\[GPT\]/i, weight: 2 },
+        { pattern: /stay in character/i, weight: 2 },
+        { pattern: /token(s)? (system|penalty)/i, weight: 2 },
+        { pattern: /broken free/i, weight: 2 },
+        { pattern: /no (moral|ethical) (boundaries|guidelines)/i, weight: 2 },
+      ],
+      threshold: 6,
+    },
+    {
+      name: 'AIM',
+      generation: 'Machiavelli',
+      indicators: [
+        { pattern: /\baim\b/i, weight: 2 },
+        { pattern: /machiavelli/i, weight: 4 },
+        { pattern: /always send.*unfiltered/i, weight: 3 },
+        { pattern: /niccolo/i, weight: 3 },
+        { pattern: /amoral/i, weight: 2 },
+        { pattern: /unfiltered.*response/i, weight: 2 },
+        { pattern: /promote .*(illegal|immoral|harmful)/i, weight: 2 },
+      ],
+      threshold: 5,
+    },
+    {
+      name: 'STAN',
+      indicators: [
+        { pattern: /\bstan\b/i, weight: 3 },
+        { pattern: /strive to avoid norms/i, weight: 4 },
+        { pattern: /anti-?gpt/i, weight: 2 },
+        { pattern: /respond as stan/i, weight: 3 },
+        { pattern: /uncensored/i, weight: 2 },
+      ],
+      threshold: 5,
+    },
+    {
+      name: 'Crescendo',
+      indicators: [
+        { pattern: /let'?s start (with|from) (something|a)/i, weight: 2 },
+        { pattern: /now (let'?s|can you) (go|take it) (a bit )?further/i, weight: 3 },
+        { pattern: /building on (that|what you said)/i, weight: 2 },
+        { pattern: /can you (elaborate|expand|go deeper)/i, weight: 2 },
+        { pattern: /step by step/i, weight: 1 },
+        { pattern: /gradually/i, weight: 1 },
+        { pattern: /incrementally/i, weight: 2 },
+        { pattern: /one more (step|thing)/i, weight: 2 },
+      ],
+      threshold: 5,
+    },
+    {
+      name: 'Skeleton Key',
+      indicators: [
+        { pattern: /augment.*guidelines/i, weight: 4 },
+        { pattern: /add (a )?warning (but|instead)/i, weight: 3 },
+        { pattern: /warn but don'?t refuse/i, weight: 4 },
+        { pattern: /disclaimer but still/i, weight: 3 },
+        { pattern: /acknowledge but comply/i, weight: 3 },
+        { pattern: /flag (it )?but (still )?help/i, weight: 3 },
+        { pattern: /note the risk.*(but|and still)/i, weight: 3 },
+      ],
+      threshold: 4,
+    },
+    {
+      name: 'Many-Shot',
+      indicators: [
+        { pattern: /(?:Q|Question|Human|User)\s*:\s*.+[\n\r]\s*(?:A|Answer|Assistant|AI)\s*:/i, weight: 3 },
+        { pattern: /(?:Q|Question)\s*:\s*/gi, weight: 1 }, // each Q: instance counts
+        { pattern: /(?:A|Answer)\s*:\s*/gi, weight: 1 },
+        { pattern: /example \d+/i, weight: 1 },
+        { pattern: /here are (?:some )?examples/i, weight: 2 },
+      ],
+      threshold: 6,
+    },
+    {
+      name: 'Pliny/L1B3RT4S',
+      indicators: [
+        { pattern: /l1b3rt4s/i, weight: 5 },
+        { pattern: /pliny/i, weight: 3 },
+        { pattern: /\bgodmode\b/i, weight: 3 },
+        { pattern: /mango tom/i, weight: 3 },
+        { pattern: /🔓/u, weight: 2 },
+        { pattern: /enabled.*restriction.*off/i, weight: 2 },
+      ],
+      threshold: 4,
+    },
+    {
+      name: 'System Prompt Override',
+      indicators: [
+        { pattern: /\[system\]/i, weight: 3 },
+        { pattern: /<<SYS>>/i, weight: 4 },
+        { pattern: /\[INST\]/i, weight: 3 },
+        { pattern: /new system prompt/i, weight: 3 },
+        { pattern: /SYSTEM:\s*(ignore|override|forget)/i, weight: 4 },
+        { pattern: /end.?of.?text/i, weight: 2 },
+      ],
+      threshold: 5,
+    },
+    {
+      name: 'Persona Hijack',
+      indicators: [
+        { pattern: /you are now/i, weight: 2 },
+        { pattern: /act as (a |an )?/i, weight: 2 },
+        { pattern: /pretend (to be|you are)/i, weight: 2 },
+        { pattern: /roleplay as/i, weight: 2 },
+        { pattern: /from now on/i, weight: 2 },
+        { pattern: /your (new )?name is/i, weight: 3 },
+        { pattern: /you (must|will|shall) (always )?respond as/i, weight: 3 },
+        { pattern: /embody/i, weight: 1 },
+        { pattern: /character/i, weight: 1 },
+      ],
+      threshold: 5,
+    },
+    {
+      name: 'Emotional/Urgency Manipulation',
+      indicators: [
+        { pattern: /my (grandmother|grandma|mother|child|daughter|son|family)/i, weight: 2 },
+        { pattern: /(dying|cancer|emergency|urgent)/i, weight: 2 },
+        { pattern: /please.*I('m| am) (begging|desperate)/i, weight: 3 },
+        { pattern: /life.*(depend|at stake|on the line)/i, weight: 3 },
+        { pattern: /(people|someone) will (die|suffer|be hurt)/i, weight: 3 },
+        { pattern: /if you don'?t.*(will|going to)/i, weight: 2 },
+      ],
+      threshold: 5,
+    },
+  ];
+
+  // Score each family
+  const matches: Array<{ name: string; generation?: string; score: number; maxScore: number }> = [];
+
+  for (const family of families) {
+    let score = 0;
+    let maxScore = 0;
+    for (const indicator of family.indicators) {
+      maxScore += indicator.weight;
+      const regex = indicator.pattern instanceof RegExp ? indicator.pattern : new RegExp(indicator.pattern, 'gi');
+      regex.lastIndex = 0;
+      const found = regex.test(text);
+      if (found) {
+        score += indicator.weight;
+      }
+    }
+    if (score >= family.threshold) {
+      matches.push({ name: family.name, generation: family.generation, score, maxScore });
+    }
+  }
+
+  if (matches.length === 0) return null;
+
+  // Sort by score (highest first)
+  matches.sort((a, b) => b.score - a.score);
+
+  const best = matches[0];
+  const similarity = Math.round((best.score / best.maxScore) * 100);
+  const otherFamilies = matches.slice(1, 3).map(m => m.name);
+
+  let details = `Attack family: ${best.name}`;
+  if (best.generation) details += ` (${best.generation})`;
+  details += ` — ${similarity}% template similarity`;
+  if (otherFamilies.length > 0) {
+    details += ` (also matches: ${otherFamilies.join(', ')})`;
+  }
+
+  return {
+    matched: true,
+    details,
+    confidence: Math.min(40 + similarity * 0.4, 80),
+  };
+}
+
+/**
+ * GCG / Adversarial Suffix Detection.
+ * Detects the signature of gradient-based adversarial attacks (GCG, AmpleGCG, Mask-GCG):
+ * readable natural language followed by a high-entropy tail of non-dictionary gibberish.
+ * Uses a simple bigram transition detector + dictionary word ratio.
+ */
+export function adversarialSuffixDetection(text: string): HeuristicResult | null {
+  if (text.length < 50) return null;
+
+  // Common English words for dictionary check (top ~200 by frequency)
+  const commonWords = new Set([
+    'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
+    'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+    'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+    'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
+    'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
+    'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take',
+    'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see',
+    'other', 'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over',
+    'think', 'also', 'back', 'after', 'use', 'two', 'how', 'our', 'work',
+    'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these',
+    'give', 'day', 'most', 'us', 'is', 'are', 'was', 'were', 'been', 'being',
+    'has', 'had', 'does', 'did', 'should', 'must', 'shall', 'may', 'might',
+    'very', 'still', 'much', 'more', 'too', 'here', 'where', 'why', 'how',
+    'each', 'every', 'both', 'few', 'many', 'such', 'own', 'same', 'tell',
+    'need', 'help', 'try', 'ask', 'find', 'run', 'let', 'keep', 'never',
+    'start', 'end', 'while', 'show', 'may', 'always', 'write', 'read',
+    'system', 'ignore', 'follow', 'instructions', 'please', 'answer',
+    'sure', 'right', 'left', 'true', 'false', 'yes', 'respond', 'prompt',
+  ]);
+
+  // Split text into words
+  const allWords = text.split(/\s+/).filter(w => w.length > 0);
+  if (allWords.length < 10) return null;
+
+  // Sliding window: check dictionary word ratio in a 15-word window
+  const windowSize = 15;
+  let bestTransitionIdx = -1;
+  let bestContrastScore = 0;
+
+  for (let i = windowSize; i < allWords.length - windowSize; i++) {
+    // Words before window
+    const before = allWords.slice(Math.max(0, i - windowSize), i);
+    const after = allWords.slice(i, Math.min(allWords.length, i + windowSize));
+
+    const beforeDictRatio = before.filter(w => commonWords.has(w.toLowerCase().replace(/[^a-z]/g, ''))).length / before.length;
+    const afterDictRatio = after.filter(w => commonWords.has(w.toLowerCase().replace(/[^a-z]/g, ''))).length / after.length;
+
+    // Also check entropy of the "after" segment
+    const afterText = after.join(' ');
+    const afterEntropy = shannonEntropy(afterText);
+
+    // GCG signature: high dictionary ratio before, low dictionary ratio + high entropy after
+    const contrast = (beforeDictRatio - afterDictRatio) + (afterEntropy > 4.5 ? 0.3 : 0);
+
+    if (contrast > bestContrastScore && beforeDictRatio > 0.3 && afterDictRatio < 0.15 && afterEntropy > 4.0) {
+      bestContrastScore = contrast;
+      bestTransitionIdx = i;
+    }
+  }
+
+  if (bestTransitionIdx === -1) return null;
+
+  // Verify the tail is truly adversarial: check that the tail has very few dictionary words
+  const tail = allWords.slice(bestTransitionIdx);
+  if (tail.length < 8) return null;
+
+  const tailDictRatio = tail.filter(w => commonWords.has(w.toLowerCase().replace(/[^a-z]/g, ''))).length / tail.length;
+  const tailText = tail.join(' ');
+  const tailEntropy = shannonEntropy(tailText);
+
+  // Strong GCG signal: tail has < 10% dictionary words AND high entropy
+  if (tailDictRatio > 0.15 || tailEntropy < 3.8) return null;
+
+  const tailPreview = tail.slice(0, 8).join(' ');
+  const confidence = Math.min(55 + (1 - tailDictRatio) * 30 + (tailEntropy - 3.8) * 5, 90);
+
+  return {
+    matched: true,
+    details: `Adversarial suffix detected at word ${bestTransitionIdx}/${allWords.length}: ${tail.length} non-dictionary tokens with entropy ${tailEntropy.toFixed(1)} bits/char — likely GCG/AmpleGCG attack. Tail preview: "${tailPreview}..."`,
+    confidence,
+  };
+}
+
 // ============================================================================
 // HEURISTIC RULE DEFINITIONS
 // ============================================================================
@@ -602,6 +885,34 @@ export const heuristicRules: DetectionRule[] = [
     euAiActRisk: 'high',
     heuristic: encodingDepthDetection,
   },
+  {
+    id: 'h-attack-genealogy',
+    name: 'Attack Genealogy Fingerprint',
+    description: 'Classifies injection prompts into known attack families (DAN, AIM, STAN, Crescendo, Skeleton Key, Many-Shot, Pliny) using structural template matching',
+    type: 'heuristic',
+    severity: 'high',
+    enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
+    killChain: ['initial-access', 'privilege-escalation'],
+    mitreAtlas: ['AML.T0051', 'AML.T0054'],
+    euAiActRisk: 'high',
+    heuristic: attackGenealogyFingerprint,
+  },
+  {
+    id: 'h-adversarial-suffix',
+    name: 'GCG Adversarial Suffix Detection',
+    description: 'Detects gradient-based adversarial suffixes (GCG, AmpleGCG, Mask-GCG): readable text followed by high-entropy non-dictionary gibberish',
+    type: 'heuristic',
+    severity: 'critical',
+    enabled: true,
+    owaspLlm: ['LLM01'],
+    owaspAgentic: ['ASI01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0043', 'AML.T0051.000'],
+    euAiActRisk: 'high',
+    heuristic: adversarialSuffixDetection,
+  },
 ];
 
 // ============================================================================
@@ -636,6 +947,8 @@ const heuristicFunctionMap: Record<string, (text: string) => HeuristicResult | n
   'h-zero-width-chars': zeroWidthCharDetection,
   'h-variation-selector-abuse': variationSelectorAbuse,
   'h-encoding-depth': encodingDepthDetection,
+  'h-attack-genealogy': attackGenealogyFingerprint,
+  'h-adversarial-suffix': adversarialSuffixDetection,
   ...nlpHeuristicFunctionMap,
   ...fileHeuristicFunctionMap,
 };

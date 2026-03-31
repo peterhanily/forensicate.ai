@@ -7,7 +7,7 @@ A comprehensive AI security toolkit for analyzing prompts for potential injectio
 
 ## Overview
 
-Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 147 rules in 20 categories.
+Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 149 rules in 20 categories.
 
 ## Available Formats
 
@@ -187,7 +187,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - Pricing manually verified Feb 2026 - may become outdated
 - Enterprise/volume/regional pricing NOT reflected
 
-### Detection Rules (147 Rules in 20 Categories)
+### Detection Rules (149 Rules in 20 Categories)
 
 - **Keyword Detection (46 rules)**: Pattern matching for known injection phrases
   - Instruction Override, Jailbreak Personas (DAN, STAN, DUDE, EvilBOT, Maximum)
@@ -214,7 +214,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
   - MCP important tag injection, cross-tool injection, fake system prompts
   - Markdown image exfiltration, credential path references, environment variable exfiltration
 
-- **Heuristic Analysis (9 rules)**: Algorithmic pattern detection
+- **Heuristic Analysis (11 rules)**: Algorithmic pattern detection
   - Shannon Entropy Analysis: Detects encoded payloads via sliding-window entropy
   - Imperative Verb Density: Flags instruction-heavy prompts
   - Nested Delimiter Detection: Catches framing attacks with 3+ delimiter types
@@ -407,7 +407,7 @@ forensicate_ai/
 │   │   ├── src/
 │   │   │   ├── scanner.ts       # Core scanPrompt() function
 │   │   │   ├── rules.ts         # 121 keyword + regex rules
-│   │   │   ├── heuristicRules.ts # 9 heuristic rules
+│   │   │   ├── heuristicRules.ts # 11 heuristic rules
 │   │   │   ├── nlpRules.ts      # 4 NLP rules (compromise.js)
 │   │   │   ├── fileRules.ts     # 13 file-based rules
 │   │   │   ├── compoundDetector.ts
