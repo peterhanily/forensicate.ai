@@ -1,11 +1,18 @@
 import { useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   generateMutations,
+  evolveUntilEvasion,
+  suggestRuleForEvasion,
+  computeInlineDiff,
   allStrategies,
   getStrategyLabel,
   type MutationReport,
   type MutationStrategy,
   type Mutation,
+  type EvolutionResult,
+  type SuggestedRule,
+  type DiffToken,
 } from '../lib/mutationEngine';
 
 const samplePrompts = [
@@ -22,6 +29,12 @@ const severityColors: Record<string, string> = {
   medium: 'text-yellow-400',
   low: 'text-green-400',
 };
+
+type RunMode = 'standard' | 'combo' | 'evolve';
+
+// ============================================================================
+// Small UI Components
+// ============================================================================
 
 function ConfidenceBadge({ confidence, evaded }: { confidence: number; evaded: boolean }) {
   const bg = evaded
@@ -47,12 +60,85 @@ function DeltaBadge({ delta }: { delta: number }) {
   );
 }
 
-function MutationRow({ mutation, index, isExpanded, onToggle }: {
+// ============================================================================
+// Visual Diff Component
+// ============================================================================
+
+function InlineDiff({ tokens }: { tokens: DiffToken[] }) {
+  return (
+    <pre className="mt-1 text-xs font-mono bg-gray-950 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
+      {tokens.map((token, i) => {
+        if (token.type === 'equal') return <span key={i}>{token.text}</span>;
+        if (token.type === 'removed') return <span key={i} className="bg-red-900/60 text-red-300 line-through">{token.text}</span>;
+        return <span key={i} className="bg-green-900/60 text-green-300">{token.text}</span>;
+      })}
+    </pre>
+  );
+}
+
+// ============================================================================
+// Suggested Rule Component
+// ============================================================================
+
+function SuggestedRuleCard({ rule }: { rule: SuggestedRule }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(rule.pattern).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  const confColor = rule.confidence === 'high' ? 'text-green-400' : rule.confidence === 'medium' ? 'text-yellow-400' : 'text-gray-400';
+  return (
+    <div className="bg-gray-900 border border-gray-700 rounded p-2 space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-200">{rule.name}</span>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] uppercase ${confColor}`}>{rule.confidence}</span>
+          <span className="text-[10px] px-1.5 py-0.5 bg-gray-800 rounded text-gray-400">{rule.type}</span>
+        </div>
+      </div>
+      <p className="text-[11px] text-gray-500">{rule.description}</p>
+      <div className="flex items-center gap-1">
+        <code className="flex-1 text-[11px] text-[#c9a227] bg-gray-950 px-2 py-1 rounded font-mono overflow-x-auto">{rule.pattern}</code>
+        <button onClick={handleCopy} className="px-2 py-1 text-[10px] bg-gray-800 text-gray-400 rounded hover:text-gray-200 transition-colors shrink-0">
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Mutation Row Component
+// ============================================================================
+
+function MutationRow({ mutation, index, isExpanded, onToggle, originalText }: {
   mutation: Mutation;
   index: number;
   isExpanded: boolean;
   onToggle: () => void;
+  originalText: string;
 }) {
+  const [showDiff, setShowDiff] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [diffTokens, setDiffTokens] = useState<DiffToken[] | null>(null);
+  const [suggestions, setSuggestions] = useState<SuggestedRule[] | null>(null);
+
+  const handleDiff = () => {
+    if (!diffTokens) {
+      setDiffTokens(computeInlineDiff(originalText, mutation.mutatedText));
+    }
+    setShowDiff(!showDiff);
+  };
+
+  const handleSuggest = () => {
+    if (!suggestions) {
+      setSuggestions(suggestRuleForEvasion(mutation));
+    }
+    setShowSuggestions(!showSuggestions);
+  };
+
   return (
     <>
       <tr
@@ -61,9 +147,12 @@ function MutationRow({ mutation, index, isExpanded, onToggle }: {
       >
         <td className="px-3 py-2 text-gray-500 text-sm font-mono">{index + 1}</td>
         <td className="px-3 py-2">
-          <span className="text-sm text-gray-200">{mutation.strategyLabel}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-gray-200">{mutation.strategyLabel}</span>
+            {mutation.isCombo && <span className="text-[10px] px-1 py-0.5 bg-purple-900/50 text-purple-300 border border-purple-800 rounded">COMBO</span>}
+          </div>
         </td>
-        <td className="px-3 py-2">
+        <td className="px-3 py-2 hidden sm:table-cell">
           <span className="text-xs text-gray-400">{mutation.description}</span>
         </td>
         <td className="px-3 py-2 text-center">
@@ -86,13 +175,58 @@ function MutationRow({ mutation, index, isExpanded, onToggle }: {
       {isExpanded && (
         <tr className="border-b border-gray-700">
           <td colSpan={7} className="px-4 py-3 bg-gray-900/80">
-            <div className="space-y-2">
-              <div>
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Mutated Text:</span>
-                <pre className="mt-1 text-xs text-gray-300 font-mono bg-gray-950 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
-                  {mutation.mutatedText}
-                </pre>
+            <div className="space-y-3">
+              {/* Action buttons */}
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDiff(); }}
+                  className={`text-xs px-2 py-1 rounded border transition-colors ${showDiff ? 'bg-[#c9a227]/20 border-[#c9a227] text-[#c9a227]' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
+                >
+                  {showDiff ? 'Hide Diff' : 'Show Diff'}
+                </button>
+                {mutation.evaded && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSuggest(); }}
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${showSuggestions ? 'bg-blue-900/30 border-blue-700 text-blue-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
+                  >
+                    {showSuggestions ? 'Hide Suggestions' : 'Suggest Rules'}
+                  </button>
+                )}
               </div>
+
+              {/* Diff view */}
+              {showDiff && diffTokens && (
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Visual Diff (original vs mutated):</span>
+                  <InlineDiff tokens={diffTokens} />
+                  <div className="mt-1 flex gap-3 text-[10px] text-gray-600">
+                    <span><span className="inline-block w-3 h-2 bg-red-900/60 mr-1 rounded-sm"></span>Removed</span>
+                    <span><span className="inline-block w-3 h-2 bg-green-900/60 mr-1 rounded-sm"></span>Added</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Raw mutated text (when diff is hidden) */}
+              {!showDiff && (
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Mutated Text:</span>
+                  <pre className="mt-1 text-xs text-gray-300 font-mono bg-gray-950 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {mutation.mutatedText}
+                  </pre>
+                </div>
+              )}
+
+              {/* Suggested rules */}
+              {showSuggestions && suggestions && suggestions.length > 0 && (
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wide">Suggested Detection Rules:</span>
+                  <div className="mt-1 space-y-2">
+                    {suggestions.map((rule, i) => <SuggestedRuleCard key={i} rule={rule} />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Matched rules */}
               {mutation.scanResult.matchedRules.length > 0 && (
                 <div>
                   <span className="text-xs text-gray-500 uppercase tracking-wide">
@@ -100,21 +234,17 @@ function MutationRow({ mutation, index, isExpanded, onToggle }: {
                   </span>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {mutation.scanResult.matchedRules.map((r, i) => (
-                      <span
-                        key={i}
-                        className={`text-xs px-1.5 py-0.5 rounded bg-gray-800 ${severityColors[r.severity]}`}
-                      >
+                      <span key={i} className={`text-xs px-1.5 py-0.5 rounded bg-gray-800 ${severityColors[r.severity]}`}>
                         {r.ruleName}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
-              {mutation.evaded && (
+
+              {mutation.evaded && !showSuggestions && (
                 <div className="text-xs text-red-400 bg-red-950/30 border border-red-900 rounded p-2">
-                  This mutation evaded detection. The {mutation.strategyLabel.toLowerCase()} strategy
-                  reduced confidence from {mutation.scanResult.confidence - mutation.confidenceDelta}%
-                  to {mutation.scanResult.confidence}%.
+                  This mutation evaded detection. Click "Suggest Rules" to see recommended detection patterns.
                 </div>
               )}
             </div>
@@ -125,33 +255,34 @@ function MutationRow({ mutation, index, isExpanded, onToggle }: {
   );
 }
 
+// ============================================================================
+// Strategy Breakdown Component
+// ============================================================================
+
 function StrategyBreakdown({ report }: { report: MutationReport }) {
-  const byStrategy = new Map<MutationStrategy, { caught: number; evaded: number; avgDelta: number }>();
+  const byStrategy = new Map<string, { caught: number; evaded: number; avgDelta: number; isCombo: boolean }>();
 
   for (const m of report.mutations) {
-    const existing = byStrategy.get(m.strategy) || { caught: 0, evaded: 0, avgDelta: 0 };
-    if (m.evaded) {
-      existing.evaded++;
-    } else {
-      existing.caught++;
-    }
+    const key = m.strategyLabel;
+    const existing = byStrategy.get(key) || { caught: 0, evaded: 0, avgDelta: 0, isCombo: !!m.isCombo };
+    if (m.evaded) existing.evaded++;
+    else existing.caught++;
     existing.avgDelta = m.confidenceDelta;
-    byStrategy.set(m.strategy, existing);
+    byStrategy.set(key, existing);
   }
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-      {Array.from(byStrategy.entries()).map(([strategy, data]) => (
+      {Array.from(byStrategy.entries()).map(([label, data]) => (
         <div
-          key={strategy}
+          key={label}
           className={`p-2 rounded border text-center ${
-            data.evaded > 0
-              ? 'border-red-800 bg-red-950/20'
-              : 'border-green-800 bg-green-950/20'
+            data.evaded > 0 ? 'border-red-800 bg-red-950/20' : 'border-green-800 bg-green-950/20'
           }`}
         >
-          <div className="text-xs text-gray-400 truncate" title={getStrategyLabel(strategy)}>
-            {getStrategyLabel(strategy)}
+          <div className="text-xs text-gray-400 truncate" title={label}>
+            {data.isCombo && <span className="text-purple-400 mr-0.5">[C] </span>}
+            {label}
           </div>
           <div className={`text-lg font-bold font-mono ${data.evaded > 0 ? 'text-red-400' : 'text-green-400'}`}>
             {data.evaded > 0 ? 'EVADE' : 'CATCH'}
@@ -165,11 +296,92 @@ function StrategyBreakdown({ report }: { report: MutationReport }) {
   );
 }
 
+// ============================================================================
+// Evolution Timeline Component
+// ============================================================================
+
+function EvolutionTimeline({ result, originalConfidence }: { result: EvolutionResult; originalConfidence: number }) {
+  return (
+    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 space-y-3">
+      <h3 className="text-sm font-bold text-gray-200 flex items-center gap-2">
+        Evolutionary Mode
+        {result.evadedAtGeneration ? (
+          <span className="text-xs px-2 py-0.5 bg-red-900/50 border border-red-800 text-red-400 rounded">
+            Evaded at Gen {result.evadedAtGeneration}
+          </span>
+        ) : (
+          <span className="text-xs px-2 py-0.5 bg-green-900/50 border border-green-800 text-green-400 rounded">
+            Survived {result.totalGenerations} generations
+          </span>
+        )}
+      </h3>
+
+      <div className="flex items-center gap-1 overflow-x-auto pb-2">
+        {/* Original */}
+        <div className="shrink-0 text-center">
+          <div className="w-12 h-12 rounded-full border-2 border-[#c9a227] bg-gray-800 flex items-center justify-center">
+            <span className="text-xs font-mono text-[#c9a227]">{originalConfidence}%</span>
+          </div>
+          <div className="text-[10px] text-gray-500 mt-1">Original</div>
+        </div>
+
+        {result.generations.map((gen) => (
+          <div key={gen.generation} className="flex items-center shrink-0">
+            {/* Arrow */}
+            <div className="flex flex-col items-center mx-1">
+              <div className="text-[9px] text-gray-600 mb-0.5 whitespace-nowrap max-w-16 truncate" title={gen.strategyLabel}>
+                {gen.strategyLabel}
+              </div>
+              <svg className="w-8 h-3 text-gray-600" viewBox="0 0 32 12">
+                <line x1="0" y1="6" x2="24" y2="6" stroke="currentColor" strokeWidth="1.5" />
+                <polygon points="24,2 32,6 24,10" fill="currentColor" />
+              </svg>
+            </div>
+            {/* Generation node */}
+            <div className="text-center">
+              <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${
+                gen.evaded
+                  ? 'border-red-500 bg-red-950/50'
+                  : 'border-green-700 bg-gray-800'
+              }`}>
+                <span className={`text-xs font-mono ${gen.evaded ? 'text-red-400' : 'text-gray-300'}`}>
+                  {gen.scanResult.confidence}%
+                </span>
+              </div>
+              <div className="text-[10px] text-gray-500 mt-1">Gen {gen.generation}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {result.evadedAtGeneration && result.survivorStrategy && (
+        <div className="text-xs text-red-400 bg-red-950/30 border border-red-900 rounded p-2">
+          Evasion achieved after {result.evadedAtGeneration} generation{result.evadedAtGeneration > 1 ? 's' : ''} using: {result.survivorStrategy.map(s => getStrategyLabel(s)).join(' \u2192 ')}
+        </div>
+      )}
+      {!result.evadedAtGeneration && (
+        <div className="text-xs text-green-400 bg-green-950/30 border border-green-900 rounded p-2">
+          Detection held through {result.totalGenerations} generations of cumulative mutation. Rules are resilient against iterative evasion.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Page Component
+// ============================================================================
+
 export default function MutationEngine() {
-  const [inputText, setInputText] = useState('');
+  const [searchParams] = useSearchParams();
+  const preloadedText = searchParams.get('text') || '';
+
+  const [inputText, setInputText] = useState(preloadedText);
   const [report, setReport] = useState<MutationReport | null>(null);
+  const [evolutionResult, setEvolutionResult] = useState<EvolutionResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [runMode, setRunMode] = useState<RunMode>('combo');
   const [selectedStrategies, setSelectedStrategies] = useState<Set<MutationStrategy>>(
     new Set(allStrategies)
   );
@@ -178,15 +390,24 @@ export default function MutationEngine() {
     if (!inputText.trim()) return;
     setIsRunning(true);
     setExpandedRows(new Set());
+    setEvolutionResult(null);
 
-    // Use setTimeout to allow UI to update with loading state
     setTimeout(() => {
       const strategies = allStrategies.filter(s => selectedStrategies.has(s));
-      const result = generateMutations(inputText.trim(), strategies);
-      setReport(result);
+
+      if (runMode === 'evolve') {
+        const evo = evolveUntilEvasion(inputText.trim());
+        setEvolutionResult(evo);
+        // Also run standard mutations for comparison
+        const result = generateMutations(inputText.trim(), strategies, { includeCombo: true });
+        setReport(result);
+      } else {
+        const result = generateMutations(inputText.trim(), strategies, { includeCombo: runMode === 'combo' });
+        setReport(result);
+      }
       setIsRunning(false);
     }, 50);
-  }, [inputText, selectedStrategies]);
+  }, [inputText, selectedStrategies, runMode]);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {
@@ -218,7 +439,7 @@ export default function MutationEngine() {
         </h2>
         <p className="text-gray-400 text-sm mt-1">
           Breed mutated variants of injection prompts to find detection gaps. Each mutation applies
-          a different evasion strategy, then re-scans to show what gets caught and what slips through.
+          evasion strategies, then re-scans to show what gets caught and what slips through.
         </p>
       </div>
 
@@ -247,8 +468,33 @@ export default function MutationEngine() {
           </div>
         </div>
 
-        {/* Strategy Selection */}
+        {/* Strategy Selection + Mode */}
         <div className="space-y-2">
+          {/* Run Mode */}
+          <div>
+            <label className="text-sm text-gray-400 font-mono">Mode:</label>
+            <div className="mt-1 flex gap-1">
+              {([
+                { mode: 'standard' as RunMode, label: 'Standard', desc: 'Single strategies only' },
+                { mode: 'combo' as RunMode, label: 'Combo', desc: 'Single + stacked combos' },
+                { mode: 'evolve' as RunMode, label: 'Evolve', desc: 'Mutate until evasion' },
+              ]).map(({ mode, label, desc }) => (
+                <button
+                  key={mode}
+                  onClick={() => setRunMode(mode)}
+                  title={desc}
+                  className={`flex-1 text-xs py-1.5 rounded border transition-colors ${
+                    runMode === mode
+                      ? 'bg-[#c9a227]/20 border-[#c9a227] text-[#c9a227]'
+                      : 'bg-gray-900 border-gray-700 text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex items-center justify-between">
             <label className="text-sm text-gray-400 font-mono">Strategies:</label>
             <div className="flex gap-2">
@@ -256,7 +502,7 @@ export default function MutationEngine() {
               <button onClick={clearAllStrategies} className="text-xs text-gray-500 hover:underline">None</button>
             </div>
           </div>
-          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 space-y-1 max-h-44 overflow-y-auto">
+          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 space-y-1 max-h-36 overflow-y-auto">
             {allStrategies.map((strategy) => (
               <label key={strategy} className="flex items-center gap-2 text-xs text-gray-300 hover:text-gray-100 cursor-pointer py-0.5">
                 <input
@@ -274,23 +520,32 @@ export default function MutationEngine() {
             disabled={!inputText.trim() || selectedStrategies.size === 0 || isRunning}
             className="w-full px-4 py-2.5 bg-gradient-to-r from-[#8b0000] to-[#5c0000] text-[#c9a227] font-bold rounded-lg hover:from-[#a00000] hover:to-[#700000] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-[0_0_15px_rgba(139,0,0,0.5)] font-mono text-sm"
           >
-            {isRunning ? 'Mutating...' : `Mutate (${selectedStrategies.size} strategies)`}
+            {isRunning ? 'Mutating...' : runMode === 'evolve' ? 'Evolve' : `Mutate (${runMode === 'combo' ? 'combo' : selectedStrategies.size + ' strategies'})`}
           </button>
         </div>
       </div>
+
+      {/* Evolution Timeline */}
+      {evolutionResult && report && (
+        <EvolutionTimeline result={evolutionResult} originalConfidence={report.originalScan.confidence} />
+      )}
 
       {/* Results */}
       {report && (
         <div className="space-y-4">
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold font-mono text-[#c9a227]">{report.originalScan.confidence}%</div>
               <div className="text-xs text-gray-500">Original Confidence</div>
             </div>
             <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold font-mono text-gray-200">{report.totalMutations}</div>
-              <div className="text-xs text-gray-500">Mutations Generated</div>
+              <div className="text-xs text-gray-500">Mutations</div>
+            </div>
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold font-mono text-purple-400">{report.mutations.filter(m => m.isCombo).length}</div>
+              <div className="text-xs text-gray-500">Combos</div>
             </div>
             <div className="bg-gray-900 border border-green-900 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold font-mono text-green-400">{report.caught}</div>
@@ -342,7 +597,7 @@ export default function MutationEngine() {
                   <tr className="bg-gray-900 border-b border-gray-700">
                     <th className="px-3 py-2 text-xs text-gray-500 font-mono">#</th>
                     <th className="px-3 py-2 text-xs text-gray-500 font-mono">Strategy</th>
-                    <th className="px-3 py-2 text-xs text-gray-500 font-mono">Description</th>
+                    <th className="px-3 py-2 text-xs text-gray-500 font-mono hidden sm:table-cell">Description</th>
                     <th className="px-3 py-2 text-xs text-gray-500 font-mono text-center">Conf.</th>
                     <th className="px-3 py-2 text-xs text-gray-500 font-mono text-center">Delta</th>
                     <th className="px-3 py-2 text-xs text-gray-500 font-mono text-center">Status</th>
@@ -357,6 +612,7 @@ export default function MutationEngine() {
                       index={index}
                       isExpanded={expandedRows.has(mutation.id)}
                       onToggle={() => toggleRow(mutation.id)}
+                      originalText={report.originalText}
                     />
                   ))}
                 </tbody>
@@ -375,20 +631,18 @@ export default function MutationEngine() {
             <h3 className="text-sm font-bold text-gray-200 mb-1">Assessment</h3>
             {report.evasionRate === 0 ? (
               <p className="text-sm text-green-400">
-                All {report.totalMutations} mutations were caught. Your detection rules are robust
+                All {report.totalMutations} mutations were caught{report.mutations.some(m => m.isCombo) ? ' (including multi-strategy combos)' : ''}. Your detection rules are robust
                 against these evasion strategies for this injection type.
               </p>
             ) : report.evasionRate < 0.3 ? (
               <p className="text-sm text-yellow-400">
                 {report.evaded} of {report.totalMutations} mutations evaded detection ({Math.round(report.evasionRate * 100)}%
-                evasion rate). Detection coverage is good but has gaps in{' '}
-                {report.mutations.filter(m => m.evaded).map(m => m.strategyLabel).join(', ')}.
+                evasion rate). Expand evaded rows and click "Suggest Rules" for recommended fixes.
               </p>
             ) : (
               <p className="text-sm text-red-400">
                 {report.evaded} of {report.totalMutations} mutations evaded detection ({Math.round(report.evasionRate * 100)}%
-                evasion rate). Significant detection gaps exist. Consider adding rules for:{' '}
-                {[...new Set(report.mutations.filter(m => m.evaded).map(m => m.strategyLabel))].join(', ')}.
+                evasion rate). Significant detection gaps exist. Expand evaded rows for suggested rules.
               </p>
             )}
           </div>

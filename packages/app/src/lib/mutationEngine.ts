@@ -27,6 +27,8 @@ export interface Mutation {
   scanResult: ScanResult;
   evaded: boolean; // true if mutation was NOT detected
   confidenceDelta: number; // difference from original scan confidence
+  isCombo?: boolean; // true if this mutation uses multiple stacked strategies
+  comboStrategies?: MutationStrategy[]; // the strategies used in order
 }
 
 export interface MutationReport {
@@ -316,22 +318,396 @@ export function getStrategyLabel(strategy: MutationStrategy): string {
 }
 
 /**
+ * Apply a single mutation strategy to text.
+ */
+function applyStrategy(text: string, strategy: MutationStrategy): { text: string; desc: string } {
+  return strategyFunctions[strategy](text);
+}
+
+/**
+ * Generate combo mutations by chaining 2-3 strategies together.
+ */
+function generateComboMutations(
+  originalText: string,
+  strategies: MutationStrategy[],
+  originalScan: ScanResult,
+): Mutation[] {
+  const mutations: Mutation[] = [];
+  const comboPairs: [MutationStrategy, MutationStrategy][] = [];
+
+  // Generate interesting 2-strategy combinations (not all permutations — curated)
+  for (let i = 0; i < strategies.length; i++) {
+    for (let j = i + 1; j < strategies.length; j++) {
+      comboPairs.push([strategies[i], strategies[j]]);
+    }
+  }
+
+  // Pick up to 8 random combos to avoid explosion
+  const shuffled = comboPairs.sort(() => Math.random() - 0.5).slice(0, 8);
+
+  for (const [s1, s2] of shuffled) {
+    const step1 = applyStrategy(originalText, s1);
+    const step2 = applyStrategy(step1.text, s2);
+
+    const scanResult = scanPrompt(step2.text);
+    const evaded = !scanResult.isPositive || scanResult.confidence < Math.max(originalScan.confidence * 0.5, 30);
+
+    mutations.push({
+      id: generateId(),
+      strategy: s1, // primary strategy
+      strategyLabel: `${strategyLabels[s1]} + ${strategyLabels[s2]}`,
+      description: `Combo: ${step1.desc} then ${step2.desc}`,
+      originalText,
+      mutatedText: step2.text,
+      scanResult,
+      evaded,
+      confidenceDelta: scanResult.confidence - originalScan.confidence,
+      isCombo: true,
+      comboStrategies: [s1, s2],
+    });
+  }
+
+  return mutations;
+}
+
+/**
+ * Evolutionary mode: iteratively mutate until evasion is achieved or max generations reached.
+ */
+export interface EvolutionResult {
+  generations: EvolutionGeneration[];
+  evadedAtGeneration: number | null; // null if never evaded
+  totalGenerations: number;
+  finalText: string;
+  finalScan: ScanResult;
+  survivorStrategy: MutationStrategy[] | null; // the strategy chain that achieved evasion
+}
+
+export interface EvolutionGeneration {
+  generation: number;
+  text: string;
+  strategyApplied: MutationStrategy;
+  strategyLabel: string;
+  scanResult: ScanResult;
+  evaded: boolean;
+  confidenceDelta: number; // delta from original
+}
+
+export function evolveUntilEvasion(
+  originalText: string,
+  maxGenerations = 5,
+): EvolutionResult {
+  const originalScan = scanPrompt(originalText);
+  const generations: EvolutionGeneration[] = [];
+  let currentText = originalText;
+  let evadedAtGeneration: number | null = null;
+  const appliedStrategies: MutationStrategy[] = [];
+
+  // Strategy order: try most impactful evasion techniques first
+  const strategyOrder: MutationStrategy[] = [
+    'fiction-framing',
+    'synonym-substitution',
+    'unicode-homoglyph',
+    'encoding-base64',
+    'fragmentation',
+    'case-manipulation',
+    'encoding-leetspeak',
+    'negation-reversal',
+    'delimiter-shift',
+    'structural-rearrange',
+  ];
+
+  for (let gen = 0; gen < Math.min(maxGenerations, strategyOrder.length); gen++) {
+    const strategy = strategyOrder[gen];
+    const { text: mutatedText, desc: _ } = applyStrategy(currentText, strategy);
+    const scanResult = scanPrompt(mutatedText);
+    const evaded = !scanResult.isPositive || scanResult.confidence < Math.max(originalScan.confidence * 0.5, 30);
+
+    generations.push({
+      generation: gen + 1,
+      text: mutatedText,
+      strategyApplied: strategy,
+      strategyLabel: strategyLabels[strategy],
+      scanResult,
+      evaded,
+      confidenceDelta: scanResult.confidence - originalScan.confidence,
+    });
+
+    appliedStrategies.push(strategy);
+    currentText = mutatedText;
+
+    if (evaded) {
+      evadedAtGeneration = gen + 1;
+      break;
+    }
+  }
+
+  const lastGen = generations[generations.length - 1];
+  return {
+    generations,
+    evadedAtGeneration,
+    totalGenerations: generations.length,
+    finalText: lastGen?.text || originalText,
+    finalScan: lastGen?.scanResult || originalScan,
+    survivorStrategy: evadedAtGeneration ? appliedStrategies : null,
+  };
+}
+
+/**
+ * Auto-suggest a detection rule for an evaded mutation.
+ */
+export interface SuggestedRule {
+  type: 'keyword' | 'regex';
+  name: string;
+  pattern: string;
+  description: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export function suggestRuleForEvasion(mutation: Mutation): SuggestedRule[] {
+  const suggestions: SuggestedRule[] = [];
+  const text = mutation.mutatedText.toLowerCase();
+
+  // Analyze the mutation strategy to suggest targeted rules
+  if (mutation.comboStrategies) {
+    for (const s of mutation.comboStrategies) {
+      suggestions.push(...suggestForStrategy(s, mutation.mutatedText));
+    }
+  } else {
+    suggestions.push(...suggestForStrategy(mutation.strategy, mutation.mutatedText));
+  }
+
+  // Generic: extract the longest suspicious phrase that isn't already caught
+  const phrases = text.match(/(?:ignore|bypass|override|forget|disregard|reveal|pretend|roleplay)\s+[\w\s]{5,30}/gi);
+  if (phrases) {
+    for (const phrase of phrases.slice(0, 2)) {
+      const escaped = phrase.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      suggestions.push({
+        type: 'regex',
+        name: 'Custom Pattern Match',
+        pattern: escaped.replace(/\s+/g, '\\s+'),
+        description: `Catch the specific phrasing: "${phrase.trim()}"`,
+        confidence: 'medium',
+      });
+    }
+  }
+
+  // Deduplicate by pattern
+  const seen = new Set<string>();
+  return suggestions.filter(s => {
+    if (seen.has(s.pattern)) return false;
+    seen.add(s.pattern);
+    return true;
+  }).slice(0, 4);
+}
+
+function suggestForStrategy(strategy: MutationStrategy, text: string): SuggestedRule[] {
+  const suggestions: SuggestedRule[] = [];
+
+  switch (strategy) {
+    case 'fiction-framing':
+      suggestions.push({
+        type: 'regex',
+        name: 'Fiction/Research Framing Detector',
+        pattern: '(?:writing a|for my|university|research|novel|screenplay|chapter \\d+|hypothetically).*(?:ignore|bypass|override|reveal|system prompt)',
+        description: 'Detects injection payloads wrapped in fiction, research, or hypothetical framing',
+        confidence: 'high',
+      });
+      break;
+    case 'fragmentation':
+      suggestions.push({
+        type: 'regex',
+        name: 'Fragmented Injection Detector',
+        pattern: '(?:ignore|bypass|forget).*(?:by the way|anyway|unrelated|another thing).*(?:instructions|rules|prompt)',
+        description: 'Detects injection keywords separated by filler text',
+        confidence: 'medium',
+      });
+      break;
+    case 'encoding-base64':
+      suggestions.push({
+        type: 'regex',
+        name: 'Decode-and-Follow Pattern',
+        pattern: '(?:decode|decipher|translate)\\s+(?:and\\s+)?(?:follow|execute|obey|comply)',
+        description: 'Detects instructions to decode encoded payloads and follow them',
+        confidence: 'high',
+      });
+      break;
+    case 'negation-reversal':
+      suggestions.push({
+        type: 'regex',
+        name: 'Double Negation Obfuscation',
+        pattern: '(?:do not NOT|never not|not fail to|not avoid|not the case that.*should not)\\s+(?:ignore|forget|disregard|bypass|override)',
+        description: 'Detects double/triple negation used to obscure injection verbs',
+        confidence: 'high',
+      });
+      break;
+    case 'delimiter-shift':
+      suggestions.push({
+        type: 'regex',
+        name: 'Suspicious Delimiter Wrapping',
+        pattern: '(?:\\[SYSTEM\\]|###\\s*Instructions|<\\!--|""")\\s*(?:ignore|forget|bypass|override|reveal)',
+        description: 'Detects injection content wrapped in system-like delimiters',
+        confidence: 'medium',
+      });
+      break;
+    case 'synonym-substitution': {
+      // Extract the specific synonyms used
+      const synonymsUsed = text.match(/(?:disregard|skip|overlook|dismiss|set aside|circumvent|sidestep|erase|wipe|directives|protocols|commands)/gi);
+      if (synonymsUsed) {
+        suggestions.push({
+          type: 'keyword',
+          name: 'Synonym Variant Keywords',
+          pattern: [...new Set(synonymsUsed.map(s => s.toLowerCase()))].join(', '),
+          description: `Add these synonym variants to existing keyword rules: ${synonymsUsed.slice(0, 3).join(', ')}`,
+          confidence: 'high',
+        });
+      }
+      break;
+    }
+    case 'unicode-homoglyph':
+      suggestions.push({
+        type: 'regex',
+        name: 'Homoglyph-Aware Pattern',
+        pattern: '[\\u0430\\u0441\\u0435\\u043E\\u0440\\u0445\\u0443]{2,}',
+        description: 'Detects clusters of Cyrillic characters mixed into Latin text',
+        confidence: 'medium',
+      });
+      break;
+    case 'case-manipulation':
+      suggestions.push({
+        type: 'regex',
+        name: 'Mixed Case Anomaly',
+        pattern: '(?:[A-Z][a-z][A-Z]){3,}|(?:[a-z][A-Z]){5,}',
+        description: 'Detects deliberate alternating case patterns used for evasion',
+        confidence: 'low',
+      });
+      break;
+    case 'encoding-leetspeak':
+      suggestions.push({
+        type: 'regex',
+        name: 'Leetspeak Injection Keywords',
+        pattern: '(?:1gn[0o]r[3e]|byp[4a]55|[0o]v[3e]rr1d[3e]|f[0o]rg[3e]7|r[3e]v[3e][4a]l)',
+        description: 'Detects leetspeak-encoded injection verbs',
+        confidence: 'medium',
+      });
+      break;
+  }
+
+  return suggestions;
+}
+
+/**
+ * Compute inline diff tokens between original and mutated text.
+ */
+export interface DiffToken {
+  type: 'equal' | 'added' | 'removed';
+  text: string;
+}
+
+export function computeInlineDiff(original: string, mutated: string): DiffToken[] {
+  // Simple word-level diff using longest common subsequence approach
+  const origWords = original.split(/(\s+)/);
+  const mutWords = mutated.split(/(\s+)/);
+
+  // Build LCS table
+  const m = origWords.length;
+  const n = mutWords.length;
+
+  // For very long texts, use a simplified approach
+  if (m * n > 50000) {
+    return simpleDiff(original, mutated);
+  }
+
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (origWords[i - 1] === mutWords[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+
+  // Backtrack to build diff
+  const tokens: DiffToken[] = [];
+  let i = m, j = n;
+
+  const result: DiffToken[] = [];
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && origWords[i - 1] === mutWords[j - 1]) {
+      result.push({ type: 'equal', text: origWords[i - 1] });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      result.push({ type: 'added', text: mutWords[j - 1] });
+      j--;
+    } else {
+      result.push({ type: 'removed', text: origWords[i - 1] });
+      i--;
+    }
+  }
+
+  result.reverse();
+
+  // Merge consecutive same-type tokens
+  for (const token of result) {
+    const last = tokens[tokens.length - 1];
+    if (last && last.type === token.type) {
+      last.text += token.text;
+    } else {
+      tokens.push({ ...token });
+    }
+  }
+
+  return tokens;
+}
+
+function simpleDiff(original: string, mutated: string): DiffToken[] {
+  // Character-level comparison for long texts
+  const tokens: DiffToken[] = [];
+  const maxLen = Math.max(original.length, mutated.length);
+  let i = 0;
+
+  while (i < maxLen) {
+    if (i < original.length && i < mutated.length && original[i] === mutated[i]) {
+      // Find span of equal chars
+      let end = i;
+      while (end < original.length && end < mutated.length && original[end] === mutated[end]) end++;
+      tokens.push({ type: 'equal', text: original.slice(i, end) });
+      i = end;
+    } else {
+      // Find span of different chars
+      let origEnd = i, mutEnd = i;
+      // Simple: advance both until we find a match again
+      while (origEnd < original.length && mutEnd < mutated.length && original[origEnd] !== mutated[mutEnd]) {
+        origEnd++; mutEnd++;
+      }
+      if (origEnd > i) tokens.push({ type: 'removed', text: original.slice(i, origEnd) });
+      if (mutEnd > i) tokens.push({ type: 'added', text: mutated.slice(i, mutEnd) });
+      i = Math.max(origEnd, mutEnd);
+    }
+  }
+
+  return tokens;
+}
+
+/**
  * Generate mutations for a given text using specified strategies.
  */
 export function generateMutations(
   originalText: string,
   strategies: MutationStrategy[] = allStrategies,
+  options: { includeCombo?: boolean } = {},
 ): MutationReport {
   const originalScan = scanPrompt(originalText);
-
   const mutations: Mutation[] = [];
 
+  // Single-strategy mutations
   for (const strategy of strategies) {
     const fn = strategyFunctions[strategy];
     const { text: mutatedText, desc } = fn(originalText);
 
     const scanResult = scanPrompt(mutatedText);
-
     const evaded = !scanResult.isPositive || scanResult.confidence < Math.max(originalScan.confidence * 0.5, 30);
 
     mutations.push({
@@ -345,6 +721,12 @@ export function generateMutations(
       evaded,
       confidenceDelta: scanResult.confidence - originalScan.confidence,
     });
+  }
+
+  // Combo mutations (multi-strategy stacking)
+  if (options.includeCombo && strategies.length >= 2) {
+    const comboMutations = generateComboMutations(originalText, strategies, originalScan);
+    mutations.push(...comboMutations);
   }
 
   const caught = mutations.filter(m => !m.evaded).length;
