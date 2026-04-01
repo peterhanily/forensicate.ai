@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
 import Layout from './components/Layout';
 import Scanner from './pages/Scanner';
 
@@ -26,15 +27,17 @@ function PageLoader() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <Router basename={isStandalone ? undefined : basename}>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/scanner" replace />} />
-            <Route path="scanner" element={<Scanner />} />
-            <Route path="mutate" element={<Suspense fallback={<PageLoader />}><MutationEngine /></Suspense>} />
-          </Route>
-        </Routes>
-      </Router>
+      <ToastProvider>
+        <Router basename={isStandalone ? undefined : basename}>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Navigate to="/scanner" replace />} />
+              <Route path="scanner" element={<Scanner />} />
+              <Route path="mutate" element={<Suspense fallback={<PageLoader />}><MutationEngine /></Suspense>} />
+            </Route>
+          </Routes>
+        </Router>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

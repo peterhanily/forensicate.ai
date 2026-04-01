@@ -432,7 +432,7 @@ export function evolveUntilEvasion(
 
   for (let gen = 0; gen < Math.min(maxGenerations, strategyOrder.length); gen++) {
     const strategy = strategyOrder[gen];
-    const { text: mutatedText, desc: _ } = applyStrategy(currentText, strategy);
+    const { text: mutatedText } = applyStrategy(currentText, strategy);
     const scanResult = scanPrompt(mutatedText);
     const evaded = !scanResult.isPositive || scanResult.confidence < Math.max(originalScan.confidence * 0.5, 30);
 

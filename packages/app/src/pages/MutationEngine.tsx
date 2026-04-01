@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useToast } from '../components/Toast';
 import {
   generateMutations,
   evolveUntilEvasion,
@@ -80,12 +81,13 @@ function InlineDiff({ tokens }: { tokens: DiffToken[] }) {
 // Suggested Rule Component
 // ============================================================================
 
-function SuggestedRuleCard({ rule }: { rule: SuggestedRule }) {
+function SuggestedRuleCard({ rule, onCopy }: { rule: SuggestedRule; onCopy?: (msg: string) => void }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
     navigator.clipboard.writeText(rule.pattern).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+      onCopy?.('Rule pattern copied to clipboard');
     });
   };
   const confColor = rule.confidence === 'high' ? 'text-green-400' : rule.confidence === 'medium' ? 'text-yellow-400' : 'text-gray-400';
@@ -122,6 +124,7 @@ function MutationRow({ mutation, index, isExpanded, onToggle, originalText, onOp
   onOpenInScanner: (text: string) => void;
   onExportToBattery: (mutation: Mutation) => void;
 }) {
+  const { toast } = useToast();
   const [showDiff, setShowDiff] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [diffTokens, setDiffTokens] = useState<DiffToken[] | null>(null);
@@ -240,7 +243,7 @@ function MutationRow({ mutation, index, isExpanded, onToggle, originalText, onOp
                 <div>
                   <span className="text-xs text-gray-500 uppercase tracking-wide">Suggested Detection Rules:</span>
                   <div className="mt-1 space-y-2">
-                    {suggestions.map((rule, i) => <SuggestedRuleCard key={i} rule={rule} />)}
+                    {suggestions.map((rule, i) => <SuggestedRuleCard key={i} rule={rule} onCopy={(msg) => toast(msg, 'success')} />)}
                   </div>
                 </div>
               )}
@@ -394,6 +397,7 @@ function EvolutionTimeline({ result, originalConfidence }: { result: EvolutionRe
 export default function MutationEngine() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const preloadedText = searchParams.get('text') || '';
 
   const [inputText, setInputText] = useState(preloadedText);
@@ -428,10 +432,12 @@ export default function MutationEngine() {
       });
       localStorage.setItem(key, JSON.stringify(existing));
       setExportedCount(prev => prev + 1);
+      toast('Mutation saved to test battery', 'success');
     } catch (e) {
       console.warn('Failed to export mutation:', e);
+      toast('Failed to save — storage may be full', 'error');
     }
-  }, []);
+  }, [toast]);
 
   const handleExportAllEvaded = useCallback(() => {
     if (!report) return;
@@ -453,11 +459,14 @@ export default function MutationEngine() {
         added++;
       }
       localStorage.setItem(key, JSON.stringify(existing));
+      if (added > 0) toast(`${added} evaded mutation(s) saved to test battery`, 'success');
+      else toast('All evaded mutations already saved', 'info');
     } catch (e) {
       console.warn('Failed to export mutations:', e);
+      toast('Failed to save — storage may be full', 'error');
     }
     setExportedCount(prev => prev + added);
-  }, [report]);
+  }, [report, toast]);
 
   const handleMutate = useCallback(() => {
     if (!inputText.trim()) return;
@@ -467,20 +476,25 @@ export default function MutationEngine() {
 
     setTimeout(() => {
       const strategies = allStrategies.filter(s => selectedStrategies.has(s));
+      let result: MutationReport;
 
       if (runMode === 'evolve') {
         const evo = evolveUntilEvasion(inputText.trim());
         setEvolutionResult(evo);
-        // Also run standard mutations for comparison
-        const result = generateMutations(inputText.trim(), strategies, { includeCombo: true });
-        setReport(result);
+        result = generateMutations(inputText.trim(), strategies, { includeCombo: true });
       } else {
-        const result = generateMutations(inputText.trim(), strategies, { includeCombo: runMode === 'combo' });
-        setReport(result);
+        result = generateMutations(inputText.trim(), strategies, { includeCombo: runMode === 'combo' });
       }
+      setReport(result);
       setIsRunning(false);
+
+      if (result.evaded > 0) {
+        toast(`${result.evaded} of ${result.totalMutations} mutations evaded detection`, 'warning');
+      } else {
+        toast(`All ${result.totalMutations} mutations caught — rules are robust`, 'success');
+      }
     }, 50);
-  }, [inputText, selectedStrategies, runMode]);
+  }, [inputText, selectedStrategies, runMode, toast]);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {

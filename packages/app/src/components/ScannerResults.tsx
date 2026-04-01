@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import type { ScanResult, RuleMatch } from '@forensicate/scanner';
 import { exportReport, type ExportFormat } from '../lib/exportReport';
+import { useToast } from './Toast';
 
 interface ScannerResultsProps {
  scanResult: ScanResult | null;
@@ -19,6 +20,7 @@ function ScannerResults({
  isExpanded = true,
  onToggle,
 }: ScannerResultsProps) {
+ const { toast } = useToast();
  const [showExportMenu, setShowExportMenu] = useState(false);
  const exportRef = useRef<HTMLDivElement>(null);
  const mountedRef = useRef(true);
@@ -41,6 +43,7 @@ function ScannerResults({
    if (scanResult) {
      exportReport(format, scanResult, promptText);
      setShowExportMenu(false);
+     toast(`Report exported as ${format.toUpperCase()}`, 'success');
    }
  }
 
