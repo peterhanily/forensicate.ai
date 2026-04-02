@@ -22,6 +22,18 @@ inputs:
     description: 'What to scan: "changed" (PR diff only), "all" (all matching files)'
     required: false
     default: 'changed'
+  comment-on-pr:
+    description: 'Post scan results as a PR comment (requires github-token)'
+    required: false
+    default: 'true'
+  sarif-upload:
+    description: 'Generate SARIF report and upload to GitHub Security tab'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'GitHub token for PR comments and SARIF upload (defaults to GITHUB_TOKEN)'
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   findings-count:
@@ -30,6 +42,8 @@ outputs:
     description: 'Total number of files scanned'
   max-confidence:
     description: 'Highest confidence score found'
+  sarif-file:
+    description: 'Path to generated SARIF file (when sarif-upload is enabled)'
 
 runs:
   using: 'composite'
@@ -53,3 +67,14 @@ runs:
         INPUT_CONFIDENCE_THRESHOLD: ${{ inputs.confidence-threshold }}
         INPUT_FAIL_ON_FINDING: ${{ inputs.fail-on-finding }}
         INPUT_SCAN_MODE: ${{ inputs.scan-mode }}
+        INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+        INPUT_SARIF_UPLOAD: ${{ inputs.sarif-upload }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+
+    - name: Upload SARIF to GitHub Security
+      if: inputs.sarif-upload == 'true' && always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: forensicate-results.sarif
+        category: forensicate-ai
+      continue-on-error: true
