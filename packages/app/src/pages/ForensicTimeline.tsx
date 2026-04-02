@@ -216,7 +216,7 @@ export default function ForensicTimeline() {
   const [expandedTurn, setExpandedTurn] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<TimelineAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Debounced analysis — waits 400ms after last keystroke before scanning
   useEffect(() => {
