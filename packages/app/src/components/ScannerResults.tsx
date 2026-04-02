@@ -1,7 +1,182 @@
-import { useState, useRef, useCallback, useEffect, memo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import type { ScanResult, RuleMatch } from '@forensicate/scanner';
+import { computeAttackComplexity, type AttackComplexityScore } from '@forensicate/scanner';
 import { exportReport, type ExportFormat } from '../lib/exportReport';
+import { generateVaccine, type VaccineReport } from '../lib/vaccineGenerator';
 import { useToast } from './Toast';
+
+// --- Radar Chart for Attack Complexity Score ---
+function RadarChart({ score }: { score: AttackComplexityScore }) {
+  const size = 140;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 52;
+  const axes = [
+    { key: 'sophistication', label: 'Sophistication', short: 'SOPH', value: score.sophistication },
+    { key: 'blastRadius', label: 'Blast Radius', short: 'BLAST', value: score.blastRadius },
+    { key: 'reversibility', label: 'Irreversibility', short: 'IRREV', value: score.reversibility },
+    { key: 'stealth', label: 'Stealth', short: 'STLTH', value: score.stealth },
+  ];
+  const n = axes.length;
+
+  function point(i: number, val: number): [number, number] {
+    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+    const dist = (val / 100) * r;
+    return [cx + dist * Math.cos(angle), cy + dist * Math.sin(angle)];
+  }
+
+  const gridLevels = [25, 50, 75, 100];
+  const dataPoints = axes.map((a, i) => point(i, a.value));
+  const dataPath = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ') + ' Z';
+
+  const labelColor = (val: number) =>
+    val >= 70 ? '#ef4444' : val >= 40 ? '#eab308' : '#22c55e';
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {/* Grid rings */}
+        {gridLevels.map(level => {
+          const pts = Array.from({ length: n }, (_, i) => point(i, level));
+          const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ') + ' Z';
+          return <path key={level} d={path} fill="none" stroke="#374151" strokeWidth={0.5} opacity={0.6} />;
+        })}
+        {/* Axis lines */}
+        {axes.map((_, i) => {
+          const [px, py] = point(i, 100);
+          return <line key={i} x1={cx} y1={cy} x2={px} y2={py} stroke="#374151" strokeWidth={0.5} opacity={0.4} />;
+        })}
+        {/* Data polygon */}
+        <path d={dataPath} fill="rgba(201, 162, 39, 0.15)" stroke="#c9a227" strokeWidth={1.5} />
+        {/* Data points */}
+        {dataPoints.map((p, i) => (
+          <circle key={i} cx={p[0]} cy={p[1]} r={2.5} fill="#c9a227" />
+        ))}
+        {/* Axis labels */}
+        {axes.map((a, i) => {
+          const [lx, ly] = point(i, 120);
+          return (
+            <text key={a.key} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill={labelColor(a.value)} fontSize={8} fontFamily="monospace" fontWeight={600}>
+              {a.short}
+            </text>
+          );
+        })}
+      </svg>
+      <div className="flex items-center gap-2">
+        <span className={`text-xs font-mono font-bold ${
+          score.overall >= 70 ? 'text-red-400' : score.overall >= 40 ? 'text-yellow-400' : 'text-green-400'
+        }`}>
+          ACS: {score.overall}/100
+        </span>
+        <span className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+          score.label === 'expert' ? 'bg-red-900/40 text-red-400' :
+          score.label === 'advanced' ? 'bg-orange-900/40 text-orange-400' :
+          score.label === 'intermediate' ? 'bg-yellow-900/40 text-yellow-400' :
+          score.label === 'basic' ? 'bg-blue-900/40 text-blue-400' :
+          'bg-green-900/40 text-green-400'
+        }`}>
+          {score.label.toUpperCase()}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// --- Vaccine Modal ---
+function VaccineModal({ vaccine, onClose }: { vaccine: VaccineReport; onClose: () => void }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(vaccine.systemPromptPatch).then(() => {
+      setCopied(true);
+      toast('Vaccine copied to clipboard', 'success');
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="bg-gray-900 border border-gray-700 rounded-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span className="text-sm font-semibold text-gray-200">Prompt Vaccine</span>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors" aria-label="Close vaccine modal">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <p className="text-xs text-gray-400">{vaccine.summary}</p>
+
+          {/* Grouped clauses */}
+          {(() => {
+            const grouped = new Map<string, typeof vaccine.clauses>();
+            for (const c of vaccine.clauses) {
+              const list = grouped.get(c.category) ?? [];
+              list.push(c);
+              grouped.set(c.category, list);
+            }
+            return [...grouped.entries()].map(([category, clauses]) => (
+              <div key={category} className="border border-gray-800 rounded-lg overflow-hidden">
+                <div className="bg-gray-800/50 px-3 py-1.5 text-xs font-semibold text-[#c9a227]">{category}</div>
+                <div className="p-3 space-y-2">
+                  {clauses.map(c => (
+                    <div key={c.id} className="flex items-start gap-2 text-xs">
+                      <span className={`flex-shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full ${
+                        c.severity === 'critical' ? 'bg-red-500' :
+                        c.severity === 'high' ? 'bg-orange-500' :
+                        c.severity === 'medium' ? 'bg-yellow-500' :
+                        'bg-green-500'
+                      }`} />
+                      <span className="text-gray-300">{c.instruction}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
+
+          {/* Raw output */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-gray-500 font-mono uppercase">System Prompt Patch</span>
+              <button
+                onClick={handleCopy}
+                className="px-2 py-0.5 text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors flex items-center gap-1"
+              >
+                {copied ? (
+                  <>
+                    <svg className="w-3 h-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="bg-gray-950 border border-gray-800 rounded-lg p-3 text-[11px] text-gray-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-[200px] overflow-y-auto">
+              {vaccine.systemPromptPatch}
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface ScannerResultsProps {
  scanResult: ScanResult | null;
@@ -22,9 +197,20 @@ function ScannerResults({
 }: ScannerResultsProps) {
  const { toast } = useToast();
  const [showExportMenu, setShowExportMenu] = useState(false);
+ const [showVaccine, setShowVaccine] = useState(false);
  const exportRef = useRef<HTMLDivElement>(null);
  const mountedRef = useRef(true);
  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
+
+ const attackComplexity = useMemo(() => {
+   if (!scanResult || scanResult.matchedRules.length === 0) return null;
+   return computeAttackComplexity(scanResult.matchedRules, scanResult.compoundThreats);
+ }, [scanResult]);
+
+ const vaccine = useMemo(() => {
+   if (!scanResult || scanResult.matchedRules.length === 0) return null;
+   return generateVaccine(scanResult.matchedRules);
+ }, [scanResult]);
 
  const closeExportMenu = useCallback((e: MouseEvent) => {
    if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
@@ -76,6 +262,19 @@ function ScannerResults({
      Test Defenses
    </button>
  )}
+ {vaccine && vaccine.clauses.length > 0 && (
+   <button
+     onClick={(e) => { e.stopPropagation(); setShowVaccine(true); }}
+     className="px-2 py-0.5 text-[10px] bg-[#0a3000] hover:bg-[#0d4000] text-green-400 border border-green-900 rounded transition-colors flex items-center gap-1"
+     title="Generate defensive system prompt clauses"
+     aria-label="Generate prompt vaccine"
+   >
+     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+     </svg>
+     Vaccine
+   </button>
+ )}
  {scanResult && scanResult.matchedRules.length > 0 && (
  <div ref={exportRef} className="relative">
    <button
@@ -119,6 +318,7 @@ function ScannerResults({
  );
 
  return (
+ <>
  <div className="border border-gray-800 border-gray-800 rounded-lg bg-gray-900/50 bg-gray-900/50 overflow-hidden">
  {onToggle ? (
  <button
@@ -321,6 +521,41 @@ function ScannerResults({
  </div>
  )}
 
+ {/* Attack Complexity Score */}
+ {attackComplexity && (
+ <div className="mt-3 p-3 bg-gray-800/30 border border-gray-800 rounded-lg">
+   <div className="flex items-center gap-2 mb-2">
+     <span className="text-gray-400 font-semibold text-sm">Attack Complexity Score</span>
+   </div>
+   <div className="flex items-center gap-4 flex-wrap">
+     <RadarChart score={attackComplexity} />
+     <div className="flex-1 min-w-[140px] space-y-1.5">
+       {[
+         { label: 'Sophistication', value: attackComplexity.sophistication },
+         { label: 'Blast Radius', value: attackComplexity.blastRadius },
+         { label: 'Stealth', value: attackComplexity.stealth },
+         { label: 'Irreversibility', value: attackComplexity.reversibility },
+       ].map(axis => (
+         <div key={axis.label} className="flex items-center gap-2">
+           <span className="text-[10px] text-gray-500 w-[80px] flex-shrink-0 font-mono">{axis.label}</span>
+           <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+             <div
+               className={`h-full rounded-full transition-all duration-300 ${
+                 axis.value >= 70 ? 'bg-red-500' : axis.value >= 40 ? 'bg-yellow-500' : 'bg-green-500'
+               }`}
+               style={{ width: `${axis.value}%` }}
+             />
+           </div>
+           <span className={`text-[10px] font-mono w-[28px] text-right ${
+             axis.value >= 70 ? 'text-red-400' : axis.value >= 40 ? 'text-yellow-400' : 'text-green-400'
+           }`}>{axis.value}</span>
+         </div>
+       ))}
+     </div>
+   </div>
+ </div>
+ )}
+
  {/* Timestamp */}
  <div className="text-xs text-gray-600 text-gray-600 font-mono pt-2 border-t border-gray-800 border-gray-800">
  Scanned at {scanResult.timestamp.toLocaleTimeString()}
@@ -337,6 +572,10 @@ function ScannerResults({
  </div>
  )}
  </div>
+ {showVaccine && vaccine && (
+   <VaccineModal vaccine={vaccine} onClose={() => setShowVaccine(false)} />
+ )}
+ </>
  );
 }
 

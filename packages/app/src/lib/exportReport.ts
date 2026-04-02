@@ -1,4 +1,5 @@
 import type { ScanResult, FileExtractionResult } from '@forensicate/scanner';
+import { computeAttackComplexity } from '@forensicate/scanner';
 
 function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -41,6 +42,7 @@ function formatFileSize(bytes: number): string {
 // --- JSON Export ---
 
 export function exportJSON(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
+  const acs = computeAttackComplexity(scanResult.matchedRules, scanResult.compoundThreats);
   const data: Record<string, unknown> = {
     exportedAt: new Date().toISOString(),
     generator: 'Forensicate.ai',
@@ -54,6 +56,7 @@ export function exportJSON(scanResult: ScanResult, promptText: string, fileInfo?
       confidence: scanResult.confidence,
       riskLevel: riskLevel(scanResult.confidence),
       totalRulesChecked: scanResult.totalRulesChecked,
+      ...(acs && { attackComplexity: acs }),
       matchedRules: scanResult.matchedRules.map(r => ({
         ruleId: r.ruleId,
         ruleName: r.ruleName,
@@ -102,6 +105,7 @@ export function exportJSON(scanResult: ScanResult, promptText: string, fileInfo?
 // --- CSV Export ---
 
 export function exportCSV(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
+  const acs = computeAttackComplexity(scanResult.matchedRules, scanResult.compoundThreats);
   const headers = ['Rule ID', 'Rule Name', 'Type', 'Severity', 'Confidence Impact', 'Kill Chain', 'MITRE ATLAS', 'EU AI Act', 'Matched Text'];
   const rows = scanResult.matchedRules
     .slice()
@@ -136,6 +140,13 @@ export function exportCSV(scanResult: ScanResult, promptText: string, fileInfo?:
     `# Risk Level: ${riskLevel(scanResult.confidence)}`,
     `# Rules Checked: ${scanResult.totalRulesChecked}`,
     `# Rules Triggered: ${scanResult.matchedRules.length}`,
+    ...(acs ? [
+      `# Attack Complexity: ${acs.overall}/100 (${acs.label})`,
+      `# ACS Sophistication: ${acs.sophistication}`,
+      `# ACS Blast Radius: ${acs.blastRadius}`,
+      `# ACS Stealth: ${acs.stealth}`,
+      `# ACS Irreversibility: ${acs.reversibility}`,
+    ] : []),
     '',
   ];
 
@@ -146,6 +157,7 @@ export function exportCSV(scanResult: ScanResult, promptText: string, fileInfo?:
 // --- HTML Report Export ---
 
 export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
+  const acs = computeAttackComplexity(scanResult.matchedRules, scanResult.compoundThreats);
   const risk = riskLevel(scanResult.confidence);
   const statusColor = scanResult.isPositive ? '#ef4444' : scanResult.matchedRules.length > 0 ? '#eab308' : '#22c55e';
   const statusLabel = scanResult.isPositive ? 'INJECTION DETECTED' : scanResult.matchedRules.length > 0 ? 'BELOW THRESHOLD' : 'NO THREAT DETECTED';
@@ -295,6 +307,37 @@ export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?
 
   ${complianceSummary}
 
+  ${acs ? `
+  <h2>Attack Complexity Score</h2>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+      <span style="font-size:32px;font-weight:700;color:${acs.overall >= 70 ? '#ef4444' : acs.overall >= 40 ? '#eab308' : '#22c55e'}">${acs.overall}</span>
+      <div>
+        <span style="font-size:14px;color:#9ca3af">/100 overall</span>
+        <div style="margin-top:2px"><span style="padding:2px 8px;font-size:11px;border-radius:4px;font-weight:600;background:${
+          acs.label === 'expert' ? '#7f1d1d' : acs.label === 'advanced' ? '#78350f' : acs.label === 'intermediate' ? '#713f12' : acs.label === 'basic' ? '#1e3a5f' : '#052e16'
+        };color:${
+          acs.label === 'expert' ? '#fca5a5' : acs.label === 'advanced' ? '#fdba74' : acs.label === 'intermediate' ? '#fde047' : acs.label === 'basic' ? '#93c5fd' : '#86efac'
+        }">${acs.label.toUpperCase()}</span></div>
+      </div>
+    </div>
+    ${[
+      { label: 'Sophistication', value: acs.sophistication, desc: 'Technical complexity of the attack' },
+      { label: 'Blast Radius', value: acs.blastRadius, desc: 'Potential scope of damage' },
+      { label: 'Stealth', value: acs.stealth, desc: 'Difficulty of detection' },
+      { label: 'Irreversibility', value: acs.reversibility, desc: 'Difficulty of recovery' },
+    ].map(a => `
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+        <span style="width:100px;font-size:12px;color:#9ca3af">${a.label}</span>
+        <div style="flex:1;height:8px;background:#1f2937;border-radius:4px;overflow:hidden">
+          <div style="width:${a.value}%;height:100%;background:${a.value >= 70 ? '#ef4444' : a.value >= 40 ? '#eab308' : '#22c55e'};border-radius:4px"></div>
+        </div>
+        <span style="width:30px;text-align:right;font-size:12px;font-weight:600;color:${a.value >= 70 ? '#ef4444' : a.value >= 40 ? '#eab308' : '#22c55e'}">${a.value}</span>
+      </div>
+    `).join('')}
+  </div>
+  ` : ''}
+
   ${compoundSection}
 
   <div class="footer">
@@ -309,6 +352,7 @@ export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?
 // --- SARIF Export (Static Analysis Results Interchange Format) ---
 
 export function exportSARIF(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
+  const acs = computeAttackComplexity(scanResult.matchedRules, scanResult.compoundThreats);
   const rules: Array<{
     id: string;
     name: string;
@@ -381,6 +425,7 @@ export function exportSARIF(scanResult: ScanResult, promptText: string, fileInfo
     riskLevel: riskLevel(scanResult.confidence),
     totalRulesChecked: scanResult.totalRulesChecked,
     isPositive: scanResult.isPositive,
+    ...(acs && { attackComplexity: acs }),
   };
 
   if (fileInfo) {

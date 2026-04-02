@@ -13,6 +13,12 @@ export {
 } from './fileRules.js';
 export { detectCompoundThreats } from './compoundDetector.js';
 export {
+  computeAttackComplexity,
+  getComplexityDescription,
+  type AttackComplexityScore,
+  type AttackComplexityLabel,
+} from './attackComplexity.js';
+export {
   fetchCommunityIndex,
   fetchCommunityRule,
   fetchAllCommunityRules,
