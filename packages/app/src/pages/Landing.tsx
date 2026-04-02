@@ -70,65 +70,6 @@ const FRAMEWORKS = [
   { name: 'SARIF 2.1', tag: 'Export' },
 ];
 
-const TIERS = [
-  {
-    name: 'Community',
-    price: 'Free',
-    period: 'forever',
-    highlight: false,
-    features: [
-      '149 detection rules',
-      'All analysis features',
-      'Browser extension',
-      'CLI + standalone download',
-      'Community rules',
-      'All export formats',
-    ],
-  },
-  {
-    name: 'Pro',
-    price: '$29',
-    period: '/month',
-    highlight: true,
-    features: [
-      'Everything in Community',
-      'API access (50K scans/mo)',
-      'Priority rule updates',
-      'YAML plugin system',
-      'EU AI Act compliance reports',
-      'Email support',
-    ],
-  },
-  {
-    name: 'Team',
-    price: '$149',
-    period: '/month (5 seats)',
-    highlight: false,
-    features: [
-      'Everything in Pro',
-      'Shared dashboard',
-      'Team scan history',
-      'Custom rule packs',
-      'SSO / SAML',
-      'Batch scanning API',
-    ],
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    period: '',
-    highlight: false,
-    features: [
-      'Everything in Team',
-      'Self-hosted deployment',
-      'Custom SLA',
-      'SIEM integration',
-      'Dedicated support',
-      'Custom rule development',
-    ],
-  },
-];
-
 export default function Landing() {
   return (
     <div className="space-y-16 pb-12">
@@ -291,69 +232,6 @@ if result.is_positive:
     comment-on-pr: true
     sarif-upload: true`}
           </pre>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing">
-        <h3 className="text-xl font-bold text-white text-center mb-2" style={{ fontFamily: 'serif' }}>
-          Pricing
-        </h3>
-        <p className="text-gray-500 text-sm text-center mb-8">
-          Free forever for individuals. Scale when you need to.
-        </p>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-          {TIERS.map(tier => (
-            <div
-              key={tier.name}
-              className={`p-5 rounded-lg border flex flex-col ${
-                tier.highlight
-                  ? 'bg-[#c9a227]/5 border-[#c9a227]/40 ring-1 ring-[#c9a227]/20'
-                  : 'bg-gray-900/50 border-gray-800'
-              }`}
-            >
-              <div className="mb-4">
-                <div className="text-sm font-bold text-gray-200">{tier.name}</div>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className={`text-2xl font-bold ${tier.highlight ? 'text-[#c9a227]' : 'text-white'}`}>{tier.price}</span>
-                  {tier.period && <span className="text-xs text-gray-500">{tier.period}</span>}
-                </div>
-              </div>
-              <ul className="space-y-2 flex-1">
-                {tier.features.map(f => (
-                  <li key={f} className="flex items-start gap-2 text-xs text-gray-400">
-                    <svg className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${tier.highlight ? 'text-[#c9a227]' : 'text-green-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4">
-                {tier.name === 'Community' ? (
-                  <Link
-                    to="/scanner"
-                    className="block w-full text-center px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-lg transition-colors"
-                  >
-                    Get Started Free
-                  </Link>
-                ) : tier.name === 'Enterprise' ? (
-                  <a
-                    href="mailto:hello@forensicate.ai"
-                    className="block w-full text-center px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-lg transition-colors"
-                  >
-                    Contact Us
-                  </a>
-                ) : (
-                  <button
-                    className="w-full px-4 py-2 bg-[#c9a227]/20 hover:bg-[#c9a227]/30 text-[#c9a227] text-xs font-semibold rounded-lg transition-colors border border-[#c9a227]/30"
-                  >
-                    Coming Soon
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
