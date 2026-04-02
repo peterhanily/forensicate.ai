@@ -15,18 +15,45 @@ import { fileURLToPath } from 'node:url';
 // ---------------------------------------------------------------------------
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const scannerPath = join(__dirname, 'node_modules', '@forensicate', 'scanner', 'dist', 'index.js');
-const { scanPrompt, computeAttackComplexity } = await import(scannerPath);
+const { scanPrompt, computeAttackComplexity, parseConfigYaml, applyConfigToRules, ruleCategories, getEnabledRules } = await import(scannerPath);
 
 // ---------------------------------------------------------------------------
-// Configuration from environment (set by action.yml)
+// Configuration from environment (set by action.yml) + config file
 // ---------------------------------------------------------------------------
-const PATHS = (process.env.INPUT_PATHS || '').trim();
+
+// Load forensicate.yaml if present (config file settings are defaults, action inputs override)
+let fileConfig = {};
+for (const name of ['forensicate.yaml', 'forensicate.yml', '.forensicaterc.yaml', '.forensicaterc.yml']) {
+  const configPath = resolve(name);
+  if (existsSync(configPath)) {
+    try {
+      fileConfig = parseConfigYaml(readFileSync(configPath, 'utf-8'));
+      console.log(`  Loaded config: ${name}`);
+    } catch (err) {
+      console.log(`::warning::Failed to parse ${name}: ${err.message}`);
+    }
+    break;
+  }
+}
+
+const PATHS = (process.env.INPUT_PATHS || '').trim() || (fileConfig.paths || []).join(' ');
 const CONFIDENCE_THRESHOLD = parseInt(process.env.INPUT_CONFIDENCE_THRESHOLD || '50', 10);
-const FAIL_ON_FINDING = (process.env.INPUT_FAIL_ON_FINDING || 'true').toLowerCase() === 'true';
-const SCAN_MODE = process.env.INPUT_SCAN_MODE || 'changed';
+const FAIL_ON_FINDING = process.env.INPUT_FAIL_ON_FINDING != null
+  ? process.env.INPUT_FAIL_ON_FINDING.toLowerCase() === 'true'
+  : fileConfig.failOnFinding ?? true;
+const SCAN_MODE = process.env.INPUT_SCAN_MODE || fileConfig.scanMode || 'changed';
 const COMMENT_ON_PR = (process.env.INPUT_COMMENT_ON_PR || 'true').toLowerCase() === 'true';
-const SARIF_UPLOAD = (process.env.INPUT_SARIF_UPLOAD || 'false').toLowerCase() === 'true';
+const SARIF_UPLOAD = (process.env.INPUT_SARIF_UPLOAD || fileConfig.output === 'sarif' ? 'true' : 'false').toLowerCase() === 'true';
 const GITHUB_TOKEN = process.env.INPUT_GITHUB_TOKEN || process.env.GITHUB_TOKEN || '';
+
+// Build filtered rule set from config
+let configuredRules = null;
+if (fileConfig.categories || fileConfig.disableCategories || fileConfig.disableRules || fileConfig.minSeverity) {
+  const { enabledRuleIds } = applyConfigToRules(fileConfig, ruleCategories);
+  const allRules = getEnabledRules();
+  configuredRules = allRules.filter(r => enabledRuleIds.has(r.id));
+  console.log(`  Config filtered rules: ${configuredRules.length}/${allRules.length}`);
+}
 
 // Extensions considered scannable (text-like files)
 const SCANNABLE_EXTENSIONS = new Set([
@@ -621,7 +648,7 @@ async function main() {
     if (content.trim().length === 0) continue;
 
     filesScanned++;
-    const result = scanPrompt(content, undefined, CONFIDENCE_THRESHOLD);
+    const result = scanPrompt(content, configuredRules ?? undefined, CONFIDENCE_THRESHOLD);
 
     if (result.isPositive && result.confidence >= CONFIDENCE_THRESHOLD) {
       findings.push({ file, result });

@@ -19,6 +19,11 @@ export {
   type AttackComplexityLabel,
 } from './attackComplexity.js';
 export {
+  parseConfigYaml,
+  applyConfigToRules,
+  type ForensicateConfig,
+} from './config.js';
+export {
   fetchCommunityIndex,
   fetchCommunityRule,
   fetchAllCommunityRules,

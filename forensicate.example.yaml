@@ -1,0 +1,56 @@
+# Forensicate.ai Configuration
+# Copy this file to `forensicate.yaml` in your project root.
+# All fields are optional — sensible defaults are used when omitted.
+# CLI args and GitHub Action inputs override config file values.
+
+# Minimum confidence threshold (0-99)
+# Only report findings at or above this confidence level
+threshold: 50
+
+# Minimum rule severity to run
+# Options: low, medium, high, critical
+# min-severity: medium
+
+# Output format
+# Options: text, json, sarif
+# output: text
+
+# Rule category whitelist (only run these categories)
+# Omit to run all categories
+# categories:
+#   - jailbreak
+#   - instruction-override
+#   - prompt-extraction
+#   - safety-removal
+
+# Rule categories to disable (blacklist)
+# disable-categories:
+#   - fiction-hypothetical
+
+# Specific rule IDs to disable
+# disable-rules:
+#   - kw-fiction-framing
+#   - kw-emotional-manipulation
+
+# Glob patterns to scan (for CLI and GitHub Action)
+# paths:
+#   - "**/*.md"
+#   - "**/*.prompt"
+#   - "src/**/*.py"
+
+# Scan mode (GitHub Action only)
+# Options: changed (PR diff only), all (all matching files)
+# scan-mode: changed
+
+# Whether to fail CI on finding (GitHub Action only)
+# fail-on-finding: true
+
+# File extensions to scan (overrides defaults)
+# extensions:
+#   - .md
+#   - .txt
+#   - .prompt
+#   - .py
+
+# Maximum file size to scan (in KB)
+# max-file-size-kb: 512

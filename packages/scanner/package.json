@@ -19,6 +19,9 @@
       "import": "./dist/types.js"
     }
   },
+  "bin": {
+    "forensicate": "./dist/cli.js"
+  },
   "files": [
     "dist",
     "README.md",
@@ -59,6 +62,7 @@
     "compromise": "^14.15.0"
   },
   "devDependencies": {
+    "@types/node": "^25.3.3",
     "typescript": "~5.9.3",
     "vitest": "^4.0.18"
   }
