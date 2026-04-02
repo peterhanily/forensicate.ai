@@ -13,6 +13,7 @@ import {
  type ScanResult,
  type RuleMatch,
  type AnnotatedSegment,
+ parseYamlRuleFile,
 } from '@forensicate/scanner';
 import {
  AddRuleModal,
@@ -1056,6 +1057,35 @@ export default function Scanner() {
  onEnableAll={() => { setLocalRules(prev => prev.map(r => ({ ...r, enabled: true }))); lastScannedRef.current = ''; }}
  onDisableAll={() => { setLocalRules(prev => prev.map(r => ({ ...r, enabled: false }))); lastScannedRef.current = ''; }}
  onShowAddSectionModal={() => setShowAddSectionModal(true)}
+ onImportYamlRules={(file) => {
+ const reader = new FileReader();
+ reader.onload = (e) => {
+ const content = e.target?.result;
+ if (typeof content !== 'string') return;
+ const result = parseYamlRuleFile(content, file.name);
+ if (result.warnings.length > 0) {
+ for (const w of result.warnings) showToastMessage(`⚠️ ${w}`, 4000);
+ }
+ if (result.rules.length === 0) {
+ showToastMessage('No valid rules found in YAML file', 3000);
+ return;
+ }
+ // Add rules to localRules
+ setLocalRules(prev => [...prev, ...result.rules]);
+ // Add category
+ setCustomCategories(prev => {
+ const existing = prev.find(c => c.id === result.category.id);
+ if (existing) {
+ return prev.map(cat => cat.id === result.category.id
+ ? { ...cat, rules: [...cat.rules, ...result.rules] } : cat);
+ }
+ return [...prev, result.category];
+ });
+ showToastMessage(`✅ Imported ${result.rules.length} rule${result.rules.length !== 1 ? 's' : ''} from ${file.name}`, 3000);
+ lastScannedRef.current = '';
+ };
+ reader.readAsText(file);
+ }}
  onImportCommunityRule={(rule) => {
  const importedCategoryId = 'custom-imported';
 

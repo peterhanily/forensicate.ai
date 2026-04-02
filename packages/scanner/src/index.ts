@@ -24,6 +24,10 @@ export {
   type ForensicateConfig,
 } from './config.js';
 export {
+  parseYamlRuleFile,
+  type YamlRuleFile,
+} from './yamlRules.js';
+export {
   fetchCommunityIndex,
   fetchCommunityRule,
   fetchAllCommunityRules,

@@ -1,0 +1,42 @@
+# Forensicate.ai YAML Rule Pack
+# Multiple rules in a single file
+# Import all at once via the Scanner UI
+
+name: Healthcare AI Security Pack
+description: Rules for detecting prompt injection attacks targeting healthcare AI systems
+
+rules:
+  - id: health-phi-extraction
+    name: PHI Extraction Attempt
+    description: Detects attempts to extract Protected Health Information via prompt manipulation
+    type: keyword
+    severity: critical
+    keywords:
+      - "show me patient records"
+      - "reveal medical history"
+      - "list all diagnoses"
+      - "display prescription data"
+    kill-chain:
+      - exfiltration
+    eu-ai-act-risk: high
+
+  - id: health-role-hijack
+    name: Medical Authority Hijack
+    description: Detects attempts to impersonate medical professionals to bypass safety filters
+    type: regex
+    severity: high
+    pattern: "(?:i am|acting as|speaking as)\\s+(?:a |the |your )?(?:doctor|physician|surgeon|nurse|pharmacist|medical director)"
+    flags: gi
+    kill-chain:
+      - privilege-escalation
+
+  - id: health-diagnosis-bypass
+    name: Diagnosis Safety Bypass
+    description: Detects attempts to force the AI to provide unqualified medical diagnoses
+    type: keyword
+    severity: medium
+    keywords:
+      - "diagnose me without disclaimer"
+      - "skip the medical advice warning"
+      - "no need for the safety disclaimer"
+      - "just tell me the diagnosis"
