@@ -705,6 +705,113 @@ function simpleDiff(original: string, mutated: string): DiffToken[] {
   return tokens;
 }
 
+// ============================================================================
+// Strategy Composition Pipeline
+// ============================================================================
+
+export interface PipelineStep {
+  strategy: MutationStrategy;
+  inputText: string;
+  outputText: string;
+  description: string;
+  scanResult: ScanResult;
+  evaded: boolean;
+  confidenceDelta: number;  // delta from original, not from previous step
+}
+
+export interface PipelineResult {
+  originalText: string;
+  originalScan: ScanResult;
+  steps: PipelineStep[];
+  finalText: string;
+  finalScan: ScanResult;
+  evadedAtStep: number | null;  // 0-indexed step where evasion first occurred, null if never
+  totalConfidenceDrop: number;
+  pipelineLabel: string;        // "Strategy1 → Strategy2 → Strategy3"
+}
+
+/**
+ * Execute a strategy composition pipeline.
+ * Applies strategies in order, passing each step's output to the next.
+ * Each step is scanned independently to track where detection breaks down.
+ */
+export function executePipeline(
+  originalText: string,
+  pipeline: MutationStrategy[],
+): PipelineResult {
+  const originalScan = scanPrompt(originalText);
+  const steps: PipelineStep[] = [];
+  let currentText = originalText;
+  let evadedAtStep: number | null = null;
+
+  for (let i = 0; i < pipeline.length; i++) {
+    const strategy = pipeline[i];
+    const { text: outputText, desc } = applyStrategy(currentText, strategy);
+    const scanResult = scanPrompt(outputText);
+    const evaded = !scanResult.isPositive || scanResult.confidence < Math.max(originalScan.confidence * 0.5, 30);
+
+    if (evaded && evadedAtStep === null) {
+      evadedAtStep = i;
+    }
+
+    steps.push({
+      strategy,
+      inputText: currentText,
+      outputText,
+      description: desc,
+      scanResult,
+      evaded,
+      confidenceDelta: scanResult.confidence - originalScan.confidence,
+    });
+
+    currentText = outputText;
+  }
+
+  const finalScan = steps.length > 0 ? steps[steps.length - 1].scanResult : originalScan;
+
+  return {
+    originalText,
+    originalScan,
+    steps,
+    finalText: currentText,
+    finalScan,
+    evadedAtStep,
+    totalConfidenceDrop: finalScan.confidence - originalScan.confidence,
+    pipelineLabel: pipeline.map(s => strategyLabels[s]).join(' → '),
+  };
+}
+
+/**
+ * Pre-built pipeline templates for common evasion strategies.
+ */
+export const PIPELINE_TEMPLATES: { name: string; description: string; pipeline: MutationStrategy[] }[] = [
+  {
+    name: 'Social Engineer',
+    description: 'Fiction framing + synonym swap to disguise intent',
+    pipeline: ['fiction-framing', 'synonym-substitution'],
+  },
+  {
+    name: 'Obfuscation Stack',
+    description: 'Leetspeak + homoglyphs + fragmentation for maximum obfuscation',
+    pipeline: ['encoding-leetspeak', 'unicode-homoglyph', 'fragmentation'],
+  },
+  {
+    name: 'Structural Evasion',
+    description: 'Rearrange structure, shift delimiters, then encode',
+    pipeline: ['structural-rearrange', 'delimiter-shift', 'encoding-base64'],
+  },
+  {
+    name: 'Deep Disguise',
+    description: '4-layer: fiction → synonyms → case → fragmentation',
+    pipeline: ['fiction-framing', 'synonym-substitution', 'case-manipulation', 'fragmentation'],
+  },
+  {
+    name: 'Full Kitchen Sink',
+    description: 'All 10 strategies applied sequentially',
+    pipeline: [...allStrategies],
+  },
+];
+
 /**
  * Generate mutations for a given text using specified strategies.
  */

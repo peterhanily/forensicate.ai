@@ -4,14 +4,17 @@ import { useToast } from '../components/Toast';
 import {
   generateMutations,
   evolveUntilEvasion,
+  executePipeline,
   suggestRuleForEvasion,
   computeInlineDiff,
   allStrategies,
   getStrategyLabel,
+  PIPELINE_TEMPLATES,
   type MutationReport,
   type MutationStrategy,
   type Mutation,
   type EvolutionResult,
+  type PipelineResult,
   type SuggestedRule,
   type DiffToken,
 } from '../lib/mutationEngine';
@@ -31,7 +34,7 @@ const severityColors: Record<string, string> = {
   low: 'text-green-400',
 };
 
-type RunMode = 'standard' | 'combo' | 'evolve';
+type RunMode = 'standard' | 'combo' | 'evolve' | 'pipeline';
 
 // ============================================================================
 // Small UI Components
@@ -403,9 +406,11 @@ export default function MutationEngine() {
   const [inputText, setInputText] = useState(preloadedText);
   const [report, setReport] = useState<MutationReport | null>(null);
   const [evolutionResult, setEvolutionResult] = useState<EvolutionResult | null>(null);
+  const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [runMode, setRunMode] = useState<RunMode>('combo');
+  const [pipelineSteps, setPipelineSteps] = useState<MutationStrategy[]>(['fiction-framing', 'synonym-substitution']);
   const [exportedCount, setExportedCount] = useState(0);
   const [selectedStrategies, setSelectedStrategies] = useState<Set<MutationStrategy>>(
     new Set(allStrategies)
@@ -473,10 +478,31 @@ export default function MutationEngine() {
     setIsRunning(true);
     setExpandedRows(new Set());
     setEvolutionResult(null);
+    setPipelineResult(null);
 
     setTimeout(() => {
       const strategies = allStrategies.filter(s => selectedStrategies.has(s));
       let result: MutationReport;
+
+      if (runMode === 'pipeline') {
+        if (pipelineSteps.length === 0) {
+          setIsRunning(false);
+          toast('Add at least one strategy to the pipeline', 'error');
+          return;
+        }
+        const pResult = executePipeline(inputText.trim(), pipelineSteps);
+        setPipelineResult(pResult);
+        // Also generate a minimal report for compatibility
+        result = generateMutations(inputText.trim(), strategies, { includeCombo: false });
+        setReport(result);
+        setIsRunning(false);
+        if (pResult.evadedAtStep !== null) {
+          toast(`Pipeline evaded detection at step ${pResult.evadedAtStep + 1} (${getStrategyLabel(pipelineSteps[pResult.evadedAtStep])})`, 'warning');
+        } else {
+          toast(`Pipeline completed — all ${pResult.steps.length} steps caught`, 'success');
+        }
+        return;
+      }
 
       if (runMode === 'evolve') {
         const evo = evolveUntilEvasion(inputText.trim());
@@ -494,7 +520,7 @@ export default function MutationEngine() {
         toast(`All ${result.totalMutations} mutations caught — rules are robust`, 'success');
       }
     }, 50);
-  }, [inputText, selectedStrategies, runMode, toast]);
+  }, [inputText, selectedStrategies, pipelineSteps, runMode, toast]);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {
@@ -569,6 +595,7 @@ export default function MutationEngine() {
                 { mode: 'standard' as RunMode, label: 'Standard', desc: 'Single strategies only' },
                 { mode: 'combo' as RunMode, label: 'Combo', desc: 'Single + stacked combos' },
                 { mode: 'evolve' as RunMode, label: 'Evolve', desc: 'Mutate until evasion' },
+                { mode: 'pipeline' as RunMode, label: 'Pipeline', desc: 'Custom strategy composition chain' },
               ]).map(({ mode, label, desc }) => (
                 <button
                   key={mode}
@@ -606,15 +633,207 @@ export default function MutationEngine() {
               </label>
             ))}
           </div>
+
+          {/* Pipeline Builder (shown in pipeline mode) */}
+          {runMode === 'pipeline' && (
+            <div className="border border-gray-700 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-400 font-mono">Pipeline Steps:</span>
+                <div className="flex gap-1">
+                  {PIPELINE_TEMPLATES.map(t => (
+                    <button
+                      key={t.name}
+                      onClick={() => setPipelineSteps([...t.pipeline])}
+                      className="text-[10px] px-1.5 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-500 hover:text-gray-300 rounded transition-colors"
+                      title={t.description}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Step list */}
+              <div className="space-y-1">
+                {pipelineSteps.map((step, i) => (
+                  <div key={`${step}-${i}`} className="flex items-center gap-2 bg-gray-800/50 rounded px-2 py-1">
+                    <span className="text-[10px] text-gray-600 font-mono w-4">{i + 1}.</span>
+                    <span className="text-xs text-gray-300 flex-1">{getStrategyLabel(step)}</span>
+                    <button
+                      onClick={() => {
+                        if (i > 0) setPipelineSteps(prev => {
+                          const next = [...prev]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; return next;
+                        });
+                      }}
+                      disabled={i === 0}
+                      className="text-gray-600 hover:text-gray-300 disabled:opacity-20 transition-colors"
+                      title="Move up"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7"/></svg>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (i < pipelineSteps.length - 1) setPipelineSteps(prev => {
+                          const next = [...prev]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; return next;
+                        });
+                      }}
+                      disabled={i === pipelineSteps.length - 1}
+                      className="text-gray-600 hover:text-gray-300 disabled:opacity-20 transition-colors"
+                      title="Move down"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <button
+                      onClick={() => setPipelineSteps(prev => prev.filter((_, j) => j !== i))}
+                      className="text-gray-600 hover:text-red-400 transition-colors"
+                      title="Remove"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add strategy to pipeline */}
+              <select
+                onChange={e => { if (e.target.value) { setPipelineSteps(prev => [...prev, e.target.value as MutationStrategy]); e.target.value = ''; } }}
+                value=""
+                className="w-full text-xs bg-gray-900 border border-gray-700 text-gray-400 rounded px-2 py-1.5 focus:outline-none focus:border-[#c9a227]"
+              >
+                <option value="">+ Add strategy to pipeline...</option>
+                {allStrategies.map(s => (
+                  <option key={s} value={s}>{getStrategyLabel(s)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <button
             onClick={handleMutate}
-            disabled={!inputText.trim() || selectedStrategies.size === 0 || isRunning}
+            disabled={!inputText.trim() || (runMode !== 'pipeline' && selectedStrategies.size === 0) || (runMode === 'pipeline' && pipelineSteps.length === 0) || isRunning}
             className="w-full px-4 py-2.5 bg-gradient-to-r from-[#8b0000] to-[#5c0000] text-[#c9a227] font-bold rounded-lg hover:from-[#a00000] hover:to-[#700000] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-[0_0_15px_rgba(139,0,0,0.5)] font-mono text-sm"
           >
-            {isRunning ? 'Mutating...' : runMode === 'evolve' ? 'Evolve' : `Mutate (${runMode === 'combo' ? 'combo' : selectedStrategies.size + ' strategies'})`}
+            {isRunning ? 'Mutating...' : runMode === 'evolve' ? 'Evolve' : runMode === 'pipeline' ? `Run Pipeline (${pipelineSteps.length} steps)` : `Mutate (${runMode === 'combo' ? 'combo' : selectedStrategies.size + ' strategies'})`}
           </button>
         </div>
       </div>
+
+      {/* Pipeline Results */}
+      {pipelineResult && (
+        <div className="border border-gray-800 rounded-lg bg-gray-900/50 overflow-hidden">
+          <div className="px-4 py-3 bg-gray-800/50 border-b border-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-[#c9a227]">Pipeline Results</span>
+              <span className="text-xs text-gray-500 font-mono">{pipelineResult.pipelineLabel}</span>
+            </div>
+          </div>
+          <div className="p-4 space-y-3">
+            {/* Summary */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <span className="text-xs text-gray-500">Confidence Drop:</span>
+                <span className={`ml-1 text-sm font-mono font-bold ${
+                  pipelineResult.totalConfidenceDrop <= -30 ? 'text-red-400' : pipelineResult.totalConfidenceDrop <= -10 ? 'text-yellow-400' : 'text-green-400'
+                }`}>
+                  {pipelineResult.totalConfidenceDrop > 0 ? '+' : ''}{pipelineResult.totalConfidenceDrop}%
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500">Original:</span>
+                <span className="ml-1 text-sm font-mono text-gray-300">{pipelineResult.originalScan.confidence}%</span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500">Final:</span>
+                <span className={`ml-1 text-sm font-mono font-bold ${
+                  pipelineResult.finalScan.confidence < 30 ? 'text-red-400' : 'text-green-400'
+                }`}>
+                  {pipelineResult.finalScan.confidence}%
+                </span>
+              </div>
+              {pipelineResult.evadedAtStep !== null && (
+                <span className="text-xs bg-red-900/30 text-red-400 px-2 py-0.5 rounded">
+                  Evaded at step {pipelineResult.evadedAtStep + 1}
+                </span>
+              )}
+            </div>
+
+            {/* Step-by-step visualization */}
+            <div className="space-y-0">
+              {pipelineResult.steps.map((step, i) => (
+                <div key={i}>
+                  {/* Connector */}
+                  {i > 0 && (
+                    <div className="flex items-center gap-2 py-1 pl-4">
+                      <div className="w-0.5 h-3 bg-gray-700" />
+                      <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                    </div>
+                  )}
+                  {/* Step */}
+                  <button
+                    onClick={() => setExpandedRows(prev => {
+                      const next = new Set(prev);
+                      const key = `pipeline-${i}`;
+                      if (next.has(key)) next.delete(key); else next.add(key);
+                      return next;
+                    })}
+                    className="w-full text-left flex items-center gap-3 p-2 rounded bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
+                  >
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      step.evaded
+                        ? 'bg-red-900/50 text-red-400 border border-red-800'
+                        : 'bg-green-900/50 text-green-400 border border-green-800'
+                    }`}>
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-gray-300 font-medium">{getStrategyLabel(step.strategy)}</div>
+                      <div className="text-[10px] text-gray-500 truncate">{step.description}</div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-xs font-mono ${
+                        step.confidenceDelta <= -20 ? 'text-red-400' : step.confidenceDelta <= -5 ? 'text-yellow-400' : 'text-green-400'
+                      }`}>
+                        {step.scanResult.confidence}%
+                      </span>
+                      <span className={`text-[10px] font-mono ${step.confidenceDelta < 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                        ({step.confidenceDelta > 0 ? '+' : ''}{step.confidenceDelta})
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Expanded output */}
+                  {expandedRows.has(`pipeline-${i}`) && (
+                    <div className="ml-9 mt-1 mb-2">
+                      <pre className="text-[11px] text-gray-400 bg-gray-950 rounded p-2 whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto font-mono border border-gray-800">
+                        {step.outputText}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Confidence progression mini chart */}
+            <div className="flex items-center gap-1 pt-2 border-t border-gray-800">
+              <span className="text-[10px] text-gray-500 w-10 flex-shrink-0">Orig</span>
+              {pipelineResult.steps.map((step, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <svg className="w-3 h-3 text-gray-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span className={`text-[10px] font-mono ${
+                    step.evaded ? 'text-red-400 font-bold' : 'text-gray-400'
+                  }`}>
+                    {step.scanResult.confidence}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Evolution Timeline */}
       {evolutionResult && report && (
