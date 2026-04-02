@@ -30,13 +30,15 @@ public/forensicate-standalone.html
 # Test battery (cloned repos - do not commit)
 injection_prompts/github/
 
-# Documentation files (keep local, not in public repo)
-.claude/
+# Claude Code local state (keep local, not in public repo)
+.claude/*
+!.claude/commands/
 *.md
 !README.md
 !**/README.md
 !SCHEMA.md
 !**/SCHEMA.md
+!.claude/commands/*.md
 
 # Coverage reports
 coverage/

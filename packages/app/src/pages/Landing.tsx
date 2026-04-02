@@ -109,13 +109,16 @@ export default function Landing() {
         </div>
 
         {/* Quick install */}
-        <div className="mt-8 flex items-center justify-center gap-4 flex-wrap">
-          <code className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300 font-mono">
-            npm install @forensicate/scanner
-          </code>
-          <code className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300 font-mono">
-            pip install forensicate
-          </code>
+        <div className="mt-8 flex flex-col items-center gap-2">
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <code className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300 font-mono">
+              npm install @forensicate/scanner
+            </code>
+            <code className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300 font-mono">
+              pip install forensicate
+            </code>
+          </div>
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider">npm &amp; PyPI packages coming soon</span>
         </div>
       </section>
 
