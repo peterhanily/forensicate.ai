@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Scanner from './pages/Scanner';
 
 const MutationEngine = lazy(() => import('./pages/MutationEngine'));
+const ForensicTimeline = lazy(() => import('./pages/ForensicTimeline'));
 
 // Detect standalone mode: file:// protocol means we're running as a downloaded HTML file
 const isStandalone = typeof window !== 'undefined' && window.location.protocol === 'file:';
@@ -34,6 +35,7 @@ export default function App() {
               <Route index element={<Navigate to="/scanner" replace />} />
               <Route path="scanner" element={<Scanner />} />
               <Route path="mutate" element={<Suspense fallback={<PageLoader />}><MutationEngine /></Suspense>} />
+              <Route path="timeline" element={<Suspense fallback={<PageLoader />}><ForensicTimeline /></Suspense>} />
             </Route>
           </Routes>
         </Router>

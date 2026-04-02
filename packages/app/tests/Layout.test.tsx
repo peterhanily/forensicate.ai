@@ -30,8 +30,8 @@ describe('Layout', () => {
   it('logo links to home page', () => {
     renderWithRouter(<Layout />);
 
-    // Find the link containing the logo (by finding the "F" text inside)
-    const logoLink = screen.getByRole('link', { name: /f/i });
+    // Find the link containing the logo (by matching the app name)
+    const logoLink = screen.getByRole('link', { name: new RegExp(APP_NAME, 'i') });
     expect(logoLink).toHaveAttribute('href', '/');
   });
 
