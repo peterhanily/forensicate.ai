@@ -1,10 +1,11 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import Layout from './components/Layout';
 import Scanner from './pages/Scanner';
 
+const Landing = lazy(() => import('./pages/Landing'));
 const MutationEngine = lazy(() => import('./pages/MutationEngine'));
 const ForensicTimeline = lazy(() => import('./pages/ForensicTimeline'));
 
@@ -32,7 +33,7 @@ export default function App() {
         <Router basename={isStandalone ? undefined : basename}>
           <Routes>
             <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/scanner" replace />} />
+              <Route index element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
               <Route path="scanner" element={<Scanner />} />
               <Route path="mutate" element={<Suspense fallback={<PageLoader />}><MutationEngine /></Suspense>} />
               <Route path="timeline" element={<Suspense fallback={<PageLoader />}><ForensicTimeline /></Suspense>} />

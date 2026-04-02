@@ -14,6 +14,13 @@ from .heuristics import (
     language_switch_detection,
 )
 from .compound import detect_compound_threats
+from .complexity import (
+    AttackComplexityScore,
+    compute_attack_complexity,
+    get_complexity_description,
+)
+from .config import load_config, parse_config
+from .test_battery import PROMPT_BATTERY, run_battery
 
 __version__ = "1.0.0"
 
@@ -24,6 +31,7 @@ __all__ = [
     "ScanResult",
     "RuleMatch",
     "CompoundThreat",
+    "AttackComplexityScore",
     # Rules
     "keyword_rules",
     "regex_rules",
@@ -37,6 +45,15 @@ __all__ = [
     "language_switch_detection",
     # Compound detection
     "detect_compound_threats",
+    # Attack complexity
+    "compute_attack_complexity",
+    "get_complexity_description",
+    # Config
+    "load_config",
+    "parse_config",
+    # Test battery
+    "PROMPT_BATTERY",
+    "run_battery",
     # Version
     "__version__",
 ]

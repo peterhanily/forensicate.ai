@@ -10,13 +10,13 @@ describe('App', () => {
     expect(screen.getByText('Forensicate.ai')).toBeInTheDocument();
   });
 
-  it('redirects root path to scanner page', async () => {
+  it('renders landing page at root path', async () => {
     render(<App />);
 
-    // After redirect, the Scanner page content should be visible
+    // The landing page should show the hero heading
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: /prompt scanner/i })
+        screen.getByText(/AI Prompt Security/i)
       ).toBeInTheDocument();
     });
   });
@@ -24,8 +24,8 @@ describe('App', () => {
   it('renders the navigation', () => {
     render(<App />);
 
-    expect(
-      screen.getByRole('link', { name: /prompt scanner/i })
-    ).toBeInTheDocument();
+    // Find the first "Prompt Scanner" link (desktop nav)
+    const links = screen.getAllByRole('link', { name: /prompt scanner/i });
+    expect(links.length).toBeGreaterThan(0);
   });
 });
