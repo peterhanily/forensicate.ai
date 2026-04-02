@@ -302,6 +302,10 @@ export function scanPrompt(text: string, customRules?: DetectionRule[], confiden
       }
       match.weight = effectiveWeight;
       match.confidenceImpact = impact;
+      // Propagate compliance framework mappings
+      if (rule.killChain) match.killChain = rule.killChain;
+      if (rule.mitreAtlas) match.mitreAtlas = rule.mitreAtlas;
+      if (rule.euAiActRisk) match.euAiActRisk = rule.euAiActRisk;
       matchedRules.push(match);
     }
   }

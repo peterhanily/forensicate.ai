@@ -61,6 +61,9 @@ export function exportJSON(scanResult: ScanResult, promptText: string, fileInfo?
         severity: r.severity,
         matches: r.matches,
         confidenceImpact: r.confidenceImpact,
+        killChain: r.killChain,
+        mitreAtlas: r.mitreAtlas,
+        euAiActRisk: r.euAiActRisk,
       })),
       compoundThreats: scanResult.compoundThreats ?? [],
       reasons: scanResult.reasons,
@@ -99,7 +102,7 @@ export function exportJSON(scanResult: ScanResult, promptText: string, fileInfo?
 // --- CSV Export ---
 
 export function exportCSV(scanResult: ScanResult, promptText: string, fileInfo?: FileExtractionResult) {
-  const headers = ['Rule ID', 'Rule Name', 'Type', 'Severity', 'Confidence Impact', 'Matched Text'];
+  const headers = ['Rule ID', 'Rule Name', 'Type', 'Severity', 'Confidence Impact', 'Kill Chain', 'MITRE ATLAS', 'EU AI Act', 'Matched Text'];
   const rows = scanResult.matchedRules
     .slice()
     .sort((a, b) => severityOrder(a.severity) - severityOrder(b.severity))
@@ -109,6 +112,9 @@ export function exportCSV(scanResult: ScanResult, promptText: string, fileInfo?:
       r.ruleType,
       r.severity,
       r.confidenceImpact?.toString() ?? '',
+      `"${(r.killChain || []).join('; ')}"`,
+      `"${(r.mitreAtlas || []).join('; ')}"`,
+      r.euAiActRisk ?? '',
       `"${(r.matches || []).slice(0, 3).join('; ').replace(/"/g, '""')}"`,
     ]);
 
@@ -149,14 +155,46 @@ export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?
     .sort((a, b) => severityOrder(a.severity) - severityOrder(b.severity))
     .map(r => {
       const sevColor = r.severity === 'critical' ? '#ef4444' : r.severity === 'high' ? '#f97316' : r.severity === 'medium' ? '#eab308' : '#22c55e';
+      const killChainBadges = (r.killChain || []).map(s => `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:#581c87;color:#c084fc;border-radius:3px;margin:1px">${s}</span>`).join('');
+      const atlasBadges = (r.mitreAtlas || []).map(id => `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:#1e3a5f;color:#60a5fa;border-radius:3px;margin:1px">${id}</span>`).join('');
+      const euBadge = r.euAiActRisk ? `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:${r.euAiActRisk === 'high' ? '#7f1d1d' : '#713f12'};color:${r.euAiActRisk === 'high' ? '#fca5a5' : '#fde047'};border-radius:3px;margin:1px">EU:${r.euAiActRisk}</span>` : '';
       return `<tr>
         <td style="padding:8px;border-bottom:1px solid #374151">${escapeHtml(r.ruleName)}</td>
         <td style="padding:8px;border-bottom:1px solid #374151"><span style="color:${sevColor};font-weight:600">${r.severity.toUpperCase()}</span></td>
         <td style="padding:8px;border-bottom:1px solid #374151">${r.ruleType}</td>
         <td style="padding:8px;border-bottom:1px solid #374151">${r.confidenceImpact != null ? `+${r.confidenceImpact}pts` : ''}</td>
+        <td style="padding:8px;border-bottom:1px solid #374151;font-size:11px">${killChainBadges} ${atlasBadges} ${euBadge}</td>
         <td style="padding:8px;border-bottom:1px solid #374151;font-size:12px;color:#9ca3af">${escapeHtml((r.matches || []).slice(0, 3).join(', '))}</td>
       </tr>`;
     }).join('');
+
+  // Build compliance summary from matched rules
+  const allKillChain = [...new Set(scanResult.matchedRules.flatMap(r => r.killChain || []))];
+  const allAtlas = [...new Set(scanResult.matchedRules.flatMap(r => r.mitreAtlas || []))];
+  const allEuRisk = [...new Set(scanResult.matchedRules.map(r => r.euAiActRisk).filter(Boolean))];
+  const complianceSummary = (allKillChain.length > 0 || allAtlas.length > 0) ? `
+    <h2>Compliance Framework Mapping</h2>
+    <div class="card">
+      ${allKillChain.length > 0 ? `
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;color:#9ca3af;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Promptware Kill Chain Stages</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${allKillChain.map(s => `<span style="padding:2px 8px;font-size:11px;background:#581c87;color:#c084fc;border-radius:4px;font-family:monospace">${s}</span>`).join('')}</div>
+        </div>
+      ` : ''}
+      ${allAtlas.length > 0 ? `
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;color:#9ca3af;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">MITRE ATLAS Techniques</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${allAtlas.map(id => `<span style="padding:2px 8px;font-size:11px;background:#1e3a5f;color:#60a5fa;border-radius:4px;font-family:monospace">${id}</span>`).join('')}</div>
+        </div>
+      ` : ''}
+      ${allEuRisk.length > 0 ? `
+        <div>
+          <div style="font-size:12px;color:#9ca3af;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">EU AI Act Risk Classification</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${allEuRisk.map(r => `<span style="padding:2px 8px;font-size:11px;background:${r === 'high' ? '#7f1d1d' : '#713f12'};color:${r === 'high' ? '#fca5a5' : '#fde047'};border-radius:4px">${r}</span>`).join('')}</div>
+        </div>
+      ` : ''}
+    </div>
+  ` : '';
 
   const compoundSection = (scanResult.compoundThreats && scanResult.compoundThreats.length > 0) ? `
     <h2 style="color:#ef4444;margin-top:24px">Compound Threats (${scanResult.compoundThreats.length})</h2>
@@ -250,10 +288,12 @@ export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?
   ${scanResult.matchedRules.length > 0 ? `
   <h2>Triggered Rules (${scanResult.matchedRules.length})</h2>
   <table>
-    <thead><tr><th>Rule</th><th>Severity</th><th>Type</th><th>Impact</th><th>Matches</th></tr></thead>
+    <thead><tr><th>Rule</th><th>Severity</th><th>Type</th><th>Impact</th><th>Frameworks</th><th>Matches</th></tr></thead>
     <tbody>${matchRows}</tbody>
   </table>
   ` : '<h2>No Rules Triggered</h2><p style="color:#22c55e">The scanned text appears clean.</p>'}
+
+  ${complianceSummary}
 
   ${compoundSection}
 
@@ -274,7 +314,7 @@ export function exportSARIF(scanResult: ScanResult, promptText: string, fileInfo
     name: string;
     shortDescription: { text: string };
     defaultConfiguration: { level: string };
-    properties: { severity: string; ruleType: string };
+    properties: Record<string, unknown>;
   }> = [];
   const results: Array<{
     ruleId: string;
@@ -303,6 +343,15 @@ export function exportSARIF(scanResult: ScanResult, promptText: string, fileInfo
         properties: {
           severity: match.severity,
           ruleType: match.ruleType,
+          ...(match.killChain && { 'security-severity': match.severity === 'critical' ? '9.0' : match.severity === 'high' ? '7.0' : match.severity === 'medium' ? '5.0' : '3.0' }),
+          ...(match.killChain && { killChainStages: match.killChain }),
+          ...(match.mitreAtlas && { mitreAtlasTechniques: match.mitreAtlas }),
+          ...(match.euAiActRisk && { euAiActRiskLevel: match.euAiActRisk }),
+          tags: [
+            ...(match.killChain?.map(s => `kill-chain:${s}`) || []),
+            ...(match.mitreAtlas?.map(id => `mitre:${id}`) || []),
+            ...(match.euAiActRisk ? [`eu-ai-act:${match.euAiActRisk}`] : []),
+          ],
         },
       });
     }

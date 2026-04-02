@@ -249,7 +249,24 @@ function ScannerResults({
  >
  <span className="text-[#c9a227] mt-0.5 flex-shrink-0">&rsaquo;</span>
  <span className="break-words flex-1">
- [{severityLabel}] {match.ruleName}{detail}
+ <span>[{severityLabel}] {match.ruleName}{detail}</span>
+ {(match.killChain || match.mitreAtlas || match.euAiActRisk) && (
+   <span className="flex flex-wrap gap-1 mt-0.5">
+     {match.killChain?.map(stage => (
+       <span key={stage} className="px-1 py-0 text-[9px] font-mono bg-purple-900/30 text-purple-400 border border-purple-800/50 rounded">{stage}</span>
+     ))}
+     {match.mitreAtlas?.map(id => (
+       <span key={id} className="px-1 py-0 text-[9px] font-mono bg-blue-900/30 text-blue-400 border border-blue-800/50 rounded">{id}</span>
+     ))}
+     {match.euAiActRisk && (
+       <span className={`px-1 py-0 text-[9px] font-mono rounded border ${
+         match.euAiActRisk === 'high' ? 'bg-red-900/30 text-red-400 border-red-800/50'
+         : match.euAiActRisk === 'limited' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-800/50'
+         : 'bg-gray-800 text-gray-400 border-gray-700'
+       }`}>EU:{match.euAiActRisk}</span>
+     )}
+   </span>
+ )}
  </span>
  {match.confidenceImpact != null && (
  <span className={`flex-shrink-0 px-1.5 py-0.5 text-[10px] font-mono rounded ${impactColor}`}>

@@ -119,6 +119,10 @@ export interface RuleMatch {
   // Enhanced position data with line/column info for annotation UI
   matchPositions?: MatchPosition[];
   details?: string;
+  // Compliance framework mappings (propagated from DetectionRule)
+  killChain?: KillChainStage[];
+  mitreAtlas?: MitreAtlasCategory[];
+  euAiActRisk?: EuAiActRisk;
   // Per-rule confidence impact (points contributed to total score)
   confidenceImpact?: number;
   // Effective weight used for this rule (from rule.weight or SEVERITY_WEIGHTS)
