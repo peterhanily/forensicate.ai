@@ -84,15 +84,88 @@ function InlineDiff({ tokens }: { tokens: DiffToken[] }) {
 // Suggested Rule Component
 // ============================================================================
 
-function SuggestedRuleCard({ rule, onCopy }: { rule: SuggestedRule; onCopy?: (msg: string) => void }) {
+const SUGGESTED_RULES_STORAGE_KEY = 'forensicate-suggested-rules';
+
+/**
+ * Convert a SuggestedRule to a DetectionRule and store it for the Scanner page to pick up.
+ */
+function addSuggestedRuleToScanner(rule: SuggestedRule): void {
+  const id = `suggested-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const detectionRule = {
+    id,
+    name: rule.name,
+    description: rule.description,
+    type: rule.type as 'keyword' | 'regex',
+    severity: (rule.confidence === 'high' ? 'high' : rule.confidence === 'medium' ? 'medium' : 'low') as 'high' | 'medium' | 'low',
+    enabled: true,
+    isCustom: true,
+    ...(rule.type === 'keyword' ? { keywords: [rule.pattern] } : { pattern: rule.pattern, flags: 'gi' }),
+  };
+
+  const existing = JSON.parse(localStorage.getItem(SUGGESTED_RULES_STORAGE_KEY) || '[]');
+  // Deduplicate by pattern
+  if (!existing.some((r: { pattern?: string; keywords?: string[] }) =>
+    (r.pattern === rule.pattern) || (r.keywords?.[0] === rule.pattern)
+  )) {
+    existing.push(detectionRule);
+    localStorage.setItem(SUGGESTED_RULES_STORAGE_KEY, JSON.stringify(existing));
+  }
+}
+
+/**
+ * Generate a GitHub new-issue URL pre-filled with a community rule proposal.
+ */
+function generateCommunityRuleUrl(rule: SuggestedRule): string {
+  const category = rule.type === 'regex' ? 'obfuscation' : 'injection';
+  const ruleJson = JSON.stringify({
+    id: `community-${category}-XXX`,
+    name: rule.name,
+    description: rule.description,
+    author: 'YOUR_GITHUB_USERNAME',
+    submittedAt: new Date().toISOString().slice(0, 10),
+    category,
+    type: rule.type,
+    severity: rule.confidence === 'high' ? 'high' : rule.confidence === 'medium' ? 'medium' : 'low',
+    ...(rule.type === 'keyword' ? { keywords: [rule.pattern] } : { pattern: rule.pattern, flags: 'gi' }),
+    examples: [],
+    tags: ['auto-suggested', 'mutation-engine'],
+  }, null, 2);
+
+  const title = encodeURIComponent(`[New Rule] ${rule.name}`);
+  const body = encodeURIComponent(
+    `## New Rule Proposal\n\n` +
+    `**Source:** Auto-suggested by the Mutation Engine after detecting an evasion gap.\n\n` +
+    `### Rule JSON\n\n\`\`\`json\n${ruleJson}\n\`\`\`\n\n` +
+    `### Notes\n\n` +
+    `- Confidence: ${rule.confidence}\n` +
+    `- Type: ${rule.type}\n` +
+    `- Description: ${rule.description}\n\n` +
+    `Please review, assign a sequential ID, and update the category folder.\n`
+  );
+
+  return `https://github.com/peterhanily/forensicate.ai/issues/new?title=${title}&body=${body}&labels=new-rule`;
+}
+
+function SuggestedRuleCard({ rule, onCopy, onAdded }: { rule: SuggestedRule; onCopy?: (msg: string) => void; onAdded?: (msg: string) => void }) {
   const [copied, setCopied] = useState(false);
+  const [added, setAdded] = useState(false);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(rule.pattern).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
       onCopy?.('Rule pattern copied to clipboard');
+    }).catch(() => {
+      onCopy?.('Failed to copy — try selecting manually');
     });
   };
+
+  const handleAddToRules = () => {
+    addSuggestedRuleToScanner(rule);
+    setAdded(true);
+    onAdded?.(`Added "${rule.name}" — go to Prompt Scanner to use it`);
+  };
+
   const confColor = rule.confidence === 'high' ? 'text-green-400' : rule.confidence === 'medium' ? 'text-yellow-400' : 'text-gray-400';
   return (
     <div className="bg-gray-900 border border-gray-700 rounded p-2 space-y-1">
@@ -106,9 +179,39 @@ function SuggestedRuleCard({ rule, onCopy }: { rule: SuggestedRule; onCopy?: (ms
       <p className="text-[11px] text-gray-500">{rule.description}</p>
       <div className="flex items-center gap-1">
         <code className="flex-1 text-[11px] text-[#c9a227] bg-gray-950 px-2 py-1 rounded font-mono overflow-x-auto">{rule.pattern}</code>
-        <button onClick={handleCopy} className="px-2 py-1 text-[10px] bg-gray-800 text-gray-400 rounded hover:text-gray-200 transition-colors shrink-0">
+        <button onClick={handleCopy} className="px-2 py-1 text-[10px] bg-gray-800 text-gray-400 rounded hover:text-gray-200 transition-colors shrink-0" aria-label="Copy pattern">
           {copied ? 'Copied' : 'Copy'}
         </button>
+      </div>
+      <div className="flex items-center gap-1.5 pt-0.5">
+        <button
+          onClick={handleAddToRules}
+          disabled={added}
+          className="px-2 py-1 text-[10px] bg-[#c9a227]/20 text-[#c9a227] rounded hover:bg-[#c9a227]/30 transition-colors disabled:opacity-50 disabled:cursor-default flex items-center gap-1"
+          aria-label={`Add ${rule.name} to scanner rules`}
+        >
+          {added ? (
+            <>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              Added
+            </>
+          ) : (
+            <>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Add to Rules
+            </>
+          )}
+        </button>
+        <a
+          href={generateCommunityRuleUrl(rule)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-2 py-1 text-[10px] bg-green-900/20 text-green-400 rounded hover:bg-green-900/30 transition-colors flex items-center gap-1"
+          aria-label={`Submit ${rule.name} as community rule on GitHub`}
+        >
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+          Submit Community Rule
+        </a>
       </div>
     </div>
   );
@@ -246,7 +349,7 @@ function MutationRow({ mutation, index, isExpanded, onToggle, originalText, onOp
                 <div>
                   <span className="text-xs text-gray-500 uppercase tracking-wide">Suggested Detection Rules:</span>
                   <div className="mt-1 space-y-2">
-                    {suggestions.map((rule, i) => <SuggestedRuleCard key={i} rule={rule} onCopy={(msg) => toast(msg, 'success')} />)}
+                    {suggestions.map((rule, i) => <SuggestedRuleCard key={i} rule={rule} onCopy={(msg) => toast(msg, 'success')} onAdded={(msg) => toast(msg, 'success')} />)}
                   </div>
                 </div>
               )}

@@ -329,6 +329,60 @@ export default function Scanner() {
  }
  }, [autoImportCommunityRules, setLocalRules, setCustomCategories]);
 
+ // Pick up suggested rules from Mutation Engine (stored in localStorage)
+ const hasPickedUpSuggested = useRef(false);
+ useEffect(() => {
+ if (hasPickedUpSuggested.current) return;
+ hasPickedUpSuggested.current = true;
+
+ const storageKey = 'forensicate-suggested-rules';
+ const stored = localStorage.getItem(storageKey);
+ if (!stored) return;
+
+ try {
+   const suggestedRules = JSON.parse(stored) as Array<{
+     id: string; name: string; description: string; type: string;
+     severity: string; enabled: boolean; isCustom: boolean;
+     keywords?: string[]; pattern?: string; flags?: string;
+   }>;
+   if (!Array.isArray(suggestedRules) || suggestedRules.length === 0) return;
+
+   const categoryId = 'suggested-rules';
+
+   setLocalRules(prev => {
+     const existingIds = new Set(prev.map(r => r.id));
+     const newRules = suggestedRules.filter(r => !existingIds.has(r.id));
+     if (newRules.length === 0) return prev;
+     return [...prev, ...newRules as DetectionRule[]];
+   });
+
+   setCustomCategories(prev => {
+     const existing = prev.find(c => c.id === categoryId);
+     if (existing) {
+       const existingIds = new Set(existing.rules.map(r => r.id));
+       const newRules = suggestedRules.filter(r => !existingIds.has(r.id));
+       if (newRules.length === 0) return prev;
+       return prev.map(c => c.id === categoryId
+         ? { ...c, rules: [...c.rules, ...newRules as DetectionRule[]] } : c);
+     }
+     return [...prev, {
+       id: categoryId,
+       name: 'Suggested Rules',
+       description: 'Rules auto-suggested by the Mutation Engine to close detection gaps',
+       isCustom: true,
+       rules: suggestedRules as DetectionRule[],
+     }];
+   });
+
+   // Clear after pickup
+   localStorage.removeItem(storageKey);
+   showToastMessage(`Imported ${suggestedRules.length} suggested rule${suggestedRules.length !== 1 ? 's' : ''} from Mutation Engine`, 4000);
+ } catch {
+   // Ignore corrupt data
+   localStorage.removeItem(storageKey);
+ }
+ }, [setLocalRules, setCustomCategories, showToastMessage]);
+
  // Auto-import community prompts on page load
  const hasAutoImportedPrompts = useRef(false);
  useEffect(() => {
