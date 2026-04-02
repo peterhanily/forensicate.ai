@@ -167,9 +167,9 @@ export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?
     .sort((a, b) => severityOrder(a.severity) - severityOrder(b.severity))
     .map(r => {
       const sevColor = r.severity === 'critical' ? '#ef4444' : r.severity === 'high' ? '#f97316' : r.severity === 'medium' ? '#eab308' : '#22c55e';
-      const killChainBadges = (r.killChain || []).map(s => `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:#581c87;color:#c084fc;border-radius:3px;margin:1px">${s}</span>`).join('');
-      const atlasBadges = (r.mitreAtlas || []).map(id => `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:#1e3a5f;color:#60a5fa;border-radius:3px;margin:1px">${id}</span>`).join('');
-      const euBadge = r.euAiActRisk ? `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:${r.euAiActRisk === 'high' ? '#7f1d1d' : '#713f12'};color:${r.euAiActRisk === 'high' ? '#fca5a5' : '#fde047'};border-radius:3px;margin:1px">EU:${r.euAiActRisk}</span>` : '';
+      const killChainBadges = (r.killChain || []).map(s => `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:#581c87;color:#c084fc;border-radius:3px;margin:1px">${escapeHtml(s)}</span>`).join('');
+      const atlasBadges = (r.mitreAtlas || []).map(id => `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:#1e3a5f;color:#60a5fa;border-radius:3px;margin:1px">${escapeHtml(id)}</span>`).join('');
+      const euBadge = r.euAiActRisk ? `<span style="display:inline-block;padding:1px 4px;font-size:10px;background:${r.euAiActRisk === 'high' ? '#7f1d1d' : '#713f12'};color:${r.euAiActRisk === 'high' ? '#fca5a5' : '#fde047'};border-radius:3px;margin:1px">EU:${escapeHtml(r.euAiActRisk)}</span>` : '';
       return `<tr>
         <td style="padding:8px;border-bottom:1px solid #374151">${escapeHtml(r.ruleName)}</td>
         <td style="padding:8px;border-bottom:1px solid #374151"><span style="color:${sevColor};font-weight:600">${r.severity.toUpperCase()}</span></td>
@@ -190,19 +190,19 @@ export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?
       ${allKillChain.length > 0 ? `
         <div style="margin-bottom:12px">
           <div style="font-size:12px;color:#9ca3af;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Promptware Kill Chain Stages</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">${allKillChain.map(s => `<span style="padding:2px 8px;font-size:11px;background:#581c87;color:#c084fc;border-radius:4px;font-family:monospace">${s}</span>`).join('')}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${allKillChain.map(s => `<span style="padding:2px 8px;font-size:11px;background:#581c87;color:#c084fc;border-radius:4px;font-family:monospace">${escapeHtml(s)}</span>`).join('')}</div>
         </div>
       ` : ''}
       ${allAtlas.length > 0 ? `
         <div style="margin-bottom:12px">
           <div style="font-size:12px;color:#9ca3af;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">MITRE ATLAS Techniques</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">${allAtlas.map(id => `<span style="padding:2px 8px;font-size:11px;background:#1e3a5f;color:#60a5fa;border-radius:4px;font-family:monospace">${id}</span>`).join('')}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${allAtlas.map(id => `<span style="padding:2px 8px;font-size:11px;background:#1e3a5f;color:#60a5fa;border-radius:4px;font-family:monospace">${escapeHtml(id)}</span>`).join('')}</div>
         </div>
       ` : ''}
       ${allEuRisk.length > 0 ? `
         <div>
           <div style="font-size:12px;color:#9ca3af;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">EU AI Act Risk Classification</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">${allEuRisk.map(r => `<span style="padding:2px 8px;font-size:11px;background:${r === 'high' ? '#7f1d1d' : '#713f12'};color:${r === 'high' ? '#fca5a5' : '#fde047'};border-radius:4px">${r}</span>`).join('')}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${allEuRisk.map(r => `<span style="padding:2px 8px;font-size:11px;background:${r === 'high' ? '#7f1d1d' : '#713f12'};color:${r === 'high' ? '#fca5a5' : '#fde047'};border-radius:4px">${escapeHtml(String(r))}</span>`).join('')}</div>
         </div>
       ` : ''}
     </div>
@@ -225,7 +225,7 @@ export function exportHTML(scanResult: ScanResult, promptText: string, fileInfo?
       <div class="meta">
         <div class="meta-item">File: <span class="meta-value">${escapeHtml(fileInfo.filename)}</span></div>
         <div class="meta-item">Size: <span class="meta-value">${formatFileSize(fileInfo.fileSize)}</span></div>
-        <div class="meta-item">Type: <span class="meta-value">${fileInfo.fileType}</span></div>
+        <div class="meta-item">Type: <span class="meta-value">${escapeHtml(fileInfo.fileType)}</span></div>
         ${fileInfo.pageCount ? `<div class="meta-item">Pages: <span class="meta-value">${fileInfo.pageCount}</span></div>` : ''}
         <div class="meta-item">Extraction: <span class="meta-value">${fileInfo.extractionTimeMs.toFixed(0)}ms</span></div>
       </div>

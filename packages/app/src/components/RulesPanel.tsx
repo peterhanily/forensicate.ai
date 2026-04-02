@@ -216,14 +216,15 @@ function RulesPanel({
  Add Section
  </button>
  {onImportYamlRules && (
- <label className="flex-1 px-2 py-1 text-xs bg-green-900/20 hover:bg-green-900/30 text-green-400 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer">
- <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <label className="flex-1 px-2 py-1 text-xs bg-green-900/20 hover:bg-green-900/30 text-green-400 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer focus-within:ring-1 focus-within:ring-green-400">
+ <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
  </svg>
  YAML
  <input
  type="file"
  accept=".yaml,.yml"
+ aria-label="Import YAML rule file"
  className="hidden"
  onChange={(e) => {
  const file = e.target.files?.[0];

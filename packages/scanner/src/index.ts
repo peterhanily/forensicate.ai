@@ -28,6 +28,11 @@ export {
   type YamlRuleFile,
 } from './yamlRules.js';
 export {
+  RULE_PREFIX_TO_CATEGORY,
+  inferCategoryForRule,
+  inferCategoriesFromRules,
+} from './ruleCategories.js';
+export {
   fetchCommunityIndex,
   fetchCommunityRule,
   fetchAllCommunityRules,

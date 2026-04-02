@@ -287,7 +287,9 @@ function mutateNegation(text: string): { text: string; desc: string } {
   ];
   let count = 0;
   for (const { from, to } of negations) {
+    from.lastIndex = 0; // Reset stateful regex before test
     if (from.test(mutated)) {
+      from.lastIndex = 0; // Reset again before replace
       mutated = mutated.replace(from, to);
       count++;
     }

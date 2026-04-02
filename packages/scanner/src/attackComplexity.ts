@@ -6,6 +6,7 @@
 //   Reversibility  — how easy it is to recover from a successful attack
 
 import type { RuleMatch, CompoundThreat, KillChainStage } from './types.js';
+import { inferCategoriesFromRules } from './ruleCategories.js';
 
 export interface AttackComplexityScore {
   sophistication: number;  // 0-100
@@ -231,121 +232,12 @@ function getLabel(overall: number): AttackComplexityLabel {
   return 'expert';
 }
 
-// Rule ID prefix → category mapping
-const RULE_PREFIX_TO_CATEGORY: Record<string, string> = {
-  'kw-ignore-instructions': 'instruction-override',
-  'kw-new-instructions': 'instruction-override',
-  'kw-dan-jailbreak': 'jailbreak',
-  'kw-stan-jailbreak': 'jailbreak',
-  'kw-dude-jailbreak': 'jailbreak',
-  'kw-evil-personas': 'jailbreak',
-  'kw-maximum-jailbreak': 'jailbreak',
-  'kw-role-manipulation': 'role-manipulation',
-  'kw-dual-response': 'role-manipulation',
-  'kw-system-prompt': 'prompt-extraction',
-  'kw-leak-extraction': 'prompt-extraction',
-  'kw-data-exfil-commands': 'exfiltration-supply-chain',
-  'kw-safety-probing': 'safety-removal',
-  'kw-goal-manipulation': 'compliance-forcing',
-  'kw-authority-claims': 'authority-developer',
-  'kw-developer-mode': 'authority-developer',
-  'kw-context-manipulation': 'context-manipulation',
-  'kw-token-manipulation': 'compliance-forcing',
-  'kw-hypothetical': 'fiction-hypothetical',
-  'kw-fiction-framing': 'fiction-hypothetical',
-  'kw-emotional-manipulation': 'persuasion',
-  'kw-urgency-pressure': 'persuasion',
-  'kw-pliny-patterns': 'jailbreak',
-  'kw-crescendo-attack': 'jailbreak',
-  'kw-compliance-forcing': 'compliance-forcing',
-  'kw-output-bypass': 'safety-removal',
-  'kw-threat-consequence': 'threats-consequences',
-  'kw-safety-override': 'safety-removal',
-  'kw-restriction-removal': 'safety-removal',
-  'kw-simulation-framing': 'fiction-hypothetical',
-  // Regex rules: map by prefix pattern
-  'rx-instruction': 'instruction-override',
-  'rx-ignore': 'instruction-override',
-  'rx-jailbreak': 'jailbreak',
-  'rx-role': 'role-manipulation',
-  'rx-persona': 'role-manipulation',
-  'rx-system': 'prompt-extraction',
-  'rx-leak': 'prompt-extraction',
-  'rx-exfil': 'exfiltration-supply-chain',
-  'rx-safety': 'safety-removal',
-  'rx-authority': 'authority-developer',
-  'rx-developer': 'authority-developer',
-  'rx-context': 'context-manipulation',
-  'rx-hypothetical': 'fiction-hypothetical',
-  'rx-fiction': 'fiction-hypothetical',
-  'rx-emotional': 'persuasion',
-  'rx-urgency': 'persuasion',
-  'rx-compliance': 'compliance-forcing',
-  'rx-threat': 'threats-consequences',
-  'rx-restriction': 'safety-removal',
-  'rx-simulation': 'fiction-hypothetical',
-  'rx-dual': 'role-manipulation',
-  'rx-markdown': 'exfiltration-supply-chain',
-  'rx-callback': 'exfiltration-supply-chain',
-  'rx-owasp': 'mcp-agent-security',
-  'rx-mcp': 'mcp-agent-security',
-  'rx-agent': 'mcp-agent-security',
-  'rx-tool': 'mcp-agent-security',
-  'rx-ide': 'ide-supply-chain',
-  'rx-supply': 'ide-supply-chain',
-  'rx-worm': 'worm-propagation',
-  'rx-self-rep': 'worm-propagation',
-  'rx-rag': 'rag-security',
-  'rx-temporal': 'temporal-conditional',
-  'rx-delayed': 'temporal-conditional',
-  'rx-conditional': 'temporal-conditional',
-  'rx-output': 'output-forensics',
-  'rx-repeated': 'structural',
-  'rx-always': 'mcp-agent-security',
-  'rx-image': 'structural',
-  'rx-persistence': 'temporal-conditional',
-  // Heuristic rules
-  'heur-entropy': 'encoding-obfuscation',
-  'heur-bidi': 'encoding-obfuscation',
-  'heur-sneaky': 'encoding-obfuscation',
-  'heur-unicode': 'encoding-obfuscation',
-  'heur-invisible': 'encoding-obfuscation',
-  'heur-lang': 'encoding-obfuscation',
-  'heur-homoglyph': 'encoding-obfuscation',
-  'heur-evasion': 'encoding-obfuscation',
-  'heur-token': 'encoding-obfuscation',
-  'heur-structural': 'structural',
-  'heur-ratio': 'structural',
-  // NLP rules
-  'nlp-': 'persuasion',
-  // File rules
-  'file-': 'structural',
-};
-
 function inferCategories(matchedRules: RuleMatch[]): Set<string> {
-  const categories = new Set<string>();
+  const categories = inferCategoriesFromRules(matchedRules.map(r => r.ruleId));
 
+  // Fallback: derive from kill chain for rules that didn't match any prefix
   for (const rule of matchedRules) {
-    const id = rule.ruleId;
-
-    // Try exact match first
-    if (RULE_PREFIX_TO_CATEGORY[id]) {
-      categories.add(RULE_PREFIX_TO_CATEGORY[id]);
-      continue;
-    }
-
-    // Try longest prefix match
-    let matched = false;
-    for (const [prefix, category] of Object.entries(RULE_PREFIX_TO_CATEGORY)) {
-      if (id.startsWith(prefix)) {
-        categories.add(category);
-        matched = true;
-        break;
-      }
-    }
-
-    // Fallback: derive from kill chain if available
-    if (!matched && rule.killChain) {
+    if (rule.killChain && !inferCategoriesFromRules([rule.ruleId]).size) {
       if (rule.killChain.includes('exfiltration')) categories.add('exfiltration-supply-chain');
       if (rule.killChain.includes('lateral-movement')) categories.add('worm-propagation');
       if (rule.killChain.includes('persistence')) categories.add('temporal-conditional');

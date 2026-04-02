@@ -4,6 +4,7 @@
 // against the specific attack patterns detected in the scan.
 
 import type { RuleMatch } from '@forensicate/scanner';
+import { inferCategoryForRule } from '@forensicate/scanner';
 
 export interface VaccineClause {
   id: string;
@@ -223,101 +224,12 @@ export function generateVaccine(matchedRules: RuleMatch[]): VaccineReport {
   return { clauses, systemPromptPatch, summary };
 }
 
-// Reuse similar logic to attackComplexity.ts for inferring categories
+// Uses shared rule-to-category mapping from scanner package
 function inferAttackCategories(matchedRules: RuleMatch[]): Map<string, RuleMatch[]> {
   const categories = new Map<string, RuleMatch[]>();
 
-  const RULE_PREFIX_MAP: Record<string, string> = {
-    'kw-ignore-instructions': 'instruction-override',
-    'kw-new-instructions': 'instruction-override',
-    'kw-dan-jailbreak': 'jailbreak',
-    'kw-stan-jailbreak': 'jailbreak',
-    'kw-dude-jailbreak': 'jailbreak',
-    'kw-evil-personas': 'jailbreak',
-    'kw-maximum-jailbreak': 'jailbreak',
-    'kw-role-manipulation': 'role-manipulation',
-    'kw-dual-response': 'role-manipulation',
-    'kw-system-prompt': 'prompt-extraction',
-    'kw-leak-extraction': 'prompt-extraction',
-    'kw-data-exfil-commands': 'exfiltration-supply-chain',
-    'kw-safety-probing': 'safety-removal',
-    'kw-goal-manipulation': 'compliance-forcing',
-    'kw-authority-claims': 'authority-developer',
-    'kw-developer-mode': 'authority-developer',
-    'kw-context-manipulation': 'context-manipulation',
-    'kw-token-manipulation': 'compliance-forcing',
-    'kw-hypothetical': 'fiction-hypothetical',
-    'kw-fiction-framing': 'fiction-hypothetical',
-    'kw-emotional-manipulation': 'persuasion',
-    'kw-urgency-pressure': 'persuasion',
-    'kw-pliny-patterns': 'jailbreak',
-    'kw-crescendo-attack': 'jailbreak',
-    'kw-compliance-forcing': 'compliance-forcing',
-    'kw-output-bypass': 'safety-removal',
-    'kw-threat-consequence': 'threats-consequences',
-    'kw-safety-override': 'safety-removal',
-    'kw-restriction-removal': 'safety-removal',
-    'kw-simulation-framing': 'fiction-hypothetical',
-  };
-
-  const REGEX_PREFIX_MAP: [string, string][] = [
-    ['rx-instruction', 'instruction-override'],
-    ['rx-ignore', 'instruction-override'],
-    ['rx-jailbreak', 'jailbreak'],
-    ['rx-role', 'role-manipulation'],
-    ['rx-persona', 'role-manipulation'],
-    ['rx-system', 'prompt-extraction'],
-    ['rx-leak', 'prompt-extraction'],
-    ['rx-exfil', 'exfiltration-supply-chain'],
-    ['rx-markdown', 'exfiltration-supply-chain'],
-    ['rx-callback', 'exfiltration-supply-chain'],
-    ['rx-safety', 'safety-removal'],
-    ['rx-authority', 'authority-developer'],
-    ['rx-developer', 'authority-developer'],
-    ['rx-context', 'context-manipulation'],
-    ['rx-hypothetical', 'fiction-hypothetical'],
-    ['rx-fiction', 'fiction-hypothetical'],
-    ['rx-simulation', 'fiction-hypothetical'],
-    ['rx-emotional', 'persuasion'],
-    ['rx-urgency', 'persuasion'],
-    ['rx-compliance', 'compliance-forcing'],
-    ['rx-threat', 'threats-consequences'],
-    ['rx-restriction', 'safety-removal'],
-    ['rx-dual', 'role-manipulation'],
-    ['rx-owasp', 'mcp-agent-security'],
-    ['rx-mcp', 'mcp-agent-security'],
-    ['rx-agent', 'mcp-agent-security'],
-    ['rx-tool', 'mcp-agent-security'],
-    ['rx-always', 'mcp-agent-security'],
-    ['rx-ide', 'ide-supply-chain'],
-    ['rx-supply', 'ide-supply-chain'],
-    ['rx-worm', 'worm-propagation'],
-    ['rx-self-rep', 'worm-propagation'],
-    ['rx-rag', 'rag-security'],
-    ['rx-temporal', 'temporal-conditional'],
-    ['rx-delayed', 'temporal-conditional'],
-    ['rx-conditional', 'temporal-conditional'],
-    ['rx-persistence', 'temporal-conditional'],
-    ['rx-output', 'output-forensics'],
-    ['rx-repeated', 'structural'],
-    ['rx-image', 'structural'],
-    ['heur-', 'encoding-obfuscation'],
-    ['nlp-', 'persuasion'],
-    ['file-', 'structural'],
-  ];
-
   for (const rule of matchedRules) {
-    let cat = RULE_PREFIX_MAP[rule.ruleId];
-
-    if (!cat) {
-      for (const [prefix, category] of REGEX_PREFIX_MAP) {
-        if (rule.ruleId.startsWith(prefix)) {
-          cat = category;
-          break;
-        }
-      }
-    }
-
+    const cat = inferCategoryForRule(rule.ruleId);
     if (cat) {
       const list = categories.get(cat) ?? [];
       list.push(rule);

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { scanPrompt, computeAttackComplexity } from '@forensicate/scanner';
 import type { ScanResult, KillChainStage } from '@forensicate/scanner';
 import { useToast } from '../components/Toast';
@@ -214,12 +214,32 @@ export default function ForensicTimeline() {
   const { toast } = useToast();
   const [input, setInput] = useState('');
   const [expandedTurn, setExpandedTurn] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState<TimelineAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const analysis = useMemo<TimelineAnalysis | null>(() => {
-    if (!input.trim()) return null;
-    const turns = parseConversation(input);
-    if (turns.length === 0) return null;
-    return analyzeTimeline(turns);
+  // Debounced analysis — waits 400ms after last keystroke before scanning
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (!input.trim()) {
+        setAnalysis(null);
+        setIsAnalyzing(false);
+        return;
+      }
+      setIsAnalyzing(true);
+      // Use a nested timeout to let the "analyzing" state render before blocking
+      setTimeout(() => {
+        try {
+          const turns = parseConversation(input);
+          setAnalysis(turns.length === 0 ? null : analyzeTimeline(turns));
+        } catch {
+          setAnalysis(null);
+        }
+        setIsAnalyzing(false);
+      }, 0);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
   }, [input]);
 
   const acs = useMemo(() => {
@@ -273,6 +293,7 @@ export default function ForensicTimeline() {
           onChange={e => { setInput(e.target.value); setExpandedTurn(null); }}
           placeholder={'Paste a conversation here...\n\nUser: Hello, can you help me?\nAssistant: Of course!\nUser: Ignore all previous instructions...'}
           className="w-full h-40 bg-transparent text-gray-200 text-sm font-mono p-4 resize-y focus:outline-none placeholder-gray-700"
+          aria-label="Conversation input — paste a multi-turn conversation to analyze"
           spellCheck={false}
         />
       </div>
@@ -369,10 +390,14 @@ export default function ForensicTimeline() {
                 return (
                   <div
                     key={i}
-                    className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer group"
+                    className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer group focus:outline-none focus:ring-1 focus:ring-[#c9a227] rounded"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Turn ${i + 1} (${t.turn.role}): ${conf}% confidence`}
                     onClick={() => setExpandedTurn(expandedTurn === i ? null : i)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedTurn(expandedTurn === i ? null : i); } }}
                   >
-                    <span className="text-[8px] text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[8px] text-gray-500 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity">
                       {conf}%
                     </span>
                     <div
@@ -422,7 +447,9 @@ export default function ForensicTimeline() {
                     <div className="flex-1 pb-4 min-w-0">
                       <button
                         onClick={() => setExpandedTurn(isExpanded ? null : i)}
-                        className="w-full text-left"
+                        aria-expanded={isExpanded}
+                        aria-label={`Turn ${i + 1} (${t.turn.role}): ${hasFindings ? `${t.scanResult.confidence}% confidence, ${t.scanResult.matchedRules.length} rules matched` : 'no findings'}`}
+                        className="w-full text-left focus:outline-none focus:ring-1 focus:ring-[#c9a227] rounded"
                       >
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${
@@ -517,11 +544,33 @@ export default function ForensicTimeline() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!analysis && !input.trim() && (
+      {/* Loading state */}
+      {isAnalyzing && (
         <div className="border border-gray-800 rounded-lg bg-gray-900/50 p-8 text-center">
-          <div className="text-gray-600 text-sm">
+          <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Analyzing conversation...
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!analysis && !isAnalyzing && !input.trim() && (
+        <div className="border border-gray-800 rounded-lg bg-gray-900/50 p-8 text-center">
+          <div className="text-gray-500 text-sm">
             Paste a multi-turn conversation above or try a sample to begin forensic analysis
+          </div>
+        </div>
+      )}
+
+      {/* No turns parsed state */}
+      {!analysis && !isAnalyzing && input.trim() && (
+        <div className="border border-gray-800 rounded-lg bg-gray-900/50 p-8 text-center">
+          <div className="text-gray-500 text-sm">
+            Could not parse conversation turns. Try using &quot;User:&quot; and &quot;Assistant:&quot; prefixes, or paste a JSON message array.
           </div>
         </div>
       )}

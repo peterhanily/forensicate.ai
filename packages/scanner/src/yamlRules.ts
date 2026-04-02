@@ -276,15 +276,30 @@ function rawToRule(raw: Record<string, unknown>, warnings: string[], fallbackId:
       warnings.push(`Rule "${id}": regex rule must have a pattern`);
       return null;
     }
-    // Validate regex
+    if (pattern.length > 2000) {
+      warnings.push(`Rule "${id}": regex pattern too long (max 2000 chars)`);
+      return null;
+    }
+    // Reject patterns with known ReDoS constructs: nested quantifiers like (a+)+, (a*)*
+    if (/([+*])\)[\+\*]/.test(pattern) || /\(\?:[^)]*[+*]\)[+*]/.test(pattern)) {
+      warnings.push(`Rule "${id}": regex pattern rejected — nested quantifiers may cause catastrophic backtracking`);
+      return null;
+    }
+    // Validate flags
+    const flagsStr = String(raw.flags || 'gi');
+    if (!/^[gimsuy]*$/.test(flagsStr)) {
+      warnings.push(`Rule "${id}": invalid regex flags "${flagsStr}" (allowed: g, i, m, s, u, y)`);
+      return null;
+    }
+    // Validate regex compiles
     try {
-      new RegExp(pattern, String(raw.flags || 'gi'));
+      new RegExp(pattern, flagsStr);
     } catch {
       warnings.push(`Rule "${id}": invalid regex pattern "${pattern}"`);
       return null;
     }
     rule.pattern = pattern;
-    rule.flags = String(raw.flags || 'gi');
+    rule.flags = flagsStr;
   }
 
   // Optional fields

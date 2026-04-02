@@ -130,6 +130,12 @@ function getChangedFiles() {
       return null;
     }
 
+    // Validate SHA to prevent command injection
+    if (!/^[0-9a-f]{40}$/i.test(baseSha)) {
+      console.log('::warning::Invalid base SHA format. Falling back to all-files mode.');
+      return null;
+    }
+
     const output = execSync(`git diff --name-only --diff-filter=ACMR ${baseSha}...HEAD`, {
       encoding: 'utf-8',
       timeout: 30_000,
@@ -613,7 +619,9 @@ async function postPrComment(comment) {
       console.log(`::warning::Failed to post PR comment: ${createRes.status} ${createRes.statusText}`);
     }
   } catch (err) {
-    console.log(`::warning::Failed to post PR comment: ${err.message}`);
+    // Sanitize error message to prevent token leakage in logs
+    const safeMsg = GITHUB_TOKEN ? err.message.replaceAll(GITHUB_TOKEN, '***') : err.message;
+    console.log(`::warning::Failed to post PR comment: ${safeMsg}`);
   }
 }
 
@@ -666,7 +674,7 @@ async function main() {
           ? `${rule.ruleName} (${rule.severity}): ${rule.details}`
           : `${rule.ruleName} (${rule.severity}): ${rule.matches.slice(0, 3).map(m => m.slice(0, 60)).join(', ')}`;
 
-        console.log(`::${level} file=${file},line=${line},title=${escapeAnnotation(title)}::${escapeAnnotation(message)}`);
+        console.log(`::${level} file=${escapeAnnotation(file)},line=${line},title=${escapeAnnotation(title)}::${escapeAnnotation(message)}`);
       }
     }
   }

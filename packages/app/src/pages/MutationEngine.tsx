@@ -481,43 +481,47 @@ export default function MutationEngine() {
     setPipelineResult(null);
 
     setTimeout(() => {
-      const strategies = allStrategies.filter(s => selectedStrategies.has(s));
-      let result: MutationReport;
+      try {
+        const strategies = allStrategies.filter(s => selectedStrategies.has(s));
 
-      if (runMode === 'pipeline') {
-        if (pipelineSteps.length === 0) {
+        if (runMode === 'pipeline') {
+          if (pipelineSteps.length === 0) {
+            setIsRunning(false);
+            toast('Add at least one strategy to the pipeline', 'error');
+            return;
+          }
+          const pResult = executePipeline(inputText.trim(), pipelineSteps);
+          setPipelineResult(pResult);
+          setReport(null);
           setIsRunning(false);
-          toast('Add at least one strategy to the pipeline', 'error');
+          if (pResult.evadedAtStep !== null) {
+            toast(`Pipeline evaded detection at step ${pResult.evadedAtStep + 1} (${getStrategyLabel(pipelineSteps[pResult.evadedAtStep])})`, 'warning');
+          } else {
+            toast(`Pipeline completed — all ${pResult.steps.length} steps caught`, 'success');
+          }
           return;
         }
-        const pResult = executePipeline(inputText.trim(), pipelineSteps);
-        setPipelineResult(pResult);
-        // Also generate a minimal report for compatibility
-        result = generateMutations(inputText.trim(), strategies, { includeCombo: false });
+
+        let result: MutationReport;
+        if (runMode === 'evolve') {
+          const evo = evolveUntilEvasion(inputText.trim());
+          setEvolutionResult(evo);
+          result = generateMutations(inputText.trim(), strategies, { includeCombo: true });
+        } else {
+          result = generateMutations(inputText.trim(), strategies, { includeCombo: runMode === 'combo' });
+        }
         setReport(result);
         setIsRunning(false);
-        if (pResult.evadedAtStep !== null) {
-          toast(`Pipeline evaded detection at step ${pResult.evadedAtStep + 1} (${getStrategyLabel(pipelineSteps[pResult.evadedAtStep])})`, 'warning');
+
+        if (result.evaded > 0) {
+          toast(`${result.evaded} of ${result.totalMutations} mutations evaded detection`, 'warning');
         } else {
-          toast(`Pipeline completed — all ${pResult.steps.length} steps caught`, 'success');
+          toast(`All ${result.totalMutations} mutations caught — rules are robust`, 'success');
         }
-        return;
-      }
-
-      if (runMode === 'evolve') {
-        const evo = evolveUntilEvasion(inputText.trim());
-        setEvolutionResult(evo);
-        result = generateMutations(inputText.trim(), strategies, { includeCombo: true });
-      } else {
-        result = generateMutations(inputText.trim(), strategies, { includeCombo: runMode === 'combo' });
-      }
-      setReport(result);
-      setIsRunning(false);
-
-      if (result.evaded > 0) {
-        toast(`${result.evaded} of ${result.totalMutations} mutations evaded detection`, 'warning');
-      } else {
-        toast(`All ${result.totalMutations} mutations caught — rules are robust`, 'success');
+      } catch (err) {
+        setIsRunning(false);
+        toast('Mutation failed — see console for details', 'error');
+        console.error('Mutation error:', err);
       }
     }, 50);
   }, [inputText, selectedStrategies, pipelineSteps, runMode, toast]);
@@ -696,11 +700,13 @@ export default function MutationEngine() {
 
               {/* Add strategy to pipeline */}
               <select
-                onChange={e => { if (e.target.value) { setPipelineSteps(prev => [...prev, e.target.value as MutationStrategy]); e.target.value = ''; } }}
+                onChange={e => { if (e.target.value) { setPipelineSteps(prev => prev.length >= 20 ? prev : [...prev, e.target.value as MutationStrategy]); e.target.value = ''; } }}
                 value=""
-                className="w-full text-xs bg-gray-900 border border-gray-700 text-gray-400 rounded px-2 py-1.5 focus:outline-none focus:border-[#c9a227]"
+                disabled={pipelineSteps.length >= 20}
+                className="w-full text-xs bg-gray-900 border border-gray-700 text-gray-400 rounded px-2 py-1.5 focus:outline-none focus:border-[#c9a227] disabled:opacity-40"
+                aria-label="Add strategy to pipeline"
               >
-                <option value="">+ Add strategy to pipeline...</option>
+                <option value="">{pipelineSteps.length >= 20 ? 'Maximum 20 steps reached' : '+ Add strategy to pipeline...'}</option>
                 {allStrategies.map(s => (
                   <option key={s} value={s}>{getStrategyLabel(s)}</option>
                 ))}

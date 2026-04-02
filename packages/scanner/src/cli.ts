@@ -438,12 +438,14 @@ async function main() {
     process.exit(0);
   }
 
-  // Scan
+  // Scan all inputs once, store results
+  const allResults: Array<{ file: string | null; result: ScanResult }> = [];
   const findings: Array<{ file: string | null; result: ScanResult }> = [];
   let hasPositive = false;
 
   for (const { file, content } of inputs) {
     const result = scanPrompt(content, filteredRules, threshold);
+    allResults.push({ file, result });
     if (result.isPositive) {
       hasPositive = true;
       findings.push({ file, result });
@@ -460,22 +462,14 @@ async function main() {
   const outputFormat = config.output ?? 'text';
 
   if (outputFormat === 'json') {
-    if (inputs.length === 1) {
-      const { file, result } = findings[0] ?? { file: inputs[0].file, result: scanPrompt('', filteredRules, threshold) };
-      console.log(JSON.stringify(formatJson(file, result ?? findings[0]?.result), null, 2));
+    if (allResults.length === 1) {
+      console.log(JSON.stringify(formatJson(allResults[0].file, allResults[0].result), null, 2));
     } else {
-      const allResults = inputs.map(({ file, content }) => {
-        const result = scanPrompt(content, filteredRules, threshold);
-        return formatJson(file, result);
-      });
-      console.log(JSON.stringify(allResults, null, 2));
+      console.log(JSON.stringify(allResults.map(r => formatJson(r.file, r.result)), null, 2));
     }
   } else if (outputFormat === 'sarif') {
-    const allFindings = inputs.map(({ file, content }) => ({
-      file,
-      result: scanPrompt(content, filteredRules, threshold),
-    })).filter(f => f.result.matchedRules.length > 0);
-    console.log(JSON.stringify(formatSarif(allFindings), null, 2));
+    const sarifFindings = allResults.filter(f => f.result.matchedRules.length > 0);
+    console.log(JSON.stringify(formatSarif(sarifFindings), null, 2));
   } else {
     // Text output
     if (findings.length === 0 && inputs.length > 0) {
