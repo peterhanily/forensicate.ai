@@ -83,6 +83,7 @@ const SECTIONS = [
   { id: 'taxonomy', label: 'Taxonomy' },
   { id: 'techniques', label: 'Techniques' },
   { id: 'real-world', label: 'Real-World Incidents' },
+  { id: 'modules', label: 'Deep Dive Modules' },
   { id: 'defenses', label: 'Defenses' },
   { id: 'owasp', label: 'OWASP Top 10' },
   { id: 'try', label: 'Try It Yourself' },
@@ -291,6 +292,40 @@ export default function Learn() {
                 <p className="text-xs text-gray-400 mt-1 leading-relaxed">{incident.desc}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* --- Section: Deep Dive Modules --- */}
+        <section id="modules">
+          <h3 className="text-lg font-bold text-white mb-3" style={{ fontFamily: 'serif' }}>Deep Dive Modules</h3>
+          <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+            Explore advanced topics in dedicated interactive modules.
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-3">
+            <Link to="/learn/jailbreaks" className="p-4 rounded-lg bg-red-950/10 border border-red-900/30 hover:border-red-700/50 transition-all group">
+              <div className="text-sm font-bold text-red-400 mb-1 group-hover:text-red-300">The Jailbreak Arms Race</div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                From DAN 1.0 to Pliny the Liberator — the evolution of jailbreaks, automated attacks (GCG, PAIR, TAP), and the cat-and-mouse dynamic.
+              </p>
+              <span className="text-[10px] text-gray-600 mt-2 inline-block">Interactive examples included</span>
+            </Link>
+
+            <Link to="/learn/challenges" className="p-4 rounded-lg bg-[#c9a227]/5 border border-[#c9a227]/30 hover:border-[#c9a227]/50 transition-all group">
+              <div className="text-sm font-bold text-[#c9a227] mb-1 group-hover:text-[#c9a227]/80">Evasion Challenges</div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Gandalf-inspired multi-level challenges. Craft prompts that evade our 149-rule scanner — learn attack techniques by doing.
+              </p>
+              <span className="text-[10px] text-gray-600 mt-2 inline-block">5 levels, progressive difficulty</span>
+            </Link>
+
+            <Link to="/learn/model-attacks" className="p-4 rounded-lg bg-purple-950/10 border border-purple-900/30 hover:border-purple-700/50 transition-all group">
+              <div className="text-sm font-bold text-purple-400 mb-1 group-hover:text-purple-300">Model-Level Attacks</div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Abliteration, the refusal direction, adversarial suffixes, training-time attacks, and why safety training is a &quot;thin veneer.&quot;
+              </p>
+              <span className="text-[10px] text-gray-600 mt-2 inline-block">Advanced technical content</span>
+            </Link>
           </div>
         </section>
 
