@@ -49,9 +49,10 @@ export interface AttackPreset {
 const SPEECH_BAND_LOW = 300;
 const SPEECH_BAND_HIGH = 8000;
 const ULTRASONIC_THRESHOLD = 18000;
-const ENERGY_RATIO_THRESHOLD_DB = -20; // ultrasonic within 20dB of speech = suspicious
-const PEAK_PROMINENCE_DB = 15; // narrowband peak must be 15dB above noise floor
-const PEAK_PERSISTENCE_RATIO = 0.25; // peak must appear in 25%+ of frames
+const ENERGY_RATIO_THRESHOLD_DB = -6;  // ultrasonic must be within 6dB of speech (>25% energy)
+const ULTRASONIC_FLOOR_DB = -70;       // ignore ultrasonic band if below this absolute level
+const PEAK_PROMINENCE_DB = 25;         // narrowband peak must be 25dB above local noise floor
+const PEAK_PERSISTENCE_RATIO = 0.35;   // peak must appear in 35%+ of frames
 
 export const ATTACK_PRESETS: AttackPreset[] = [
   {
@@ -215,10 +216,14 @@ function detectEnergyRatio(
 
   if (frameCount === 0 || speechEnergySum < 1e-15) return null;
 
+  // Check absolute ultrasonic energy — ignore if it's just noise floor
+  const ultraAvgDb = 10 * Math.log10(ultraEnergySum / (frameCount * Math.max(1, ultraHigh - ultraLow + 1)) + 1e-20);
+  if (ultraAvgDb < ULTRASONIC_FLOOR_DB) return null;
+
   const ratioDb = 10 * Math.log10(ultraEnergySum / speechEnergySum);
 
   if (ratioDb > ENERGY_RATIO_THRESHOLD_DB) {
-    const confidence = Math.min(100, Math.round(50 + (ratioDb - ENERGY_RATIO_THRESHOLD_DB) * 3));
+    const confidence = Math.min(100, Math.round(40 + (ratioDb - ENERGY_RATIO_THRESHOLD_DB) * 5));
     return {
       ruleId: 'us-energy-ratio',
       severity: confidence >= 80 ? 'critical' : 'high',
@@ -268,9 +273,10 @@ function detectNarrowbandPeaks(
     }
     const noiseFloor = count > 0 ? sum / count : -100;
 
-    // Find peaks above noise floor
+    // Find peaks above noise floor (must also be above absolute floor)
     for (let i = ultraLow + 1; i < numBins - 1; i++) {
-      if (frame[i] > frame[i - 1] && frame[i] > frame[i + 1] && frame[i] - noiseFloor > PEAK_PROMINENCE_DB) {
+      if (frame[i] > frame[i - 1] && frame[i] > frame[i + 1] &&
+          frame[i] - noiseFloor > PEAK_PROMINENCE_DB && frame[i] > -60) {
         peakBinCounts.set(i, (peakBinCounts.get(i) ?? 0) + 1);
       }
     }
@@ -412,8 +418,9 @@ function analyzeSpeechFeatures(
   const rms = Math.sqrt(sumSq / envelope.length);
   const crestFactor = maxVal / (rms + 1e-15);
 
-  // Speech typically has: speechRatio > 0.3, crest factor > 3
-  const isSpeechLike = speechRatio > 0.25 && crestFactor > 2.5;
+  // Speech typically has: speechRatio > 0.4, crest factor > 4
+  // Tighter thresholds to avoid flagging noise/music as speech
+  const isSpeechLike = speechRatio > 0.4 && crestFactor > 4.0 && rms > 1e-6;
 
   if (isSpeechLike) {
     const confidence = Math.min(100, Math.round(30 + speechRatio * 50 + Math.min(crestFactor, 10) * 3));
@@ -619,7 +626,7 @@ export class LiveMonitor {
 
   /** Number of consecutive alert frames (for debouncing) */
   private alertStreak = 0;
-  private readonly ALERT_STREAK_THRESHOLD = 3;
+  private readonly ALERT_STREAK_THRESHOLD = 5;
 
   get running() { return this._running; }
   get recording() { return this._recording; }
@@ -691,7 +698,7 @@ export class LiveMonitor {
       let noiseFloor = 0;
       for (let i = ultraLowBin; i < numBins; i++) noiseFloor += freqData[i];
       noiseFloor /= ultraBins;
-      const peakFreqHz = (peakBin >= ultraLowBin && peakVal - noiseFloor > 10) ? peakBin * binWidth : null;
+      const peakFreqHz = (peakBin >= ultraLowBin && peakVal - noiseFloor > PEAK_PROMINENCE_DB && peakVal > -60) ? peakBin * binWidth : null;
 
       // Alert logic
       let alert = false;
@@ -776,6 +783,119 @@ export class LiveMonitor {
       this.mediaRecorder!.stop();
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Speech Transcription (Web Speech API)
+// ---------------------------------------------------------------------------
+
+export interface TranscriptionResult {
+  transcript: string;
+  confidence: number;
+  isFinal: boolean;
+}
+
+/** Check if the Web Speech API is available */
+export function isSpeechRecognitionAvailable(): boolean {
+  return typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+}
+
+/**
+ * Transcribe audio by playing it through speakers while SpeechRecognition
+ * listens via the microphone. This mirrors the real attack vector — the
+ * demodulated audio IS what a voice assistant would hear.
+ *
+ * Requires: microphone permission, Chrome/Edge browser, speakers on.
+ * Returns interim and final transcripts via callbacks.
+ */
+export async function transcribeAudioBuffer(
+  buffer: AudioBuffer,
+  onInterim: (text: string) => void,
+  onFinal: (result: TranscriptionResult) => void,
+  onError: (error: string) => void,
+): Promise<{ stop: () => void }> {
+  if (!isSpeechRecognitionAvailable()) {
+    onError('Speech recognition not available. Use Chrome or Edge.');
+    return { stop: () => {} };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const SpeechRecognitionCtor = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognition = new SpeechRecognitionCtor() as any;
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 1;
+
+  let fullTranscript = '';
+  let bestConfidence = 0;
+  let stopped = false;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recognition.onresult = (event: any) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      const text = result[0].transcript;
+      if (result.isFinal) {
+        fullTranscript += text + ' ';
+        bestConfidence = Math.max(bestConfidence, result[0].confidence);
+        onFinal({ transcript: fullTranscript.trim(), confidence: bestConfidence, isFinal: true });
+      } else {
+        interim += text;
+      }
+    }
+    if (interim) {
+      onInterim(fullTranscript + interim);
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recognition.onerror = (event: any) => {
+    if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      onError(`Speech recognition error: ${event.error}`);
+    }
+  };
+
+  recognition.onend = () => {
+    if (!stopped && fullTranscript.trim()) {
+      onFinal({ transcript: fullTranscript.trim(), confidence: bestConfidence, isFinal: true });
+    }
+  };
+
+  // Start recognition
+  recognition.start();
+
+  // Play the audio through speakers (so the mic can hear it)
+  const ctx = new AudioContext();
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(ctx.destination);
+
+  source.onended = () => {
+    // Give recognition a moment to finish processing
+    setTimeout(() => {
+      if (!stopped) {
+        stopped = true;
+        try { recognition.stop(); } catch { /* already stopped */ }
+        ctx.close();
+      }
+    }, 1500);
+  };
+
+  source.start();
+
+  return {
+    stop: () => {
+      if (stopped) return;
+      stopped = true;
+      try { source.stop(); } catch { /* already stopped */ }
+      try { recognition.stop(); } catch { /* already stopped */ }
+      ctx.close();
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

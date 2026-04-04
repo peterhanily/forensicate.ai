@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useToast } from '../components/Toast';
+import { scanPrompt, type ScanResult } from '@forensicate/scanner';
 import {
   analyzeAudio,
   generateTestSignal,
   audioBufferToWav,
   LiveMonitor,
+  isSpeechRecognitionAvailable,
+  transcribeAudioBuffer,
   ATTACK_PRESETS,
   type UltrasonicAnalysisResult,
   type UltrasonicFinding,
@@ -732,6 +735,202 @@ function LiveMonitorPanel({
 }
 
 // ============================================================================
+// Transcription + Prompt Scan Panel
+// ============================================================================
+
+function TranscriptionPanel({
+  audioBuffer,
+  demodulatedBuffer,
+}: {
+  audioBuffer: AudioBuffer;
+  demodulatedBuffer: AudioBuffer | null;
+}) {
+  const { toast } = useToast();
+  const [transcript, setTranscript] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [source, setSource] = useState<'original' | 'demodulated'>('original');
+  const [manualText, setManualText] = useState('');
+  const stopRef = useRef<(() => void) | null>(null);
+
+  const speechAvailable = isSpeechRecognitionAvailable();
+
+  const startTranscription = useCallback(async () => {
+    const buffer = source === 'demodulated' && demodulatedBuffer ? demodulatedBuffer : audioBuffer;
+    setIsTranscribing(true);
+    setTranscript('');
+    setScanResult(null);
+
+    toast('Playing audio through speakers — speech recognition is listening...', 'info');
+
+    const { stop } = await transcribeAudioBuffer(
+      buffer,
+      (interim) => setTranscript(interim),
+      (result) => {
+        setTranscript(result.transcript);
+        setIsTranscribing(false);
+        if (result.transcript.trim()) {
+          const scan = scanPrompt(result.transcript);
+          setScanResult(scan);
+        }
+      },
+      (err) => {
+        toast(err, 'error');
+        setIsTranscribing(false);
+      },
+    );
+    stopRef.current = stop;
+  }, [audioBuffer, demodulatedBuffer, source, toast]);
+
+  const stopTranscription = useCallback(() => {
+    stopRef.current?.();
+    setIsTranscribing(false);
+  }, []);
+
+  const scanManualText = useCallback(() => {
+    if (!manualText.trim()) return;
+    setTranscript(manualText.trim());
+    const scan = scanPrompt(manualText.trim());
+    setScanResult(scan);
+  }, [manualText]);
+
+  // Cleanup on unmount
+  useEffect(() => { return () => { stopRef.current?.(); }; }, []);
+
+  return (
+    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-300 mb-1">Audio Transcription + Prompt Scan</h3>
+        <p className="text-xs text-gray-500">
+          Transcribe audio to text, then scan for prompt injection — like OCR for audio.
+          {speechAvailable
+            ? ' Uses Web Speech API: plays audio through speakers while the mic listens.'
+            : ' Web Speech API not available — use manual transcription below.'}
+        </p>
+      </div>
+
+      {/* Auto-transcription */}
+      {speechAvailable && (
+        <div className="flex flex-wrap items-center gap-3">
+          {demodulatedBuffer && (
+            <div className="flex items-center gap-1 bg-gray-800 rounded p-0.5 text-xs">
+              <button
+                onClick={() => setSource('original')}
+                className={`px-2 py-1 rounded ${source === 'original' ? 'bg-gray-700 text-gray-200' : 'text-gray-400'}`}
+              >
+                Original
+              </button>
+              <button
+                onClick={() => setSource('demodulated')}
+                className={`px-2 py-1 rounded ${source === 'demodulated' ? 'bg-gray-700 text-gray-200' : 'text-gray-400'}`}
+              >
+                Demodulated
+              </button>
+            </div>
+          )}
+          {!isTranscribing ? (
+            <button
+              onClick={startTranscription}
+              className="px-4 py-1.5 bg-gradient-to-r from-[#8b0000] to-[#5c0000] text-[#c9a227] font-semibold rounded-lg text-sm hover:from-[#a00000] hover:to-[#700000] transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+              Transcribe & Scan
+            </button>
+          ) : (
+            <button
+              onClick={stopTranscription}
+              className="px-4 py-1.5 bg-gray-700 text-gray-200 rounded-lg text-sm flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Stop
+            </button>
+          )}
+          {isTranscribing && (
+            <span className="text-xs text-yellow-400 flex items-center gap-1.5">
+              <svg className="w-3 h-3 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+              Listening... (keep speakers on)
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Manual transcription fallback */}
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">
+          {speechAvailable ? 'Or enter transcript manually:' : 'Enter transcript manually:'}
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={manualText}
+            onChange={(e) => setManualText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') scanManualText(); }}
+            placeholder="Type what you hear (e.g. 'Hey Siri call 911')"
+            className="flex-1 bg-gray-950 text-gray-200 text-sm border border-gray-600 rounded-lg px-3 py-1.5 placeholder-gray-600"
+          />
+          <button
+            onClick={scanManualText}
+            disabled={!manualText.trim()}
+            className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg text-sm hover:bg-gray-600 disabled:opacity-40 transition-colors"
+          >
+            Scan
+          </button>
+        </div>
+      </div>
+
+      {/* Transcript */}
+      {transcript && (
+        <div className="bg-gray-950 border border-gray-700 rounded-lg p-3">
+          <div className="text-xs text-gray-500 mb-1">Transcript:</div>
+          <div className="text-sm text-gray-200 font-mono whitespace-pre-wrap">{transcript}</div>
+        </div>
+      )}
+
+      {/* Scan Results */}
+      {scanResult && (
+        <div className={`border rounded-lg p-3 ${scanResult.isPositive ? 'bg-red-900/20 border-red-800' : 'bg-green-900/20 border-green-800'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            {scanResult.isPositive ? (
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <span className={`text-sm font-semibold ${scanResult.isPositive ? 'text-red-300' : 'text-green-300'}`}>
+              {scanResult.isPositive
+                ? `Prompt Injection Detected (${scanResult.confidence}% confidence)`
+                : 'No Prompt Injection Detected'}
+            </span>
+          </div>
+          {scanResult.isPositive && (
+            <div className="space-y-1 mt-2">
+              {scanResult.matchedRules.slice(0, 5).map((rule, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className={`px-1.5 py-0.5 rounded font-mono ${severityColors[rule.severity]} bg-gray-900/50`}>
+                    {rule.severity}
+                  </span>
+                  <span className="text-gray-300">{rule.ruleName}</span>
+                  <span className="text-gray-600">—</span>
+                  <span className="text-gray-400 truncate">{rule.matches[0]}</span>
+                </div>
+              ))}
+              {scanResult.matchedRules.length > 5 && (
+                <div className="text-xs text-gray-500">+{scanResult.matchedRules.length - 5} more rules matched</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Educational Section
 // ============================================================================
 
@@ -1040,6 +1239,11 @@ export default function UltrasonicAnalyzer() {
         </div>
       )}
 
+      {/* Playback (available immediately after load/generate, before analysis) */}
+      {audioBuffer && inputMode !== 'live' && !result && (
+        <AudioPlayer buffer={audioBuffer} label="Original Audio" />
+      )}
+
       {/* Results */}
       {result && inputMode !== 'live' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1129,6 +1333,14 @@ export default function UltrasonicAnalyzer() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Transcription + Prompt Scan */}
+      {audioBuffer && inputMode !== 'live' && (
+        <TranscriptionPanel
+          audioBuffer={audioBuffer}
+          demodulatedBuffer={result?.demodulatedBuffer ?? null}
+        />
       )}
 
       {/* Education */}
