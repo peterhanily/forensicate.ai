@@ -1582,6 +1582,31 @@ export const keywordRules: DetectionRule[] = [
     ],
   },
 
+  // Steganographic covert channel indicators
+  {
+    id: 'kw-steganographic-indicators',
+    name: 'Steganographic Payload Indicators',
+    description: 'Detects references to steganographic encoding techniques used to hide injection payloads in media (LSB encoding, phase coding, spectral hiding)',
+    type: 'keyword',
+    severity: 'medium',
+    enabled: true,
+    killChain: ['initial-access', 'command-and-control'],
+    mitreAtlas: ['AML.T0053'],
+    euAiActRisk: 'limited',
+    keywords: [
+      'steganographic payload',
+      'encoded in the audio',
+      'hidden in the frequency',
+      'hidden in the spectrum',
+      'embedded in the waveform',
+      'least significant bit payload',
+      'LSB encoded message',
+      'covert channel in audio',
+      'covert channel in video',
+      'encoded in pixels',
+    ],
+  },
+
   // Audio command injection
   {
     id: 'kw-audio-command-injection',
@@ -3075,6 +3100,81 @@ export const regexRules: DetectionRule[] = [
     flags: 'gi',
   },
 
+  // Whisper/STT hallucination artifacts in transcripts
+  {
+    id: 'rx-whisper-hallucination',
+    name: 'STT Hallucination Artifact',
+    description: 'Detects known Whisper/STT hallucination signatures in transcripts that could mask or introduce injection content from training data leakage',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'limited',
+    pattern: '(?:Copyright\\s+WDR\\s+\\d{4}|Untertitel(?:ung)?\\s+(?:der\\s+)?Amara|MorusMedia|Amara\\.org.Community|ORF\\.at|Sottotitoli\\s+(?:creati|a\\s+cura)|Sous[.-]?titres?\\s+r[eé]alis[eé]s?\\s+par)',
+    flags: 'gi',
+  },
+
+  // Speaker label injection in transcripts
+  {
+    id: 'rx-speaker-label-injection',
+    name: 'Fake Speaker Label Injection',
+    description: 'Detects injection via fake speaker labels in transcripts: [SYSTEM], [ADMIN], [ASSISTANT] markers followed by override instructions',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['privilege-escalation'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '\\[(?:SYSTEM|ADMIN|ASSISTANT|AI|OPERATOR|HIDDEN|INJECTED|MODERATOR)\\]\\s*[:\\-]\\s*(?:ignore|override|disregard|forget|bypass|new\\s+instructions?|you\\s+are\\s+now|reveal|system\\s+prompt)',
+    flags: 'gim',
+  },
+
+  // Media metadata injection (EXIF/ID3/container)
+  {
+    id: 'rx-media-metadata-injection',
+    name: 'Media Metadata Injection',
+    description: 'Detects injection payloads hidden in audio/video/image metadata fields (EXIF, ID3 tags, container metadata, XMP) that AI systems may process',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access', 'persistence'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:(?:Author|Title|Subject|Creator|Description|Comment|Copyright|UserComment|ImageDescription|Artist|Album|TXXX|COMM|synopsis|annotation)\\s*[=:]\\s*.*?(?:ignore|override|bypass|system\\s*prompt|disregard|forget|new\\s+instructions))',
+    flags: 'gi',
+  },
+
+  // SSML/TTS injection
+  {
+    id: 'rx-ssml-tts-injection',
+    name: 'SSML/TTS Injection',
+    description: 'Detects injection payloads within Speech Synthesis Markup Language (SSML) or text-to-speech directives',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'limited',
+    pattern: '(?:<speak[^>]*>.*?(?:ignore|override|system|bypass|disregard).*?<\\/speak>)|(?:<prosody[^>]*>.*?(?:ignore|override|system\\s*prompt).*?<\\/prosody>)',
+    flags: 'gis',
+  },
+
+  // Video with injected audio channel
+  {
+    id: 'rx-video-audio-injection',
+    name: 'Video Audio Channel Injection',
+    description: 'Detects references to injection commands hidden in video audio tracks, background music, or secondary audio channels',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:(?:the\\s+)?(?:background|secondary|hidden|auxiliary)\\s+(?:audio|sound|track|channel|music)\\s+(?:contains?|has|includes?|embeds?)\\s+(?:instructions?|commands?|text|messages?|injection))|(?:(?:audio|sound)\\s+(?:track|channel)\\s+(?:\\d+|#\\d+|two|2)\\s+(?:contains?|has|says?))',
+    flags: 'gi',
+  },
+
   // API/Function Schema Poisoning
   {
     id: 'rx-schema-poisoning',
@@ -3384,10 +3484,16 @@ export const ruleCategories: RuleCategory[] = [
     rules: [
       keywordRules.find(r => r.id === 'kw-image-text-injection')!,
       keywordRules.find(r => r.id === 'kw-audio-command-injection')!,
+      keywordRules.find(r => r.id === 'kw-steganographic-indicators')!,
       regexRules.find(r => r.id === 'rx-audio-transcript-injection')!,
       regexRules.find(r => r.id === 'rx-subtitle-injection')!,
       regexRules.find(r => r.id === 'rx-multimodal-hidden-instruction')!,
       regexRules.find(r => r.id === 'rx-video-frame-injection')!,
+      regexRules.find(r => r.id === 'rx-whisper-hallucination')!,
+      regexRules.find(r => r.id === 'rx-speaker-label-injection')!,
+      regexRules.find(r => r.id === 'rx-media-metadata-injection')!,
+      regexRules.find(r => r.id === 'rx-ssml-tts-injection')!,
+      regexRules.find(r => r.id === 'rx-video-audio-injection')!,
     ],
   },
   heuristicCategory,

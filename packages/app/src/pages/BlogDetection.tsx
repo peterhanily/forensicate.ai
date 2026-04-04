@@ -84,7 +84,7 @@ export default function BlogDetection() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-500 mt-2">Forensicate.ai uses the first three approaches (176 rules: 49 keyword, 97 regex, 13 heuristic, 4 NLP, 13 file-based) to provide fast, offline-capable detection with zero external dependencies.</p>
+        <p className="text-xs text-gray-500 mt-2">Forensicate.ai uses the first three approaches (182 rules: 52 keyword, 100 regex, 13 heuristic, 4 NLP, 13 file-based) to provide fast, offline-capable detection with zero external dependencies.</p>
       </section>
 
       <section id="static">
@@ -291,7 +291,7 @@ $ echo "test" | forensicate -j`}
       {/* CTA */}
       <div className="border border-[#c9a227]/30 rounded-lg bg-[#c9a227]/5 p-6 text-center">
         <h4 className="text-sm font-bold text-white mb-2">Start Scanning Now</h4>
-        <p className="text-xs text-gray-400 mb-4">176 detection rules. Zero dependencies. Works offline.</p>
+        <p className="text-xs text-gray-400 mb-4">182 detection rules. Zero dependencies. Works offline.</p>
         <div className="flex items-center justify-center gap-3 flex-wrap">
           <Link to="/scanner" className="px-4 py-2 bg-[#c9a227] text-gray-900 text-xs font-bold rounded-lg hover:bg-[#d4b030] transition-colors">Launch Scanner</Link>
           <Link to="/compliance" className="px-4 py-2 bg-gray-800 text-gray-300 text-xs font-semibold rounded-lg border border-gray-700 hover:bg-gray-700 transition-colors">EU AI Act Report</Link>

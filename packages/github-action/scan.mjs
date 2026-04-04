@@ -434,7 +434,7 @@ function generatePrComment(findings, filesScanned, maxConfidence) {
     lines.push(`| Confidence threshold | ${CONFIDENCE_THRESHOLD}% |`);
     lines.push('');
     lines.push('---');
-    lines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 176 detection rules*');
+    lines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 182 detection rules*');
     return lines.join('\n');
   }
 
@@ -533,7 +533,7 @@ function generatePrComment(findings, filesScanned, maxConfidence) {
   }
 
   lines.push('---');
-  lines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 176 detection rules*');
+  lines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 182 detection rules*');
 
   return lines.join('\n');
 }
@@ -766,7 +766,7 @@ async function main() {
   }
 
   summaryLines.push('---');
-  summaryLines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 176 detection rules*');
+  summaryLines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 182 detection rules*');
 
   const summaryContent = summaryLines.join('\n');
 

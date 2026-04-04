@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/npm/l/@forensicate/scanner)](https://github.com/peterhanily/forensicate.ai/blob/main/LICENSE)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/@forensicate/scanner)](https://bundlephobia.com/package/@forensicate/scanner)
 
-AI prompt injection detection engine with 176 rules across keyword, regex, heuristic, NLP, and file-based detection in 20 categories.
+AI prompt injection detection engine with 182 rules across keyword, regex, heuristic, NLP, and file-based detection in 20 categories.
 
 ## Installation
 
