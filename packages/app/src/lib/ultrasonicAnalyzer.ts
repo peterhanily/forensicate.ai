@@ -158,6 +158,37 @@ function computeMagnitudeSpectrum(samples: Float32Array, fftSize: number): Float
 }
 
 // ---------------------------------------------------------------------------
+// Audio pre-processing
+// ---------------------------------------------------------------------------
+
+/** Max duration (seconds) we'll analyze to avoid freezing the browser */
+export const MAX_ANALYSIS_DURATION = 300; // 5 minutes
+
+/** Mix multi-channel audio to mono by averaging all channels */
+function mixToMono(buffer: AudioBuffer): Float32Array {
+  const length = buffer.length;
+  if (buffer.numberOfChannels === 1) return buffer.getChannelData(0);
+
+  const mixed = new Float32Array(length);
+  const numCh = buffer.numberOfChannels;
+  for (let ch = 0; ch < numCh; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) mixed[i] += data[i];
+  }
+  const scale = 1 / numCh;
+  for (let i = 0; i < length; i++) mixed[i] *= scale;
+  return mixed;
+}
+
+/** Check if audio is effectively silent */
+function computeRmsDb(samples: Float32Array): number {
+  let sumSq = 0;
+  for (let i = 0; i < samples.length; i++) sumSq += samples[i] * samples[i];
+  const rms = Math.sqrt(sumSq / samples.length);
+  return rms > 1e-15 ? 20 * Math.log10(rms) : -150;
+}
+
+// ---------------------------------------------------------------------------
 // Spectrogram computation
 // ---------------------------------------------------------------------------
 
@@ -166,7 +197,7 @@ export function computeSpectrogram(
   fftSize: number = 4096,
   hopSize?: number,
 ): Float32Array[] {
-  const samples = buffer.getChannelData(0);
+  const samples = mixToMono(buffer);
   const hop = hopSize ?? (fftSize >> 1); // 50% overlap by default
   const frames: Float32Array[] = [];
 
@@ -490,21 +521,55 @@ export async function analyzeAudio(
   mimeType: string,
   fileName: string,
   fftSize: number = 4096,
+  onProgress?: (stage: string) => void,
 ): Promise<UltrasonicAnalysisResult> {
   const sampleRate = buffer.sampleRate;
   const findings: UltrasonicFinding[] = [];
 
+  // Step 0: Duration check
+  if (buffer.duration > MAX_ANALYSIS_DURATION) {
+    findings.push({
+      ruleId: 'us-sample-rate-warning',
+      severity: 'low',
+      title: 'Audio Truncated for Analysis',
+      description: `File is ${buffer.duration.toFixed(0)}s — only the first ${MAX_ANALYSIS_DURATION}s will be analyzed to prevent browser freezing.`,
+      confidence: 100,
+      details: { durationSec: Math.round(buffer.duration), limitSec: MAX_ANALYSIS_DURATION },
+    });
+  }
+
+  // Step 0b: Silence detection (mix to mono first)
+  const monoSamples = mixToMono(buffer);
+  const rmsDb = computeRmsDb(monoSamples);
+  if (rmsDb < -80) {
+    findings.push({
+      ruleId: 'us-sample-rate-warning',
+      severity: 'low',
+      title: 'Audio Is Silent or Near-Silent',
+      description: `Overall RMS level is ${rmsDb.toFixed(0)} dB — too quiet for reliable ultrasonic analysis. Results may not be meaningful.`,
+      confidence: 100,
+      details: { rmsDb: Math.round(rmsDb) },
+    });
+  }
+
   // Step 1: Sample rate / codec checks
+  onProgress?.('Checking sample rate and codec...');
   findings.push(...checkSampleRateAndCodec(sampleRate, mimeType, fileName));
+  await new Promise(r => setTimeout(r, 0)); // yield to UI
 
   // Step 2: Compute spectrogram
+  onProgress?.('Computing spectrogram...');
+  await new Promise(r => setTimeout(r, 0));
   const spectrogramData = computeSpectrogram(buffer, fftSize);
 
   // Step 3: Energy ratio detection
+  onProgress?.('Analyzing ultrasonic energy...');
+  await new Promise(r => setTimeout(r, 0));
   const energyFinding = detectEnergyRatio(spectrogramData, sampleRate, fftSize);
   if (energyFinding) findings.push(energyFinding);
 
   // Step 4: Narrowband peak detection
+  onProgress?.('Detecting tonal carriers...');
   const peakFinding = detectNarrowbandPeaks(spectrogramData, sampleRate, fftSize);
   if (peakFinding) findings.push(peakFinding);
 
@@ -516,9 +581,15 @@ export async function analyzeAudio(
 
   // Only attempt demodulation if there's ultrasonic energy worth analyzing
   if (energyFinding || peakFinding) {
-    const { demodulated, finding } = await demodulateAM(buffer, carrierEstimate);
-    demodulatedBuffer = demodulated;
-    if (finding) findings.push(finding);
+    onProgress?.('Demodulating AM signal...');
+    await new Promise(r => setTimeout(r, 0));
+    try {
+      const { demodulated, finding } = await demodulateAM(buffer, carrierEstimate);
+      demodulatedBuffer = demodulated;
+      if (finding) findings.push(finding);
+    } catch {
+      // Demodulation can fail on very large buffers — continue without it
+    }
   }
 
   // Compute overall risk
@@ -860,8 +931,14 @@ export async function transcribeAudioBuffer(
   };
 
   recognition.onend = () => {
-    if (!stopped && fullTranscript.trim()) {
-      onFinal({ transcript: fullTranscript.trim(), confidence: bestConfidence, isFinal: true });
+    // Always fire final callback — even if empty transcript (so UI exits "listening" state)
+    if (!stopped) {
+      stopped = true;
+      onFinal({
+        transcript: fullTranscript.trim(),
+        confidence: bestConfidence,
+        isFinal: true,
+      });
     }
   };
 
@@ -874,11 +951,27 @@ export async function transcribeAudioBuffer(
   source.buffer = buffer;
   source.connect(ctx.destination);
 
+  // Safety timeout — stop after 30s regardless (prevents UI deadlock)
+  const timeoutId = setTimeout(() => {
+    if (!stopped) {
+      stopped = true;
+      try { source.stop(); } catch { /* already stopped */ }
+      try { recognition.stop(); } catch { /* already stopped */ }
+      ctx.close();
+      onFinal({
+        transcript: fullTranscript.trim() || '(no speech detected)',
+        confidence: bestConfidence,
+        isFinal: true,
+      });
+    }
+  }, 30000);
+
   source.onended = () => {
     // Give recognition a moment to finish processing
     setTimeout(() => {
       if (!stopped) {
         stopped = true;
+        clearTimeout(timeoutId);
         try { recognition.stop(); } catch { /* already stopped */ }
         ctx.close();
       }
@@ -891,6 +984,7 @@ export async function transcribeAudioBuffer(
     stop: () => {
       if (stopped) return;
       stopped = true;
+      clearTimeout(timeoutId);
       try { source.stop(); } catch { /* already stopped */ }
       try { recognition.stop(); } catch { /* already stopped */ }
       ctx.close();
@@ -904,7 +998,8 @@ export async function transcribeAudioBuffer(
 
 export function audioBufferToWav(buffer: AudioBuffer): Blob {
   const sampleRate = buffer.sampleRate;
-  const numChannels = buffer.numberOfChannels;
+  // Always export mono — we only use channel 0 (or mixed-down mono)
+  const numChannels = 1;
   const samples = buffer.getChannelData(0);
   const length = samples.length;
   const bytesPerSample = 2; // 16-bit PCM

@@ -23,9 +23,9 @@ function NavItem({ to, label, disabled, onClick }: NavItemProps) {
  to={to}
  onClick={onClick}
  className={({ isActive }) =>
- `px-4 py-2 rounded transition-colors block ${
+ `px-3 py-2 rounded text-sm transition-colors block whitespace-nowrap ${
  isActive
- ? 'text-[#c9a227] border-b-2 border-[#c9a227] md:border-b-2'
+ ? 'text-[#c9a227] border-b-2 border-[#c9a227]'
  : 'text-gray-300 hover:text-[#8b0000]'
  }`
  }
@@ -49,37 +49,31 @@ function DesktopNav({ onDownload }: { onDownload: () => void }) {
  }, [moreOpen]);
 
  return (
-   <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
+   <nav className="hidden lg:flex items-center" aria-label="Main navigation">
      <NavItem to="/scanner" label="Scanner" />
      <NavItem to="/mutate" label="Mutate" />
      <NavItem to="/timeline" label="Timeline" />
      <NavItem to="/compliance" label="Compliance" />
+     <NavItem to="/ultrasonic" label="Ultrasonic" />
+     <NavItem to="/learn" label="Learn" />
+     <NavItem to="/blog/detect-prompt-injection" label="Blog" />
 
-     {/* More dropdown */}
-     <div ref={moreRef} className="relative">
+     {/* Extras dropdown (download, extension) */}
+     <div ref={moreRef} className="relative ml-1">
        <button
          onClick={() => setMoreOpen(!moreOpen)}
-         className={`px-3 py-2 rounded text-sm transition-colors ${moreOpen ? 'text-[#c9a227]' : 'text-gray-300 hover:text-[#8b0000]'}`}
+         className={`p-2 rounded transition-colors ${moreOpen ? 'text-[#c9a227]' : 'text-gray-400 hover:text-[#8b0000]'}`}
          aria-expanded={moreOpen}
          aria-haspopup="true"
+         aria-label="More options"
+         title="Download & Extensions"
        >
-         More
-         <svg className={`inline-block w-3 h-3 ml-1 transition-transform ${moreOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
          </svg>
        </button>
        {moreOpen && (
          <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 min-w-[180px] py-1" role="menu">
-           <NavLink to="/learn" onClick={() => setMoreOpen(false)} className={({ isActive }) => `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-[#c9a227] bg-gray-800/50' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`} role="menuitem">
-             Learn
-           </NavLink>
-           <NavLink to="/blog/detect-prompt-injection" onClick={() => setMoreOpen(false)} className={({ isActive }) => `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-[#c9a227] bg-gray-800/50' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`} role="menuitem">
-             Blog
-           </NavLink>
-           <NavLink to="/ultrasonic" onClick={() => setMoreOpen(false)} className={({ isActive }) => `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-[#c9a227] bg-gray-800/50' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`} role="menuitem">
-             Ultrasonic
-           </NavLink>
-           <div className="border-t border-gray-800 my-1" />
            <button onClick={() => { onDownload(); setMoreOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2" role="menuitem">
              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
              Download Offline

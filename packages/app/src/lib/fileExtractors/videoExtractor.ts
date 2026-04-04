@@ -73,9 +73,11 @@ function parseMP4Metadata(buffer: ArrayBuffer): TextLayer[] {
   const view = new DataView(buffer);
   const maxScan = Math.min(buffer.byteLength, 2 * 1024 * 1024); // Scan first 2MB
 
-  // Walk MP4 atoms looking for metadata
+  // Walk MP4 atoms looking for metadata (limit iterations to prevent DoS)
   let offset = 0;
-  while (offset + 8 < maxScan) {
+  let iterations = 0;
+  while (offset + 8 < maxScan && iterations < 1000) {
+    iterations++;
     const size = view.getUint32(offset);
     if (size < 8 || offset + size > buffer.byteLength) break;
 
@@ -98,9 +100,11 @@ function parseMP4Metadata(buffer: ArrayBuffer): TextLayer[] {
   return layers;
 }
 
-function parseMP4AtomsRange(view: DataView, buffer: ArrayBuffer, start: number, end: number): TextLayer[] {
+function parseMP4AtomsRange(view: DataView, buffer: ArrayBuffer, start: number, end: number, depth = 0): TextLayer[] {
   const layers: TextLayer[] = [];
+  if (depth > 8) return layers; // Prevent deep recursion on malformed files
   let offset = start;
+  let iterations = 0;
 
   const metadataAtoms: Record<string, string> = {
     '\u00A9nam': 'Title',
@@ -116,7 +120,8 @@ function parseMP4AtomsRange(view: DataView, buffer: ArrayBuffer, start: number, 
     'cprt': 'Copyright',
   };
 
-  while (offset + 8 < end) {
+  while (offset + 8 < end && iterations < 500) {
+    iterations++;
     const size = view.getUint32(offset);
     if (size < 8 || offset + size > end) break;
 
@@ -141,7 +146,7 @@ function parseMP4AtomsRange(view: DataView, buffer: ArrayBuffer, start: number, 
     // Recurse into container-like atoms
     if (['moov', 'udta', 'meta', 'ilst', 'trak'].includes(type)) {
       const innerStart = type === 'meta' ? offset + 12 : offset + 8;
-      layers.push(...parseMP4AtomsRange(view, buffer, innerStart, offset + size));
+      layers.push(...parseMP4AtomsRange(view, buffer, innerStart, offset + size, depth + 1));
     }
 
     offset += size;

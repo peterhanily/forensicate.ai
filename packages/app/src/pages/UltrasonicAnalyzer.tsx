@@ -8,6 +8,7 @@ import {
   LiveMonitor,
   isSpeechRecognitionAvailable,
   transcribeAudioBuffer,
+  MAX_ANALYSIS_DURATION,
   ATTACK_PRESETS,
   type UltrasonicAnalysisResult,
   type UltrasonicFinding,
@@ -58,48 +59,81 @@ function SpectrogramCanvas({
   peakFreqHz?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [cursor, setCursor] = useState<{ freq: number; time: number; db: number } | null>(null);
 
+  // Layout constants
+  const LABEL_W = 60;
+  const BOTTOM_H = 30;
+  const HEIGHT = 320;
+
+  // Draw spectrogram (ImageData-based — fast)
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container || data.length === 0) return;
 
-    const dpr = window.devicePixelRatio || 1;
     const width = container.clientWidth;
-    const height = 320;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+    canvas.width = width;
+    canvas.height = HEIGHT;
     canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    canvas.style.height = `${HEIGHT}px`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.scale(dpr, dpr);
 
-    const labelWidth = 60;
-    const plotWidth = width - labelWidth;
-    const plotHeight = height - 30; // bottom margin for time axis
+    const plotWidth = width - LABEL_W;
+    const plotHeight = HEIGHT - BOTTOM_H;
     const numBins = data[0].length;
     const numFrames = data.length;
     const nyquist = sampleRate / 2;
 
-    // Draw spectrogram
-    const colWidth = plotWidth / numFrames;
-    for (let f = 0; f < numFrames; f++) {
-      for (let b = 0; b < numBins; b++) {
-        const db = data[f][b];
-        // Map -100dB..0dB to color
-        const normalized = Math.max(0, Math.min(1, (db + 100) / 100));
-        const r = Math.round(normalized * normalized * 255);
-        const g = Math.round(normalized * 200 * (1 - normalized * 0.5));
-        const bVal = Math.round((1 - normalized) * 180);
-        ctx.fillStyle = `rgb(${r},${g},${bVal})`;
+    // Build spectrogram as ImageData (single putImageData call — 100x faster than fillRect per pixel)
+    const imgData = ctx.createImageData(plotWidth, plotHeight);
+    const pixels = imgData.data;
 
-        const y = plotHeight - (b / numBins) * plotHeight;
-        const h = Math.max(1, plotHeight / numBins);
-        ctx.fillRect(labelWidth + f * colWidth, y - h, Math.max(1, colWidth), h);
+    for (let px = 0; px < plotWidth; px++) {
+      const frameIdx = Math.floor((px / plotWidth) * numFrames);
+      const frame = data[Math.min(frameIdx, numFrames - 1)];
+      for (let py = 0; py < plotHeight; py++) {
+        const binIdx = Math.floor(((plotHeight - 1 - py) / plotHeight) * numBins);
+        const db = frame[Math.min(binIdx, numBins - 1)];
+        const n = Math.max(0, Math.min(1, (db + 100) / 80));
+
+        // Viridis-inspired colormap: dark purple → blue → green → yellow
+        const r = Math.round(n < 0.5 ? n * 2 * 120 : 120 + (n - 0.5) * 2 * 135);
+        const g = Math.round(n < 0.25 ? 0 : n < 0.75 ? (n - 0.25) * 2 * 200 : 200 + (n - 0.75) * 4 * 55);
+        const b = Math.round(n < 0.5 ? 80 + n * 2 * 100 : 180 - (n - 0.5) * 2 * 180);
+
+        const off = (py * plotWidth + px) * 4;
+        pixels[off] = r;
+        pixels[off + 1] = g;
+        pixels[off + 2] = b;
+        pixels[off + 3] = 255;
       }
+    }
+    ctx.putImageData(imgData, LABEL_W, 0);
+
+    // Background for labels/axes
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, LABEL_W, HEIGHT);
+    ctx.fillRect(0, plotHeight, width, BOTTOM_H);
+
+    // Frequency axis labels
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    const freqLabels = [0, 4000, 8000, 12000, 16000, 20000, 24000].filter(f => f <= nyquist);
+    for (const freq of freqLabels) {
+      const y = plotHeight - (freq / nyquist) * plotHeight;
+      ctx.fillText(`${freq / 1000}k`, LABEL_W - 4, y + 3);
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(LABEL_W, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
     }
 
     // 18kHz threshold line
@@ -109,15 +143,14 @@ function SpectrogramCanvas({
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
-      ctx.moveTo(labelWidth, thresholdY);
+      ctx.moveTo(LABEL_W, thresholdY);
       ctx.lineTo(width, thresholdY);
       ctx.stroke();
       ctx.setLineDash([]);
-
       ctx.fillStyle = '#c9a227';
       ctx.font = '10px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText('18kHz', labelWidth - 4, thresholdY + 3);
+      ctx.fillText('18kHz', LABEL_W - 4, thresholdY + 3);
     }
 
     // Detected peak frequency line
@@ -127,31 +160,14 @@ function SpectrogramCanvas({
       ctx.lineWidth = 1.5;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
-      ctx.moveTo(labelWidth, peakY);
+      ctx.moveTo(LABEL_W, peakY);
       ctx.lineTo(width, peakY);
       ctx.stroke();
       ctx.setLineDash([]);
-
       ctx.fillStyle = '#ef4444';
       ctx.font = '10px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(`${(peakFreqHz / 1000).toFixed(1)}kHz`, labelWidth + 4, peakY - 4);
-    }
-
-    // Frequency axis labels
-    ctx.fillStyle = '#9ca3af';
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'right';
-    const freqLabels = [0, 4000, 8000, 12000, 16000, 20000, 24000].filter(f => f <= nyquist);
-    for (const freq of freqLabels) {
-      const y = plotHeight - (freq / nyquist) * plotHeight;
-      ctx.fillText(`${freq / 1000}k`, labelWidth - 4, y + 3);
-      ctx.strokeStyle = '#374151';
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(labelWidth, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
+      ctx.fillText(`${(peakFreqHz / 1000).toFixed(1)}kHz`, LABEL_W + 4, peakY - 4);
     }
 
     // Time axis
@@ -159,14 +175,14 @@ function SpectrogramCanvas({
     ctx.textAlign = 'center';
     const hopSize = fftSize / 2;
     const totalDuration = (numFrames * hopSize) / sampleRate;
-    const timeSteps = Math.min(6, Math.floor(totalDuration));
+    const timeSteps = Math.max(1, Math.min(8, Math.floor(totalDuration)));
     for (let t = 0; t <= timeSteps; t++) {
       const sec = (t / timeSteps) * totalDuration;
-      const x = labelWidth + (t / timeSteps) * plotWidth;
-      ctx.fillText(`${sec.toFixed(1)}s`, x, height - 5);
+      const x = LABEL_W + (t / timeSteps) * plotWidth;
+      ctx.fillText(`${sec.toFixed(1)}s`, x, HEIGHT - 5);
     }
 
-    // Axis title
+    // Y-axis title
     ctx.save();
     ctx.translate(12, plotHeight / 2);
     ctx.rotate(-Math.PI / 2);
@@ -175,11 +191,81 @@ function SpectrogramCanvas({
     ctx.textAlign = 'center';
     ctx.fillText('Frequency', 0, 0);
     ctx.restore();
-  }, [data, sampleRate, fftSize, peakFreqHz]);
+  }, [data, sampleRate, fftSize, peakFreqHz, LABEL_W, BOTTOM_H]);
+
+  // Cursor overlay — separate canvas so we don't redraw spectrogram on every mouse move
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = overlayRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container || data.length === 0) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const width = container.clientWidth;
+    const plotWidth = width - LABEL_W;
+    const plotHeight = HEIGHT - BOTTOM_H;
+    const nyquist = sampleRate / 2;
+    const numFrames = data.length;
+    const numBins = data[0].length;
+    const hopSize = fftSize / 2;
+
+    if (mx < LABEL_W || mx > width || my < 0 || my > plotHeight) {
+      setCursor(null);
+      return;
+    }
+
+    const freq = ((plotHeight - my) / plotHeight) * nyquist;
+    const frameIdx = Math.min(Math.floor(((mx - LABEL_W) / plotWidth) * numFrames), numFrames - 1);
+    const binIdx = Math.min(Math.floor(freq / (sampleRate / fftSize)), numBins - 1);
+    const db = data[frameIdx][binIdx];
+    const time = (frameIdx * hopSize) / sampleRate;
+
+    setCursor({ freq, time, db });
+
+    // Draw crosshairs
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    canvas.width = width;
+    canvas.height = HEIGHT;
+    ctx.clearRect(0, 0, width, HEIGHT);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(mx, 0);
+    ctx.lineTo(mx, plotHeight);
+    ctx.moveTo(LABEL_W, my);
+    ctx.lineTo(width, my);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }, [data, sampleRate, fftSize, LABEL_W, BOTTOM_H]);
+
+  const handleMouseLeave = useCallback(() => {
+    setCursor(null);
+    const canvas = overlayRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, []);
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="w-full relative">
       <canvas ref={canvasRef} className="rounded-lg" />
+      <canvas
+        ref={overlayRef}
+        className="absolute top-0 left-0 rounded-lg cursor-crosshair"
+        style={{ width: '100%', height: `${HEIGHT}px` }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      />
+      {cursor && (
+        <div className="absolute top-2 right-2 bg-gray-900/90 border border-gray-600 rounded px-2 py-1 text-xs font-mono text-gray-300 pointer-events-none">
+          {(cursor.freq / 1000).toFixed(2)} kHz &middot; {cursor.time.toFixed(2)}s &middot; {cursor.db.toFixed(0)} dB
+        </div>
+      )}
     </div>
   );
 }
@@ -258,7 +344,7 @@ function AudioPlayer({
     a.href = url;
     a.download = `${label.toLowerCase().replace(/\s+/g, '-')}.wav`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 200);
   }, [buffer, label]);
 
   return (
@@ -400,6 +486,10 @@ function LiveMonitorPanel({
   const [recording, setRecording] = useState(false);
   const [sampleRate, setSampleRate] = useState(0);
   const [permError, setPermError] = useState<string | null>(null);
+
+  // Recording timer
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Live metrics
   const [energyRatio, setEnergyRatio] = useState(-100);
@@ -553,8 +643,10 @@ function LiveMonitorPanel({
     if (!monitor) return;
 
     if (recording) {
+      if (timerRef.current) clearInterval(timerRef.current);
       const buffer = await monitor.stopRecording();
       setRecording(false);
+      setRecordingDuration(0);
       if (buffer) {
         toast(`Recorded ${buffer.duration.toFixed(1)}s — ready for analysis`, 'success');
         onRecordingComplete(buffer);
@@ -564,13 +656,18 @@ function LiveMonitorPanel({
     } else {
       monitor.startRecording();
       setRecording(true);
+      setRecordingDuration(0);
+      timerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000);
       toast('Recording started — press again to stop and analyze', 'info');
     }
   }, [recording, toast, onRecordingComplete]);
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { monitorRef.current?.stop(); };
+    return () => {
+      monitorRef.current?.stop();
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const ratioColor = energyRatio > -10 ? 'text-red-400' : energyRatio > -20 ? 'text-orange-400' : 'text-green-400';
@@ -613,7 +710,7 @@ function LiveMonitorPanel({
               }`}
             >
               <span className={`w-2.5 h-2.5 rounded-full ${recording ? 'bg-white' : 'bg-red-500'}`} />
-              {recording ? 'Stop & Analyze Recording' : 'Record'}
+              {recording ? `Stop & Analyze (${recordingDuration}s)` : 'Record'}
             </button>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -1029,7 +1126,11 @@ export default function UltrasonicAnalyzer() {
       setFileName(file.name);
       setFileMime(file.type);
       setActivePreset(null);
-      toast(`Loaded ${file.name} (${buffer.duration.toFixed(1)}s, ${buffer.sampleRate} Hz)`, 'success');
+
+      const durationMsg = buffer.duration > MAX_ANALYSIS_DURATION
+        ? ` (only first ${MAX_ANALYSIS_DURATION}s will be analyzed)`
+        : '';
+      toast(`Loaded ${file.name} (${buffer.duration.toFixed(1)}s, ${buffer.sampleRate} Hz, ${buffer.numberOfChannels}ch${durationMsg})`, 'success');
     } catch (err) {
       toast(`Failed to decode audio: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
     } finally {
@@ -1063,12 +1164,12 @@ export default function UltrasonicAnalyzer() {
 
     try {
       setIsAnalyzing(true);
-      setProgress('Computing spectrogram...');
+      setProgress('Starting analysis...');
 
       // Defer to next frame so UI updates
       await new Promise(r => setTimeout(r, 50));
 
-      const analysisResult = await analyzeAudio(audioBuffer, fileMime, fileName, fftSize);
+      const analysisResult = await analyzeAudio(audioBuffer, fileMime, fileName, fftSize, setProgress);
       setResult(analysisResult);
 
       const riskLabel = riskColors[analysisResult.overallRisk]?.label ?? 'Unknown';
@@ -1321,7 +1422,33 @@ export default function UltrasonicAnalyzer() {
             {/* Finding Cards */}
             {result.findings.length > 0 ? (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-300">Detection Findings</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-300">Detection Findings</h3>
+                  <button
+                    onClick={() => {
+                      const report = {
+                        timestamp: new Date().toISOString(),
+                        file: fileName,
+                        sampleRate: result.sampleRate,
+                        duration: result.duration,
+                        overallRisk: result.overallRisk,
+                        overallConfidence: result.overallConfidence,
+                        findings: result.findings,
+                      };
+                      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `ultrasonic-report-${fileName.replace(/\.[^.]+$/, '')}.json`;
+                      a.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 100);
+                    }}
+                    className="text-xs text-gray-500 hover:text-[#c9a227] transition-colors"
+                    title="Export findings as JSON"
+                  >
+                    Export
+                  </button>
+                </div>
                 {result.findings.map((finding, i) => (
                   <FindingCard key={`${finding.ruleId}-${i}`} finding={finding} />
                 ))}

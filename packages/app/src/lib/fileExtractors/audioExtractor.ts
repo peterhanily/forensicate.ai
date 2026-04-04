@@ -64,8 +64,9 @@ function parseID3v2(view: DataView, buffer: ArrayBuffer): TextLayer[] {
   }
 
   const version = view.getUint8(3);
-  // ID3v2 size (synchsafe integer)
-  const size = (view.getUint8(6) << 21) | (view.getUint8(7) << 14) | (view.getUint8(8) << 7) | view.getUint8(9);
+  // ID3v2 size (synchsafe integer — each byte uses only 7 bits)
+  const size = ((view.getUint8(6) & 0x7F) << 21) | ((view.getUint8(7) & 0x7F) << 14) |
+               ((view.getUint8(8) & 0x7F) << 7) | (view.getUint8(9) & 0x7F);
 
   if (size <= 0 || size > buffer.byteLength) return layers;
 
@@ -73,31 +74,38 @@ function parseID3v2(view: DataView, buffer: ArrayBuffer): TextLayer[] {
   let offset = 10;
   const end = Math.min(10 + size, buffer.byteLength);
 
-  while (offset + 10 < end) {
+  const MAX_FRAMES = 500; // Prevent DoS from malformed tags
+  let frameCount = 0;
+
+  while (offset + 10 < end && frameCount < MAX_FRAMES) {
+    frameCount++;
+
     // Frame ID (4 chars for v2.3+, 3 chars for v2.2)
-    const frameSize = version >= 3 ? 4 : 3;
+    const frameIdSize = version >= 3 ? 4 : 3;
     const frameId = String.fromCharCode(
       view.getUint8(offset),
       view.getUint8(offset + 1),
       view.getUint8(offset + 2),
-      ...(frameSize === 4 ? [view.getUint8(offset + 3)] : [])
+      ...(frameIdSize === 4 ? [view.getUint8(offset + 3)] : [])
     );
 
-    // Skip padding
+    // Skip padding (null bytes indicate end of frames)
     if (frameId[0] === '\0') break;
 
     // Frame data size
     let dataSize: number;
+    const headerSize = version >= 3 ? 10 : 6;
     if (version >= 3) {
       dataSize = (view.getUint8(offset + 4) << 24) | (view.getUint8(offset + 5) << 16) |
                  (view.getUint8(offset + 6) << 8) | view.getUint8(offset + 7);
-      offset += 10; // header size for v2.3+
     } else {
       dataSize = (view.getUint8(offset + 3) << 16) | (view.getUint8(offset + 4) << 8) | view.getUint8(offset + 5);
-      offset += 6; // header size for v2.2
     }
 
-    if (dataSize <= 0 || offset + dataSize > end) break;
+    offset += headerSize;
+
+    // Validate data size before accessing
+    if (dataSize <= 0 || dataSize > 10_000_000 || offset + dataSize > end) break;
 
     // Text frames (T*** except TXXX)
     const textFrames: Record<string, string> = {
