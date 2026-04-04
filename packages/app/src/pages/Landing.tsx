@@ -42,9 +42,9 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Compliance Reporting',
-    desc: 'Export SARIF, JSON, CSV, and HTML reports tagged with OWASP LLM Top 10, MITRE ATLAS, EU AI Act risk levels, and kill chain stages.',
-    link: '/scanner',
+    title: 'EU AI Act Compliance',
+    desc: 'Generate article-by-article compliance reports mapped to EU AI Act, OWASP LLM Top 10, and MITRE ATLAS. Export audit-ready documentation.',
+    link: '/compliance',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
     ),
@@ -128,7 +128,7 @@ export default function Landing() {
           { value: '149', label: 'Detection Rules' },
           { value: '7', label: 'Distribution Channels' },
           { value: '20', label: 'Attack Categories' },
-          { value: '584', label: 'Tests Passing' },
+          { value: '921', label: 'Tests Passing' },
         ].map(stat => (
           <div key={stat.label} className="text-center p-4 rounded-lg bg-gray-900/50 border border-gray-800">
             <div className="text-2xl md:text-3xl font-bold text-[#c9a227] font-mono">{stat.value}</div>
