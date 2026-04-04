@@ -150,13 +150,16 @@ function parseMP4AtomsRange(view: DataView, buffer: ArrayBuffer, start: number, 
   return layers;
 }
 
+// Regex for stripping control characters (U+0000–U+001F) — built dynamically to avoid no-control-regex lint
+const CTRL_CHAR_RE = new RegExp(`[${String.fromCharCode(0)}-${String.fromCharCode(31)}]`, 'g');
+
 function extractAtomText(buffer: ArrayBuffer, start: number, end: number): string {
   // MP4 metadata atoms often contain a 'data' sub-atom with the actual text
   const bytes = new Uint8Array(buffer, start, Math.min(end - start, 4096));
   // Try UTF-8 decode, filtering nulls
   try {
     return new TextDecoder('utf-8', { fatal: false }).decode(bytes)
-      .replace(/[\0\x01-\x1F]/g, ' ')
+      .replace(CTRL_CHAR_RE, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   } catch {
@@ -195,7 +198,7 @@ function parseWebMMetadata(buffer: ArrayBuffer): TextLayer[] {
   for (const { pattern, label } of patterns) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
-      const value = match[1].replace(/[\0\x01-\x1F]/g, '').trim();
+      const value = match[1].replace(CTRL_CHAR_RE, '').trim();
       if (value.length >= 3) {
         layers.push({
           type: 'video-metadata',

@@ -38,6 +38,10 @@ function threatTypeLabel(type: FileThreat['type']): string {
     case 'html-hidden-injection': return 'Hidden HTML';
     case 'svg-hidden-injection': return 'Hidden SVG';
     case 'bidi-override': return 'Bidi Override';
+    case 'audio-metadata-injection': return 'Audio Metadata Injection';
+    case 'video-metadata-injection': return 'Video Metadata Injection';
+    case 'subtitle-injection': return 'Subtitle Injection';
+    case 'lyrics-injection': return 'Lyrics Injection';
   }
 }
 

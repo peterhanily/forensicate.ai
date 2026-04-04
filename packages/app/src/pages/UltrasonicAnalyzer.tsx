@@ -3,8 +3,6 @@ import { useToast } from '../components/Toast';
 import {
   analyzeAudio,
   generateTestSignal,
-  demodulateAM,
-  computeSpectrogram,
   audioBufferToWav,
   LiveMonitor,
   ATTACK_PRESETS,
@@ -392,7 +390,7 @@ function LiveMonitorPanel({
 }: {
   onRecordingComplete: (buffer: AudioBuffer) => void;
 }) {
-  const toast = useToast();
+  const { toast } = useToast();
   const monitorRef = useRef<LiveMonitor | null>(null);
 
   const [active, setActive] = useState(false);
@@ -790,7 +788,7 @@ function EducationSection() {
 type InputMode = 'upload' | 'generate' | 'live';
 
 export default function UltrasonicAnalyzer() {
-  const toast = useToast();
+  const { toast } = useToast();
 
   // Input state
   const [inputMode, setInputMode] = useState<InputMode>('generate');
