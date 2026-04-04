@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { APP_NAME, APP_VERSION } from '../lib/constants';
 
@@ -32,6 +32,77 @@ function NavItem({ to, label, disabled, onClick }: NavItemProps) {
  >
  {label}
  </NavLink>
+ );
+}
+
+function DesktopNav({ onDownload }: { onDownload: () => void }) {
+ const [moreOpen, setMoreOpen] = useState(false);
+ const moreRef = useRef<HTMLDivElement>(null);
+
+ useEffect(() => {
+   if (!moreOpen) return;
+   function handleClick(e: MouseEvent) {
+     if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+   }
+   document.addEventListener('mousedown', handleClick);
+   return () => document.removeEventListener('mousedown', handleClick);
+ }, [moreOpen]);
+
+ return (
+   <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
+     <NavItem to="/scanner" label="Scanner" />
+     <NavItem to="/mutate" label="Mutate" />
+     <NavItem to="/timeline" label="Timeline" />
+     <NavItem to="/compliance" label="Compliance" />
+
+     {/* More dropdown */}
+     <div ref={moreRef} className="relative">
+       <button
+         onClick={() => setMoreOpen(!moreOpen)}
+         className={`px-3 py-2 rounded text-sm transition-colors ${moreOpen ? 'text-[#c9a227]' : 'text-gray-300 hover:text-[#8b0000]'}`}
+         aria-expanded={moreOpen}
+         aria-haspopup="true"
+       >
+         More
+         <svg className={`inline-block w-3 h-3 ml-1 transition-transform ${moreOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+         </svg>
+       </button>
+       {moreOpen && (
+         <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 min-w-[180px] py-1" role="menu">
+           <NavLink to="/learn" onClick={() => setMoreOpen(false)} className={({ isActive }) => `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-[#c9a227] bg-gray-800/50' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`} role="menuitem">
+             Learn
+           </NavLink>
+           <NavLink to="/blog/detect-prompt-injection" onClick={() => setMoreOpen(false)} className={({ isActive }) => `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-[#c9a227] bg-gray-800/50' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`} role="menuitem">
+             Blog
+           </NavLink>
+           <div className="border-t border-gray-800 my-1" />
+           <button onClick={() => { onDownload(); setMoreOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2" role="menuitem">
+             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+             Download Offline
+           </button>
+           <a href="https://chromewebstore.google.com/detail/forensicateai-prompt-secu/ckohijglmbhlmbpiplcjhnlpijcbkapa" target="_blank" rel="noopener noreferrer" onClick={() => setMoreOpen(false)} className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2" role="menuitem">
+             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-.84 4.67h1.68v8.36h3.36L12 18.155 7.8 13.03h3.36V4.67z"/></svg>
+             Chrome Extension
+           </a>
+         </div>
+       )}
+     </div>
+
+     <a
+       href="https://github.com/peterhanily/forensicate.ai"
+       target="_blank"
+       rel="noopener noreferrer"
+       className="p-2 text-gray-400 hover:text-[#c9a227] transition-colors"
+       title="View on GitHub"
+       aria-label="View source on GitHub"
+       data-tour="github-button"
+     >
+       <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
+         <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+       </svg>
+     </a>
+   </nav>
  );
 }
 
@@ -70,57 +141,12 @@ export default function Layout() {
  </div>
 
  {/* Desktop Nav */}
- <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
- <NavItem to="/scanner" label="Prompt Scanner" />
- <NavItem to="/mutate" label="Mutation Engine" />
- <NavItem to="/timeline" label="Forensic Timeline" />
- <NavItem to="/learn" label="Learn" />
- <NavItem to="/compliance" label="Compliance" />
- <button
- onClick={handleDownloadStandalone}
- className="ml-2 px-3 py-1.5 bg-gradient-to-r from-[#c9a227] to-[#d4b030] text-gray-900 text-sm font-semibold rounded-lg shadow-lg hover:shadow-[0_0_15px_rgba(201,162,39,0.5)] transition-all hover:scale-105 flex items-center gap-1.5"
- title="Download as standalone HTML file - works offline!"
- data-tour="standalone-button"
- >
- <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
- </svg>
- Download
- </button>
- <a
- href="https://github.com/peterhanily/forensicate.ai"
- target="_blank"
- rel="noopener noreferrer"
- className="p-2 text-gray-400 hover:text-[#c9a227] transition-colors"
- title="View on GitHub"
- aria-label="View source on GitHub"
- data-tour="github-button"
- >
- <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
- <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
- </svg>
- </a>
- <a
- href="https://chromewebstore.google.com/detail/forensicateai-prompt-secu/ckohijglmbhlmbpiplcjhnlpijcbkapa"
- target="_blank"
- rel="noopener noreferrer"
- className="ml-3 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-lg shadow-lg hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all hover:scale-105 flex items-center gap-1.5"
- title="Install Chrome Extension"
- aria-label="Install Chrome Extension"
- data-tour="extension-button"
- >
- <svg className="w-4 h-4" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
- <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-.84 4.67h1.68v8.36h3.36L12 18.155 7.8 13.03h3.36V4.67z"/>
- </svg>
- <span>Chrome Extension</span>
- <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px]">Install</span>
- </a>
- </nav>
+ <DesktopNav onDownload={handleDownloadStandalone} />
 
  {/* Mobile Menu Button */}
  <button
  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
- className="md:hidden p-2 text-gray-300 hover:text-[#c9a227] transition-colors"
+ className="lg:hidden p-2 text-gray-300 hover:text-[#c9a227] transition-colors"
  aria-label="Toggle menu"
  >
  {mobileMenuOpen ? (
@@ -137,12 +163,13 @@ export default function Layout() {
 
  {/* Mobile Nav Menu */}
  {mobileMenuOpen && (
- <nav className="md:hidden mt-3 pt-3 border-t border-gray-800 space-y-1" aria-label="Mobile navigation" onKeyDown={(e) => { if (e.key === 'Escape') closeMobileMenu(); }}>
- <NavItem to="/scanner" label="Prompt Scanner" onClick={closeMobileMenu} />
+ <nav className="lg:hidden mt-3 pt-3 border-t border-gray-800 space-y-1" aria-label="Mobile navigation" onKeyDown={(e) => { if (e.key === 'Escape') closeMobileMenu(); }}>
+ <NavItem to="/scanner" label="Scanner" onClick={closeMobileMenu} />
  <NavItem to="/mutate" label="Mutation Engine" onClick={closeMobileMenu} />
- <NavItem to="/timeline" label="Forensic Timeline" onClick={closeMobileMenu} />
- <NavItem to="/learn" label="Learn" onClick={closeMobileMenu} />
+ <NavItem to="/timeline" label="Timeline" onClick={closeMobileMenu} />
  <NavItem to="/compliance" label="Compliance" onClick={closeMobileMenu} />
+ <NavItem to="/learn" label="Learn" onClick={closeMobileMenu} />
+ <NavItem to="/blog/detect-prompt-injection" label="Blog" onClick={closeMobileMenu} />
  <button
  onClick={() => {
  handleDownloadStandalone();

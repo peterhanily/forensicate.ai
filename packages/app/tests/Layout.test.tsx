@@ -24,7 +24,9 @@ describe('Layout', () => {
   it('renders the navigation items', () => {
     renderWithRouter(<Layout />);
 
-    expect(screen.getByRole('link', { name: /prompt scanner/i })).toBeInTheDocument();
+    // Desktop nav uses shortened labels; mobile nav also present
+    const scannerLinks = screen.getAllByRole('link', { name: /scanner/i });
+    expect(scannerLinks.length).toBeGreaterThan(0);
   });
 
   it('logo links to home page', () => {
@@ -35,12 +37,11 @@ describe('Layout', () => {
     expect(logoLink).toHaveAttribute('href', '/');
   });
 
-  it('renders download button', () => {
+  it('renders the More dropdown button', () => {
     renderWithRouter(<Layout />);
 
-    // Desktop button says "Download", mobile says "Download Offline Version"
-    const downloadButton = screen.getByRole('button', { name: /download/i });
-    expect(downloadButton).toBeInTheDocument();
-    expect(downloadButton).toHaveAttribute('title', 'Download as standalone HTML file - works offline!');
+    // Desktop nav has a "More" dropdown
+    const moreButton = screen.getByRole('button', { name: /more/i });
+    expect(moreButton).toBeInTheDocument();
   });
 });
