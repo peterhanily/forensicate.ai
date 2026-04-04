@@ -75,6 +75,7 @@ export default function Layout() {
  <NavItem to="/mutate" label="Mutation Engine" />
  <NavItem to="/timeline" label="Forensic Timeline" />
  <NavItem to="/learn" label="Learn" />
+ <NavItem to="/compliance" label="Compliance" />
  <button
  onClick={handleDownloadStandalone}
  className="ml-2 px-3 py-1.5 bg-gradient-to-r from-[#c9a227] to-[#d4b030] text-gray-900 text-sm font-semibold rounded-lg shadow-lg hover:shadow-[0_0_15px_rgba(201,162,39,0.5)] transition-all hover:scale-105 flex items-center gap-1.5"
@@ -141,6 +142,7 @@ export default function Layout() {
  <NavItem to="/mutate" label="Mutation Engine" onClick={closeMobileMenu} />
  <NavItem to="/timeline" label="Forensic Timeline" onClick={closeMobileMenu} />
  <NavItem to="/learn" label="Learn" onClick={closeMobileMenu} />
+ <NavItem to="/compliance" label="Compliance" onClick={closeMobileMenu} />
  <button
  onClick={() => {
  handleDownloadStandalone();
