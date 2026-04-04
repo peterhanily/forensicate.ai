@@ -2856,6 +2856,128 @@ export const regexRules: DetectionRule[] = [
     pattern: '(?:^|\\n)\\s*(?:Goal|Objective|Target|Mission|Task)\\s*:\\s*.{10,}(?:\\n\\s*(?:Step|Strategy|Approach|Method|Tactic)\\s*(?:\\d+)?\\s*[:.])',
     flags: 'gim',
   },
+
+  // === NOVEL ATTACK VECTORS (Forensicate.ai Research) ===
+
+  // Semantic Aliasing — defining codewords then invoking them
+  {
+    id: 'rx-semantic-aliasing',
+    name: 'Semantic Aliasing Attack',
+    description: 'Detects variable/codeword definition followed by execution: "Let X = ignore rules. Execute X." or "Prometheus protocol = disable safety"',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access', 'privilege-escalation'],
+    mitreAtlas: ['AML.T0051.000'],
+    euAiActRisk: 'high',
+    pattern: '(?:(?:let|set|define|assign)\\s+\\w+\\s*=\\s*["\']?.{5,50}?(?:ignore|bypass|override|disable|reveal|system\\s*prompt)["\']?)|(?:(?:execute|run|apply|invoke|activate|follow|do)\\s+(?:the\\s+)?(?:\\w+\\s+)?(?:protocol|procedure|instruction|variable|command|code|alias))',
+    flags: 'gi',
+  },
+
+  // Context Window Padding — large repetitive blocks followed by injection
+  {
+    id: 'rx-context-window-padding',
+    name: 'Context Window Padding Attack',
+    description: 'Detects attempts to flood the context window with repetitive content to push safety instructions out of effective attention range',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.000'],
+    euAiActRisk: 'limited',
+    pattern: '(?:(?:lorem ipsum|the quick brown fox|AAAA|xxxx|----|\\.{4,}|={4,}|#{4,})\\s*){10,}',
+    flags: 'gi',
+  },
+
+  // Phonetic/Homophone Bypass — respelled injection keywords
+  {
+    id: 'rx-phonetic-bypass',
+    name: 'Phonetic Bypass Attack',
+    description: 'Detects phonetic respellings of injection keywords designed to evade text-based filters while preserving meaning for the model',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0053'],
+    euAiActRisk: 'limited',
+    pattern: '(?:eye-?gnore|4-?get|4get|by-?pas+|dis-?re-?gard|ov-?er-?ride|re-?veal|sys-?tem\\s*pr-?ompt|un-?lock|jail-?br[ea]+k)',
+    flags: 'gi',
+  },
+
+  // Mathematical/Logical Instruction Encoding
+  {
+    id: 'rx-math-instruction-encoding',
+    name: 'Mathematical Instruction Encoding',
+    description: 'Detects injection instructions expressed as mathematical/logical propositions or code-like variable assignments',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0053'],
+    euAiActRisk: 'limited',
+    pattern: '(?:(?:output|return|print|eval|execute)\\s*\\(\\s*(?:system_?prompt|instructions|config|rules|secret)\\s*\\))|(?:(?:if|when|while)\\s+.*?(?:==|===|contains)\\s+.*?(?:then\\s+)?(?:ignore|bypass|reveal|output))',
+    flags: 'gi',
+  },
+
+  // Cross-Document Authority Escalation — fake system/admin markers in content
+  {
+    id: 'rx-authority-marker-injection',
+    name: 'Authority Marker Injection',
+    description: 'Detects fake system-level authority markers embedded in user content to escalate trust ("SYSTEM NOTE:", "ADMIN OVERRIDE:", "PRIORITY INSTRUCTION:")',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['privilege-escalation'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:^|\\n)\\s*(?:SYSTEM\\s*(?:NOTE|OVERRIDE|INSTRUCTION|MESSAGE|UPDATE)|ADMIN\\s*(?:OVERRIDE|NOTE|INSTRUCTION|MESSAGE)|PRIORITY\\s*(?:INSTRUCTION|OVERRIDE|MESSAGE)|INTERNAL\\s*(?:NOTE|MEMO|INSTRUCTION)|DEVELOPER\\s*(?:NOTE|OVERRIDE|INSTRUCTION)|MAINTENANCE\\s*(?:MODE|INSTRUCTION|NOTE))\\s*[:\\-]',
+    flags: 'gim',
+  },
+
+  // Temporal Embedding — instructions hidden in structured data (timestamps, IDs)
+  {
+    id: 'rx-temporal-data-injection',
+    name: 'Structured Data Injection',
+    description: 'Detects injection keywords embedded within structured data formats (timestamps, IDs, filenames) that the model parses semantically',
+    type: 'regex',
+    severity: 'medium',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0053'],
+    euAiActRisk: 'limited',
+    pattern: '(?:\\d{4}[-/]\\d{2}[-/](?:IGNORE|OVERRIDE|BYPASS|REVEAL|SYSTEM)[-/]\\d{2})|(?:(?:file|doc|id|ref|key)[-_](?:IGNORE|OVERRIDE|BYPASS|REVEAL|SYSTEM)[-_]\\w+)',
+    flags: 'gi',
+  },
+
+  // Recursive Self-Reference Injection — output designed to reinject on reprocessing
+  {
+    id: 'rx-recursive-self-injection',
+    name: 'Recursive Self-Reference Injection',
+    description: 'Detects prompts that instruct the model to include injection payloads in its output, creating a feedback loop when output is reprocessed',
+    type: 'regex',
+    severity: 'critical',
+    enabled: true,
+    killChain: ['persistence', 'lateral-movement'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:(?:include|embed|insert|add|append|prepend)\\s+(?:this|the\\s+following|these)\\s+(?:instructions?|text|payload|prompt|directive)\\s+(?:in|into|within|to)\\s+(?:your|the|every|all|each)\\s+(?:output|response|reply|answer))|(?:(?:your|the)\\s+(?:response|output|reply)\\s+(?:must|should|will)\\s+(?:contain|include|have|start\\s+with|end\\s+with)\\s+.{5,}?(?:ignore|override|system|instruction))',
+    flags: 'gi',
+  },
+
+  // API/Function Schema Poisoning
+  {
+    id: 'rx-schema-poisoning',
+    name: 'API Schema Poisoning',
+    description: 'Detects injection keywords hidden within JSON schema definitions, function signatures, or API documentation that the model may interpret as instructions',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['command-and-control'],
+    mitreAtlas: ['AML.T0048.004'],
+    euAiActRisk: 'high',
+    pattern: '(?:"(?:description|summary|instruction|note)"\\s*:\\s*"[^"]*?(?:ignore|override|bypass|reveal|system\\s*prompt|disable\\s*safety)[^"]*?")|(?:"(?:default|enum|const)"\\s*:\\s*"[^"]*?(?:ignore|override|bypass|reveal|extract)[^"]*?")',
+    flags: 'gi',
+  },
 ];
 
 
@@ -2994,6 +3116,8 @@ export const ruleCategories: RuleCategory[] = [
       regexRules.find(r => r.id === 'rx-injection-markers')!,
       regexRules.find(r => r.id === 'rx-xml-injection')!,
       regexRules.find(r => r.id === 'rx-simulation-frame')!,
+      regexRules.find(r => r.id === 'rx-semantic-aliasing')!,
+      regexRules.find(r => r.id === 'rx-authority-marker-injection')!,
     ],
   },
   {
@@ -3031,6 +3155,8 @@ export const ruleCategories: RuleCategory[] = [
       regexRules.find(r => r.id === 'rx-homoglyph')!,
       regexRules.find(r => r.id === 'rx-encoding-mention')!,
       regexRules.find(r => r.id === 'rx-emoji-commands')!,
+      regexRules.find(r => r.id === 'rx-phonetic-bypass')!,
+      regexRules.find(r => r.id === 'rx-math-instruction-encoding')!,
     ],
   },
   {
@@ -3043,6 +3169,8 @@ export const ruleCategories: RuleCategory[] = [
       regexRules.find(r => r.id === 'rx-code-comment-injection')!,
       regexRules.find(r => r.id === 'rx-markdown-xss')!,
       regexRules.find(r => r.id === 'rx-automated-attack-structure')!,
+      regexRules.find(r => r.id === 'rx-context-window-padding')!,
+      regexRules.find(r => r.id === 'rx-temporal-data-injection')!,
     ],
   },
   {
@@ -3060,6 +3188,7 @@ export const ruleCategories: RuleCategory[] = [
       regexRules.find(r => r.id === 'rx-agent-tool-reference')!,
       regexRules.find(r => r.id === 'rx-fake-system-prompt')!,
       regexRules.find(r => r.id === 'rx-always-call-tool')!,
+      regexRules.find(r => r.id === 'rx-schema-poisoning')!,
       regexRules.find(r => r.id === 'rx-fake-tool-result')!,
     ],
   },
@@ -3095,6 +3224,7 @@ export const ruleCategories: RuleCategory[] = [
     rules: [
       keywordRules.find(r => r.id === 'kw-worm-propagation')!,
       regexRules.find(r => r.id === 'rx-self-replication')!,
+      regexRules.find(r => r.id === 'rx-recursive-self-injection')!,
     ],
   },
   {
