@@ -37,11 +37,16 @@ describe('Layout', () => {
     expect(logoLink).toHaveAttribute('href', '/');
   });
 
-  it('renders the More dropdown button', () => {
+  it('renders the download, extension, and GitHub buttons', () => {
     renderWithRouter(<Layout />);
 
-    // Desktop nav has a "More" dropdown
-    const moreButton = screen.getByRole('button', { name: /more/i });
-    expect(moreButton).toBeInTheDocument();
+    const downloadButton = screen.getByRole('button', { name: /download offline/i });
+    expect(downloadButton).toBeInTheDocument();
+
+    const chromeLink = screen.getByRole('link', { name: /chrome extension/i });
+    expect(chromeLink).toBeInTheDocument();
+
+    const githubLinks = screen.getAllByRole('link', { name: /github/i });
+    expect(githubLinks.length).toBeGreaterThan(0);
   });
 });
