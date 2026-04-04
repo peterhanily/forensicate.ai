@@ -1084,7 +1084,7 @@ export default function Scanner() {
  </div>
 
  {/* Main Content Area - Three Column Layout */}
- <div className="flex flex-col lg:flex-row gap-4">
+ <div className="flex flex-col lg:flex-row gap-4 overflow-hidden">
  {/* Left Side - Rules Panel */}
  <div data-tour="rules-panel">
  <RulesPanel
@@ -1190,7 +1190,7 @@ export default function Scanner() {
  </div>
 
  {/* Center - Input and Results */}
- <div className="flex-1 space-y-3 sm:space-y-4 order-first lg:order-none">
+ <div className="flex-1 min-w-0 space-y-3 sm:space-y-4 order-first lg:order-none">
  {/* Mode Toggle */}
  <div className="flex rounded-lg overflow-hidden border border-gray-700" data-tour="scan-mode-toggle">
  <button
@@ -1355,22 +1355,22 @@ export default function Scanner() {
 
  {/* Annotated Prompt View */}
  {scanResult && promptText && (
- <div className="border border-gray-800 border-gray-800 rounded-lg bg-gray-900/30 bg-gray-900/30 overflow-hidden" data-tour="annotated-view">
+ <div className="border border-gray-800 rounded-lg bg-gray-900/30 overflow-hidden" data-tour="annotated-view">
  <button
  onClick={() => setShowAnnotations(!showAnnotations)}
  className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-800/30 dark:hover:bg-gray-800/30 light:hover:bg-gray-100 transition-colors"
  >
  <div className="flex items-center gap-2">
  <svg
- className={`w-4 h-4 text-gray-500 text-gray-500 transition-transform ${showAnnotations ? 'rotate-90' : ''}`}
+ className={`w-4 h-4 text-gray-500 transition-transform ${showAnnotations ? 'rotate-90' : ''}`}
  fill="none"
  stroke="currentColor"
  viewBox="0 0 24 24"
  >
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
  </svg>
- <span className="text-sm text-gray-200 text-gray-200 font-medium">Annotated View</span>
- <span className="text-xs text-gray-500 text-gray-500">
+ <span className="text-sm text-gray-200 font-medium">Annotated View</span>
+ <span className="text-xs text-gray-500">
  (Click highlighted text for details)
  </span>
  </div>

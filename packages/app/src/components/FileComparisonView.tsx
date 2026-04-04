@@ -116,7 +116,7 @@ export default function FileComparisonView({ fileInfo, fileThreats }: FileCompar
                   </div>
                   <p className="text-xs font-mono opacity-90">{threat.description}</p>
                   {threat.content && (
-                    <pre className="mt-1 text-xs font-mono opacity-70 bg-black/20 rounded p-2 overflow-x-auto max-h-20">
+                    <pre className="mt-1 text-xs font-mono opacity-70 bg-black/20 rounded p-2 overflow-x-auto max-h-20 whitespace-pre-wrap break-all">
                       {threat.content.slice(0, 200)}{threat.content.length > 200 ? '...' : ''}
                     </pre>
                   )}
@@ -136,7 +136,7 @@ export default function FileComparisonView({ fileInfo, fileThreats }: FileCompar
                     {fileInfo.visibleText.length} chars
                   </span>
                 </div>
-                <pre className="p-3 text-xs font-mono text-green-400/80 overflow-auto max-h-48 whitespace-pre-wrap break-words">
+                <pre className="p-3 text-xs font-mono text-green-400/80 overflow-auto max-h-48 whitespace-pre-wrap break-all">
                   {fileInfo.visibleText.slice(0, 1000) || '(empty)'}
                   {fileInfo.visibleText.length > 1000 ? '\n...' : ''}
                 </pre>
@@ -161,7 +161,7 @@ export default function FileComparisonView({ fileInfo, fileThreats }: FileCompar
                           {layer.location}
                         </span>
                       </div>
-                      <pre className="text-xs font-mono text-red-400/80 whitespace-pre-wrap break-words">
+                      <pre className="text-xs font-mono text-red-400/80 whitespace-pre-wrap break-all">
                         {layer.content.slice(0, 500)}
                         {layer.content.length > 500 ? '\n...' : ''}
                       </pre>
