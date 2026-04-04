@@ -282,60 +282,246 @@ function AudioPlayer({
   label: string;
 }) {
   const [playing, setPlaying] = useState(false);
+  const [position, setPosition] = useState(0); // seconds
+  const [speed, setSpeed] = useState(1);
+  const [dragging, setDragging] = useState(false);
+
   const ctxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const waveformRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef(0);
+  const startTimeRef = useRef(0);   // AudioContext.currentTime when playback started
+  const startOffsetRef = useRef(0); // offset into buffer when playback started
 
-  // Draw waveform on mount
+  const waveformRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const duration = buffer.duration;
+  const WH = 56; // waveform height
+
+  // Draw static waveform (once per buffer)
   useEffect(() => {
     const canvas = waveformRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const w = container.clientWidth;
+    canvas.width = w;
+    canvas.height = WH;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${WH}px`;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.parentElement?.clientWidth ?? 300;
-    const h = 48;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
-    ctx.scale(dpr, dpr);
-
     const samples = buffer.getChannelData(0);
-    const step = Math.max(1, Math.floor(samples.length / w));
+    const bucketSize = Math.max(1, Math.floor(samples.length / w));
 
     ctx.fillStyle = '#111827';
-    ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = '#c9a227';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 0; i < w; i++) {
-      const idx = i * step;
-      const val = samples[idx] ?? 0;
-      const y = ((1 - val) / 2) * h;
-      if (i === 0) ctx.moveTo(i, y);
-      else ctx.lineTo(i, y);
-    }
-    ctx.stroke();
-  }, [buffer]);
+    ctx.fillRect(0, 0, w, WH);
 
-  const play = useCallback(() => {
+    // Draw min/max bars for better waveform visualization
+    for (let i = 0; i < w; i++) {
+      const start = i * bucketSize;
+      const end = Math.min(start + bucketSize, samples.length);
+      let min = 1, max = -1;
+      for (let j = start; j < end; j++) {
+        if (samples[j] < min) min = samples[j];
+        if (samples[j] > max) max = samples[j];
+      }
+      const yMin = ((1 - max) / 2) * WH;
+      const yMax = ((1 - min) / 2) * WH;
+      ctx.fillStyle = '#4b5563';
+      ctx.fillRect(i, yMin, 1, Math.max(1, yMax - yMin));
+    }
+  }, [buffer, WH]);
+
+  // Animate progress overlay
+  const drawOverlay = useCallback((pos: number) => {
+    const canvas = overlayRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const w = container.clientWidth;
+    if (canvas.width !== w || canvas.height !== WH) {
+      canvas.width = w;
+      canvas.height = WH;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, WH);
+
+    const progress = Math.min(pos / duration, 1);
+    const px = progress * w;
+
+    // Played region — redraw waveform in gold
+    const samples = buffer.getChannelData(0);
+    const bucketSize = Math.max(1, Math.floor(samples.length / w));
+    const endBucket = Math.ceil(px);
+
+    for (let i = 0; i < endBucket && i < w; i++) {
+      const start = i * bucketSize;
+      const end = Math.min(start + bucketSize, samples.length);
+      let min = 1, max = -1;
+      for (let j = start; j < end; j++) {
+        if (samples[j] < min) min = samples[j];
+        if (samples[j] > max) max = samples[j];
+      }
+      const yMin = ((1 - max) / 2) * WH;
+      const yMax = ((1 - min) / 2) * WH;
+      ctx.fillStyle = '#c9a227';
+      ctx.fillRect(i, yMin, 1, Math.max(1, yMax - yMin));
+    }
+
+    // Playhead line
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(Math.round(px), 0, 2, WH);
+  }, [buffer, duration, WH]);
+
+  // RAF loop for playback position tracking
+  const playingRef = useRef(playing);
+  const speedRef = useRef(speed);
+  useEffect(() => { playingRef.current = playing; }, [playing]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
+
+  useEffect(() => {
+    if (!playing) return;
+    let active = true;
+    const animate = () => {
+      if (!active || !playingRef.current) return;
+      const actx = ctxRef.current;
+      if (!actx) return;
+      const elapsed = (actx.currentTime - startTimeRef.current) * speedRef.current;
+      const pos = startOffsetRef.current + elapsed;
+      if (pos >= duration) {
+        setPlaying(false);
+        setPosition(0);
+        drawOverlay(0);
+        return;
+      }
+      setPosition(pos);
+      drawOverlay(pos);
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { active = false; cancelAnimationFrame(rafRef.current); };
+  }, [playing, duration, drawOverlay]);
+
+  // Play / Pause
+  const togglePlay = useCallback(() => {
     if (playing) {
+      // Pause — save current position
+      const actx = ctxRef.current;
+      if (actx) {
+        const elapsed = (actx.currentTime - startTimeRef.current) * speed;
+        startOffsetRef.current = Math.min(startOffsetRef.current + elapsed, duration);
+      }
       sourceRef.current?.stop();
       setPlaying(false);
       return;
     }
-    const ctx = ctxRef.current ?? new AudioContext();
-    ctxRef.current = ctx;
-    const source = ctx.createBufferSource();
+
+    // Play from current position
+    const actx = ctxRef.current ?? new AudioContext();
+    ctxRef.current = actx;
+    const source = actx.createBufferSource();
     source.buffer = buffer;
-    source.connect(ctx.destination);
-    source.onended = () => setPlaying(false);
-    source.start();
+    source.playbackRate.value = speed;
+    source.connect(actx.destination);
+    source.onended = () => {
+      if (!dragging) {
+        setPlaying(false);
+        setPosition(0);
+        startOffsetRef.current = 0;
+        drawOverlay(0);
+      }
+    };
+    startTimeRef.current = actx.currentTime;
+    source.start(0, startOffsetRef.current);
     sourceRef.current = source;
     setPlaying(true);
-  }, [buffer, playing]);
+  }, [buffer, playing, speed, duration, dragging, drawOverlay]);
+
+  // Seek to position
+  const seekTo = useCallback((frac: number) => {
+    const newPos = Math.max(0, Math.min(frac, 1)) * duration;
+    startOffsetRef.current = newPos;
+    setPosition(newPos);
+    drawOverlay(newPos);
+
+    if (playing) {
+      // Restart playback from new position
+      sourceRef.current?.stop();
+      const actx = ctxRef.current!;
+      const source = actx.createBufferSource();
+      source.buffer = buffer;
+      source.playbackRate.value = speed;
+      source.connect(actx.destination);
+      source.onended = () => {
+        setPlaying(false);
+        setPosition(0);
+        startOffsetRef.current = 0;
+        drawOverlay(0);
+      };
+      startTimeRef.current = actx.currentTime;
+      source.start(0, newPos);
+      sourceRef.current = source;
+    }
+  }, [buffer, playing, speed, duration, drawOverlay]);
+
+  // Mouse/touch handlers for seeking
+  const getSeekFraction = useCallback((e: React.MouseEvent | MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) return 0;
+    const rect = container.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    setDragging(true);
+    seekTo(getSeekFraction(e));
+
+    const handleMove = (ev: MouseEvent) => seekTo(getSeekFraction(ev));
+    const handleUp = () => {
+      setDragging(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  }, [seekTo, getSeekFraction]);
+
+  // Speed control
+  const cycleSpeed = useCallback(() => {
+    const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    const idx = speeds.indexOf(speed);
+    const next = speeds[(idx + 1) % speeds.length];
+    setSpeed(next);
+    // Update live playback rate if playing
+    if (sourceRef.current) {
+      // Save position, restart with new speed
+      const actx = ctxRef.current;
+      if (actx && playing) {
+        const elapsed = (actx.currentTime - startTimeRef.current) * speed;
+        startOffsetRef.current = Math.min(startOffsetRef.current + elapsed, duration);
+        sourceRef.current.stop();
+        const source = actx.createBufferSource();
+        source.buffer = buffer;
+        source.playbackRate.value = next;
+        source.connect(actx.destination);
+        source.onended = () => {
+          setPlaying(false);
+          setPosition(0);
+          startOffsetRef.current = 0;
+          drawOverlay(0);
+        };
+        startTimeRef.current = actx.currentTime;
+        source.start(0, startOffsetRef.current);
+        sourceRef.current = source;
+      }
+    }
+  }, [buffer, speed, playing, duration, drawOverlay]);
 
   const download = useCallback(() => {
     const blob = audioBufferToWav(buffer);
@@ -346,6 +532,25 @@ function AudioPlayer({
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 200);
   }, [buffer, label]);
+
+  // Draw initial overlay
+  useEffect(() => { drawOverlay(position); }, [drawOverlay, position]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      sourceRef.current?.stop();
+      ctxRef.current?.close();
+    };
+  }, []);
+
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    const ms = Math.floor((s % 1) * 10);
+    return m > 0 ? `${m}:${sec.toString().padStart(2, '0')}.${ms}` : `${sec}.${ms}`;
+  };
 
   return (
     <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
@@ -367,9 +572,11 @@ function AudioPlayer({
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {/* Play/Pause */}
         <button
-          onClick={play}
+          onClick={togglePlay}
           className="flex-shrink-0 w-8 h-8 rounded-full bg-[#5c0000] border border-[#8b0000] flex items-center justify-center text-[#c9a227] hover:bg-[#8b0000] transition-colors"
+          title={playing ? 'Pause' : 'Play'}
         >
           {playing ? (
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
@@ -377,9 +584,31 @@ function AudioPlayer({
             <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
           )}
         </button>
-        <div className="flex-1">
-          <canvas ref={waveformRef} className="rounded" />
+
+        {/* Waveform + seek area */}
+        <div
+          ref={containerRef}
+          className="flex-1 relative cursor-pointer select-none"
+          onMouseDown={handleMouseDown}
+        >
+          <canvas ref={waveformRef} className="rounded block" />
+          <canvas ref={overlayRef} className="absolute top-0 left-0 rounded block" style={{ width: '100%', height: `${WH}px` }} />
         </div>
+
+        {/* Speed */}
+        <button
+          onClick={cycleSpeed}
+          className="flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-mono bg-gray-800 text-gray-400 hover:text-[#c9a227] border border-gray-700 transition-colors"
+          title="Playback speed"
+        >
+          {speed}x
+        </button>
+      </div>
+
+      {/* Time display */}
+      <div className="flex justify-between mt-1.5 text-xs font-mono text-gray-500 px-11">
+        <span>{fmt(position)}</span>
+        <span>{fmt(duration)}</span>
       </div>
     </div>
   );
