@@ -238,6 +238,30 @@ if result.is_positive:
         </div>
       </section>
 
+      {/* Resources */}
+      <section className="max-w-4xl mx-auto">
+        <h3 className="text-xl font-bold text-white text-center mb-6" style={{ fontFamily: 'serif' }}>
+          Resources
+        </h3>
+        <div className="grid md:grid-cols-3 gap-3">
+          <Link to="/blog/detect-prompt-injection" className="p-4 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-[#c9a227]/40 transition-all group">
+            <div className="text-xs text-gray-500 mb-1">Guide</div>
+            <div className="text-sm font-semibold text-gray-200 group-hover:text-[#c9a227] transition-colors">How to Detect Prompt Injection in Production</div>
+            <p className="text-[11px] text-gray-500 mt-1">Static rules, heuristics, NLP, multimodal injection, novel attack vectors, and integration patterns.</p>
+          </Link>
+          <Link to="/learn" className="p-4 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-[#c9a227]/40 transition-all group">
+            <div className="text-xs text-gray-500 mb-1">Course</div>
+            <div className="text-sm font-semibold text-gray-200 group-hover:text-[#c9a227] transition-colors">The Complete Guide to Prompt Injection</div>
+            <p className="text-[11px] text-gray-500 mt-1">History, taxonomy, DAN evolution, Pliny, GCG, abliteration, interactive challenges.</p>
+          </Link>
+          <Link to="/compliance" className="p-4 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-[#c9a227]/40 transition-all group">
+            <div className="text-xs text-gray-500 mb-1">Compliance</div>
+            <div className="text-sm font-semibold text-gray-200 group-hover:text-[#c9a227] transition-colors">EU AI Act Compliance Report Generator</div>
+            <p className="text-[11px] text-gray-500 mt-1">Article-by-article assessment, OWASP mapping, exportable audit documentation.</p>
+          </Link>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="text-center max-w-2xl mx-auto">
         <h3 className="text-xl font-bold text-white mb-3" style={{ fontFamily: 'serif' }}>
