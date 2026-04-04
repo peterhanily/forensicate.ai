@@ -1084,7 +1084,7 @@ export default function Scanner() {
  </div>
 
  {/* Main Content Area - Three Column Layout */}
- <div className="flex flex-col lg:flex-row gap-4 overflow-hidden">
+ <div className="flex flex-col lg:flex-row lg:items-start gap-4">
  {/* Left Side - Rules Panel */}
  <div data-tour="rules-panel">
  <RulesPanel
@@ -1190,7 +1190,7 @@ export default function Scanner() {
  </div>
 
  {/* Center - Input and Results */}
- <div className="flex-1 min-w-0 space-y-3 sm:space-y-4 order-first lg:order-none">
+ <div className="flex-1 min-w-0 overflow-x-hidden space-y-3 sm:space-y-4 order-first lg:order-none">
  {/* Mode Toggle */}
  <div className="flex rounded-lg overflow-hidden border border-gray-700" data-tour="scan-mode-toggle">
  <button
