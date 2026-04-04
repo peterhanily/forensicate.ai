@@ -405,7 +405,7 @@ export default function LearnModelAttacks() {
             These are the attacks covered in the
             main <Link to="/learn" className="text-[#c9a227] hover:underline">Prompt Injection Guide</Link>:
             direct injection, indirect injection, jailbreaking, and adversarial examples like GCG. They
-            exploit the model at runtime without modifying its weights. Forensicate.ai&rsquo;s 149-rule engine
+            exploit the model at runtime without modifying its weights. Forensicate.ai&rsquo;s 160-rule engine
             is specifically designed to detect these patterns.
           </p>
 

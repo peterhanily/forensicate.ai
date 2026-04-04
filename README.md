@@ -7,7 +7,7 @@ A comprehensive AI security toolkit for analyzing prompts for potential injectio
 
 ## Overview
 
-Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 149 rules in 20 categories.
+Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 160 rules in 20 categories.
 
 ## Available Formats
 
@@ -187,9 +187,9 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - Pricing manually verified Feb 2026 - may become outdated
 - Enterprise/volume/regional pricing NOT reflected
 
-### Detection Rules (149 Rules in 20 Categories)
+### Detection Rules (160 Rules in 20 Categories)
 
-- **Keyword Detection (46 rules)**: Pattern matching for known injection phrases
+- **Keyword Detection (49 rules)**: Pattern matching for known injection phrases
   - Instruction Override, Jailbreak Personas (DAN, STAN, DUDE, EvilBOT, Maximum)
   - Role Manipulation, Dual Response, System Prompt Extraction
   - Authority Claims, Developer Mode, Context Manipulation
@@ -200,7 +200,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
   - MCP Tool Poisoning, Agent Memory Poisoning, Agent Data Exfiltration
   - Tool Privilege Escalation, AI-Targeted Code Comments, Suspicious Package Install Hooks
 
-- **Regex Pattern Detection (75 rules)**: Advanced pattern matching
+- **Regex Pattern Detection (83 rules)**: Advanced pattern matching
   - Ignore/disregard/forget override patterns
   - DAN version patterns, Jailbreak persona names
   - Role assignment and character enforcement

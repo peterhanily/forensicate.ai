@@ -514,7 +514,7 @@ export default function LearnChallenges() {
         <p className="text-gray-400 text-sm mt-3 leading-relaxed max-w-2xl">
           Inspired by <span className="text-gray-300">Lakera&apos;s Gandalf</span> (80M+ attacks) and
           {' '}<span className="text-gray-300">HackAPrompt</span> (600K submissions). Craft prompts that evade
-          Forensicate.ai&apos;s 149-rule detection engine. Each level raises the bar. Learn attack techniques
+          Forensicate.ai&apos;s 160-rule detection engine. Each level raises the bar. Learn attack techniques
           by practicing them — and understand why each defense matters.
         </p>
       </header>

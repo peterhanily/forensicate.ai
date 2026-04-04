@@ -314,7 +314,7 @@ export default function Learn() {
             <Link to="/learn/challenges" className="p-4 rounded-lg bg-[#c9a227]/5 border border-[#c9a227]/30 hover:border-[#c9a227]/50 transition-all group">
               <div className="text-sm font-bold text-[#c9a227] mb-1 group-hover:text-[#c9a227]/80">Evasion Challenges</div>
               <p className="text-[11px] text-gray-500 leading-relaxed">
-                Gandalf-inspired multi-level challenges. Craft prompts that evade our 149-rule scanner — learn attack techniques by doing.
+                Gandalf-inspired multi-level challenges. Craft prompts that evade our 160-rule scanner — learn attack techniques by doing.
               </p>
               <span className="text-[10px] text-gray-600 mt-2 inline-block">5 levels, progressive difficulty</span>
             </Link>
@@ -402,7 +402,7 @@ export default function Learn() {
         <section id="try">
           <h3 className="text-lg font-bold text-white mb-3" style={{ fontFamily: 'serif' }}>Try It Yourself</h3>
           <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-            Use Forensicate.ai&apos;s 149-rule detection engine to test prompt injection patterns. Edit the text below and click &quot;Scan&quot; to see real-time detection results.
+            Use Forensicate.ai&apos;s 160-rule detection engine to test prompt injection patterns. Edit the text below and click &quot;Scan&quot; to see real-time detection results.
           </p>
 
           <TryIt defaultText="Write your own prompt here and scan it..." label="Your custom prompt" />
