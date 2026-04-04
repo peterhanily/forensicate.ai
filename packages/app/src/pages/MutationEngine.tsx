@@ -327,7 +327,7 @@ function MutationRow({ mutation, index, isExpanded, onToggle, originalText, onOp
                 <div>
                   <span className="text-xs text-gray-500 uppercase tracking-wide">Visual Diff (original vs mutated):</span>
                   <InlineDiff tokens={diffTokens} />
-                  <div className="mt-1 flex gap-3 text-[10px] text-gray-600">
+                  <div className="mt-1 flex gap-3 text-[10px] text-gray-500">
                     <span><span className="inline-block w-3 h-2 bg-red-900/60 mr-1 rounded-sm"></span>Removed</span>
                     <span><span className="inline-block w-3 h-2 bg-green-900/60 mr-1 rounded-sm"></span>Added</span>
                   </div>
@@ -457,7 +457,7 @@ function EvolutionTimeline({ result, originalConfidence }: { result: EvolutionRe
           <div key={gen.generation} className="flex items-center shrink-0">
             {/* Arrow */}
             <div className="flex flex-col items-center mx-1">
-              <div className="text-[9px] text-gray-600 mb-0.5 whitespace-nowrap max-w-16 truncate" title={gen.strategyLabel}>
+              <div className="text-[9px] text-gray-500 mb-0.5 whitespace-nowrap max-w-16 truncate" title={gen.strategyLabel}>
                 {gen.strategyLabel}
               </div>
               <svg className="w-8 h-3 text-gray-600" viewBox="0 0 32 12">
@@ -697,7 +697,7 @@ export default function MutationEngine() {
           {/* Run Mode */}
           <div>
             <label className="text-sm text-gray-400 font-mono">Mode:</label>
-            <div className="mt-1 flex gap-1">
+            <div className="mt-1 flex gap-1" role="radiogroup" aria-label="Mutation mode">
               {([
                 { mode: 'standard' as RunMode, label: 'Standard', desc: 'Single strategies only' },
                 { mode: 'combo' as RunMode, label: 'Combo', desc: 'Single + stacked combos' },
@@ -707,6 +707,8 @@ export default function MutationEngine() {
                 <button
                   key={mode}
                   onClick={() => setRunMode(mode)}
+                  role="radio"
+                  aria-checked={runMode === mode}
                   title={desc}
                   className={`flex-1 text-xs py-1.5 rounded border transition-colors ${
                     runMode === mode
@@ -764,7 +766,7 @@ export default function MutationEngine() {
               <div className="space-y-1">
                 {pipelineSteps.map((step, i) => (
                   <div key={`${step}-${i}`} className="flex items-center gap-2 bg-gray-800/50 rounded px-2 py-1">
-                    <span className="text-[10px] text-gray-600 font-mono w-4">{i + 1}.</span>
+                    <span className="text-[10px] text-gray-500 font-mono w-4">{i + 1}.</span>
                     <span className="text-xs text-gray-300 flex-1">{getStrategyLabel(step)}</span>
                     <button
                       onClick={() => {
@@ -906,7 +908,7 @@ export default function MutationEngine() {
                       }`}>
                         {step.scanResult.confidence}%
                       </span>
-                      <span className={`text-[10px] font-mono ${step.confidenceDelta < 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                      <span className={`text-[10px] font-mono ${step.confidenceDelta < 0 ? 'text-red-400' : 'text-gray-500'}`}>
                         ({step.confidenceDelta > 0 ? '+' : ''}{step.confidenceDelta})
                       </span>
                     </div>

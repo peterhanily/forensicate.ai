@@ -12,7 +12,7 @@ interface NavItemProps {
 function NavItem({ to, label, disabled, onClick }: NavItemProps) {
  if (disabled) {
  return (
- <span className="px-4 py-2 text-gray-600 cursor-not-allowed block">
+ <span className="px-4 py-2 text-gray-500 cursor-not-allowed block">
  {label}
  </span>
  );
@@ -52,7 +52,7 @@ export default function Layout() {
  return (
  <div className="min-h-screen flex flex-col">
  <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#c9a227] focus:text-gray-900 focus:rounded-lg focus:font-semibold">Skip to main content</a>
- <header className="border-b border-gray-800 border-gray-800 bg-gray-900/50 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
+ <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
  <div className="max-w-6xl mx-auto px-4 py-3 md:py-4">
  {/* Mobile/Desktop Header */}
  <div className="flex items-center justify-between">
@@ -70,7 +70,7 @@ export default function Layout() {
  </div>
 
  {/* Desktop Nav */}
- <nav className="hidden md:flex items-center gap-1">
+ <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
  <NavItem to="/scanner" label="Prompt Scanner" />
  <NavItem to="/mutate" label="Mutation Engine" />
  <NavItem to="/timeline" label="Forensic Timeline" />
@@ -136,7 +136,7 @@ export default function Layout() {
 
  {/* Mobile Nav Menu */}
  {mobileMenuOpen && (
- <nav className="md:hidden mt-3 pt-3 border-t border-gray-800 space-y-1">
+ <nav className="md:hidden mt-3 pt-3 border-t border-gray-800 space-y-1" aria-label="Mobile navigation" onKeyDown={(e) => { if (e.key === 'Escape') closeMobileMenu(); }}>
  <NavItem to="/scanner" label="Prompt Scanner" onClick={closeMobileMenu} />
  <NavItem to="/mutate" label="Mutation Engine" onClick={closeMobileMenu} />
  <NavItem to="/timeline" label="Forensic Timeline" onClick={closeMobileMenu} />

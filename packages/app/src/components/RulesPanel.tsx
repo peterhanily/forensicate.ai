@@ -86,6 +86,7 @@ function RulesPanel({
  <button
  onClick={onCloseMobile}
  className="lg:hidden p-1 text-gray-500 hover:text-gray-300"
+ aria-label="Close rules panel"
  >
  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -125,7 +126,7 @@ function RulesPanel({
 
  {/* Built-in Rules Tab */}
  {activeTab === 'builtin' && (
- <>
+ <div role="tabpanel" className="contents">
  {/* Search input */}
  <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
  <div className="relative">
@@ -236,17 +237,19 @@ function RulesPanel({
  )}
  </div>
  </div>
- </>
+ </div>
  )}
 
  {/* Community Rules Tab */}
  {activeTab === 'community' && onImportCommunityRule && (
+ <div role="tabpanel" className="contents">
  <CommunityRulesPanel
  onImportRule={onImportCommunityRule}
  importedRuleIds={importedCommunityRuleIds}
  autoImportEnabled={autoImportEnabled}
  onToggleAutoImport={onToggleAutoImport || (() => {})}
  />
+ </div>
  )}
  </div>
  );
@@ -387,7 +390,7 @@ function RuleCategorySection({
  </div>
  </div>
  {category.rules.length === 0 ? (
- <div className="px-3 py-4 text-center text-gray-600 text-xs">
+ <div className="px-3 py-4 text-center text-gray-500 text-xs">
  No rules in this section yet.
  {onAddRule && (
  <button
@@ -509,7 +512,7 @@ function RuleItem({
  </div>
 
  {/* Rule Description */}
- <p className="text-[10px] text-gray-600 mt-0.5 leading-tight">
+ <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">
  {rule.description}
  </p>
 

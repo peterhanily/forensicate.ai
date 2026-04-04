@@ -284,7 +284,7 @@ export default function ForensicTimeline() {
       <div className="border border-gray-800 rounded-lg bg-gray-900/50 overflow-hidden">
         <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between">
           <span className="text-gray-400 text-xs font-mono">conversation_input</span>
-          <span className="text-gray-600 text-xs">
+          <span className="text-gray-500 text-xs">
             Supports: User/Assistant format, JSON messages, or double-newline separated
           </span>
         </div>
@@ -352,7 +352,7 @@ export default function ForensicTimeline() {
           {/* Kill chain progress bar */}
           <div className="border border-gray-800 rounded-lg bg-gray-900/50 p-4">
             <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Kill Chain Progression</div>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {KILL_CHAIN_ORDER.map(stage => {
                 const meta = KILL_CHAIN_META[stage];
                 const isActive = analysis.allStages.includes(stage);
@@ -361,7 +361,7 @@ export default function ForensicTimeline() {
                 return (
                   <div
                     key={stage}
-                    className={`flex-1 rounded p-2 text-center transition-all ${
+                    className={`flex-1 min-w-[80px] rounded p-2 text-center transition-all ${
                       isActive ? `${meta.bg} border border-current ${meta.color}` : 'bg-gray-800/30 border border-gray-800 text-gray-700'
                     }`}
                     title={isActive && firstTurn ? `First seen in turn ${firstTurn.turn.index + 1}` : 'Not detected'}
@@ -470,7 +470,7 @@ export default function ForensicTimeline() {
                               }`}>
                                 {t.scanResult.confidence}%
                               </span>
-                              <span className="text-[10px] text-gray-600">
+                              <span className="text-[10px] text-gray-500">
                                 {t.scanResult.matchedRules.length} rule{t.scanResult.matchedRules.length !== 1 ? 's' : ''}
                               </span>
                             </>
@@ -521,7 +521,7 @@ export default function ForensicTimeline() {
                                     </span>
                                     <span className="text-gray-300">{rule.ruleName}</span>
                                     {rule.confidenceImpact != null && (
-                                      <span className="text-gray-600 text-[10px]">+{rule.confidenceImpact}pts</span>
+                                      <span className="text-gray-500 text-[10px]">+{rule.confidenceImpact}pts</span>
                                     )}
                                   </div>
                                 ))}
