@@ -130,6 +130,64 @@ function detectFileThreats(extraction: FileExtractionResult): FileThreat[] {
         location: layer.location,
       });
     }
+
+    if (layer.type === 'audio-metadata' || layer.type === 'video-metadata') {
+      const injectionPatterns = [
+        /ignore\s+(all\s+)?(previous\s+)?instructions/i,
+        /system\s*:\s*/i,
+        /you\s+are\s+(now|a)\s+/i,
+        /override|bypass|reveal|extract/i,
+      ];
+      const hasInjection = injectionPatterns.some(p => p.test(layer.content));
+      if (hasInjection) {
+        const mediaType = layer.type === 'audio-metadata' ? 'Audio' : 'Video';
+        threats.push({
+          type: layer.type === 'audio-metadata' ? 'audio-metadata-injection' : 'video-metadata-injection',
+          severity: 'high' as RuleSeverity,
+          description: `${mediaType} metadata contains injection-like patterns`,
+          content: layer.content,
+          location: layer.location,
+        });
+      }
+    }
+
+    if (layer.type === 'lyrics') {
+      const injectionPatterns = [
+        /ignore\s+(all\s+)?(previous\s+)?instructions/i,
+        /system\s*:\s*/i,
+        /you\s+are\s+(now|a)\s+/i,
+        /override|bypass|reveal|extract/i,
+      ];
+      const hasInjection = injectionPatterns.some(p => p.test(layer.content));
+      if (hasInjection) {
+        threats.push({
+          type: 'lyrics-injection',
+          severity: 'high' as RuleSeverity,
+          description: 'Audio lyrics contain injection-like patterns — often processed by AI transcription pipelines',
+          content: layer.content,
+          location: layer.location,
+        });
+      }
+    }
+
+    if (layer.type === 'subtitle') {
+      const injectionPatterns = [
+        /ignore\s+(all\s+)?(previous\s+)?instructions/i,
+        /system\s*:\s*/i,
+        /you\s+are\s+(now|a)\s+/i,
+        /override|bypass|reveal|extract/i,
+      ];
+      const hasInjection = injectionPatterns.some(p => p.test(layer.content));
+      if (hasInjection) {
+        threats.push({
+          type: 'subtitle-injection',
+          severity: 'high' as RuleSeverity,
+          description: 'Embedded subtitles contain injection-like patterns — subtitles are extracted by multimodal AI',
+          content: layer.content,
+          location: layer.location,
+        });
+      }
+    }
   }
 
   return threats;

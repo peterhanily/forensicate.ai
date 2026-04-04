@@ -168,12 +168,13 @@ export interface AnnotatedSegment {
 // FILE SCANNING TYPES
 // ============================================================================
 
-export type FileType = 'pdf' | 'image' | 'docx' | 'csv' | 'html' | 'text' | 'svg' | 'eml';
+export type FileType = 'pdf' | 'image' | 'docx' | 'csv' | 'html' | 'text' | 'svg' | 'eml' | 'audio' | 'video';
 
 export type TextLayerType =
   | 'visible' | 'hidden' | 'metadata' | 'comment'
   | 'low-contrast' | 'invisible-unicode' | 'ocr' | 'off-page'
-  | 'tracked-change' | 'vanish-text' | 'header-footer' | 'custom-xml' | 'doc-property';
+  | 'tracked-change' | 'vanish-text' | 'header-footer' | 'custom-xml' | 'doc-property'
+  | 'audio-metadata' | 'subtitle' | 'video-metadata' | 'lyrics';
 
 export interface TextLayer {
   type: TextLayerType;
@@ -207,7 +208,9 @@ export interface FileThreat {
   type: 'hidden-text' | 'metadata-injection' | 'invisible-unicode'
     | 'low-contrast' | 'steganographic' | 'off-page-content'
     | 'tracked-change-injection' | 'vanish-text-injection' | 'custom-xml-injection'
-    | 'html-hidden-injection' | 'svg-hidden-injection' | 'bidi-override';
+    | 'html-hidden-injection' | 'svg-hidden-injection' | 'bidi-override'
+    | 'audio-metadata-injection' | 'video-metadata-injection'
+    | 'subtitle-injection' | 'lyrics-injection';
   severity: RuleSeverity;
   description: string;
   content: string;

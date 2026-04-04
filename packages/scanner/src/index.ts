@@ -12,6 +12,7 @@ export {
   pdfJavascriptDetection,
 } from './fileRules.js';
 export { detectCompoundThreats } from './compoundDetector.js';
+export { ultrasonicRules, ultrasonicRuleCategory } from './ultrasonicRules.js';
 export {
   computeAttackComplexity,
   getComplexityDescription,

@@ -93,6 +93,26 @@ describe('File Extractors', () => {
       expect(detectFileType(file)).toBe('text');
     });
 
+    it('detects audio from MIME type', () => {
+      const file = new File([''], 'song.mp3', { type: 'audio/mpeg' });
+      expect(detectFileType(file)).toBe('audio');
+    });
+
+    it('detects audio from extension', () => {
+      const file = new File([''], 'song.flac', { type: '' });
+      expect(detectFileType(file)).toBe('audio');
+    });
+
+    it('detects video from MIME type', () => {
+      const file = new File([''], 'clip.mp4', { type: 'video/mp4' });
+      expect(detectFileType(file)).toBe('video');
+    });
+
+    it('detects video from extension', () => {
+      const file = new File([''], 'clip.mkv', { type: '' });
+      expect(detectFileType(file)).toBe('video');
+    });
+
     it('returns null for unsupported types', () => {
       const file = new File([''], 'archive.zip', { type: 'application/zip' });
       expect(detectFileType(file)).toBeNull();

@@ -76,6 +76,9 @@ function DesktopNav({ onDownload }: { onDownload: () => void }) {
            <NavLink to="/blog/detect-prompt-injection" onClick={() => setMoreOpen(false)} className={({ isActive }) => `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-[#c9a227] bg-gray-800/50' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`} role="menuitem">
              Blog
            </NavLink>
+           <NavLink to="/ultrasonic" onClick={() => setMoreOpen(false)} className={({ isActive }) => `block px-4 py-2 text-sm transition-colors ${isActive ? 'text-[#c9a227] bg-gray-800/50' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`} role="menuitem">
+             Ultrasonic
+           </NavLink>
            <div className="border-t border-gray-800 my-1" />
            <button onClick={() => { onDownload(); setMoreOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-2" role="menuitem">
              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -170,6 +173,7 @@ export default function Layout() {
  <NavItem to="/compliance" label="Compliance" onClick={closeMobileMenu} />
  <NavItem to="/learn" label="Learn" onClick={closeMobileMenu} />
  <NavItem to="/blog/detect-prompt-injection" label="Blog" onClick={closeMobileMenu} />
+ <NavItem to="/ultrasonic" label="Ultrasonic" onClick={closeMobileMenu} />
  <button
  onClick={() => {
  handleDownloadStandalone();

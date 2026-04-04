@@ -19,6 +19,20 @@ export const FILE_TYPE_MAP: Record<string, FileType> = {
   'text/xml': 'text',
   'image/svg+xml': 'svg',
   'message/rfc822': 'eml',
+  'audio/mpeg': 'audio',
+  'audio/mp3': 'audio',
+  'audio/wav': 'audio',
+  'audio/x-wav': 'audio',
+  'audio/ogg': 'audio',
+  'audio/flac': 'audio',
+  'audio/aac': 'audio',
+  'audio/m4a': 'audio',
+  'audio/x-m4a': 'audio',
+  'video/mp4': 'video',
+  'video/webm': 'video',
+  'video/ogg': 'video',
+  'video/x-matroska': 'video',
+  'video/quicktime': 'video',
 };
 
 /** Supported MIME types for the file drop zone */
@@ -36,6 +50,10 @@ export const EXTENSION_TYPE_MAP: Record<string, FileType> = {
   '.log': 'text', '.yaml': 'text', '.yml': 'text',
   '.svg': 'svg',
   '.eml': 'eml',
+  '.mp3': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio',
+  '.aac': 'audio', '.m4a': 'audio', '.wma': 'audio',
+  '.mp4': 'video', '.webm': 'video', '.mkv': 'video', '.mov': 'video',
+  '.avi': 'video', '.srt': 'text', '.vtt': 'text',
 };
 
 /** Detect FileType from a File object */

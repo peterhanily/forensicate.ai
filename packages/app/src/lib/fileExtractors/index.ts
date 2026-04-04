@@ -51,6 +51,14 @@ export async function extractTextFromFile(file: File): Promise<FileExtractionRes
       const { extractFromDOCX } = await import('./docxExtractor');
       return extractFromDOCX(file);
     }
+    case 'audio': {
+      const { extractFromAudio } = await import('./audioExtractor');
+      return extractFromAudio(file);
+    }
+    case 'video': {
+      const { extractFromVideo } = await import('./videoExtractor');
+      return extractFromVideo(file);
+    }
     default:
       throw new Error(`Unsupported file type: ${fileType}`);
   }
