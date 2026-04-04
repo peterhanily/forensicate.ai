@@ -13,6 +13,7 @@ const LearnJailbreaks = lazy(() => import('./pages/LearnJailbreaks'));
 const LearnChallenges = lazy(() => import('./pages/LearnChallenges'));
 const LearnModelAttacks = lazy(() => import('./pages/LearnModelAttacks'));
 const Compliance = lazy(() => import('./pages/Compliance'));
+const BlogDetection = lazy(() => import('./pages/BlogDetection'));
 
 // Detect standalone mode: file:// protocol means we're running as a downloaded HTML file
 const isStandalone = typeof window !== 'undefined' && window.location.protocol === 'file:';
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="learn/challenges" element={<Suspense fallback={<PageLoader />}><LearnChallenges /></Suspense>} />
               <Route path="learn/model-attacks" element={<Suspense fallback={<PageLoader />}><LearnModelAttacks /></Suspense>} />
               <Route path="compliance" element={<Suspense fallback={<PageLoader />}><Compliance /></Suspense>} />
+              <Route path="blog/detect-prompt-injection" element={<Suspense fallback={<PageLoader />}><BlogDetection /></Suspense>} />
             </Route>
           </Routes>
         </Router>
