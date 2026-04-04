@@ -293,13 +293,14 @@ async function main() {
     const extensionBgPath = join(rootDir, 'packages/extension/dist/chrome/background.js');
     const bgContent = readFileSync(extensionBgPath, 'utf-8');
 
-    // Check if scanner rules are bundled
-    if (bgContent.includes('keywordRules') && bgContent.includes('regexRules')) {
-      log('   ✅ Extension bundle includes detection rules', 'green');
-      log('   ℹ️  Rebuild recommended after rule changes', 'yellow');
+    // Check if scanner rules are bundled by looking for rule IDs
+    const sampleRuleIds = ['kw-ignore-instructions', 'kw-dan-jailbreak', 'rx-base64-pattern', 'kw-conversation-reset'];
+    const foundCount = sampleRuleIds.filter(id => bgContent.includes(id)).length;
+    if (foundCount >= 3) {
+      log(`   ✅ Extension bundle includes detection rules (${foundCount}/${sampleRuleIds.length} sample IDs found)`, 'green');
     } else {
       log('   ⚠️  Extension might not include all rules', 'yellow');
-      log('      Run: cd packages/extension && pnpm build:chrome', 'yellow');
+      log('      Run: pnpm build:extensions', 'yellow');
     }
   } catch (error) {
     log('   ℹ️  Extension not built yet', 'yellow');
