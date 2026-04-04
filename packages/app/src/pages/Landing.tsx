@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 const FEATURES = [
   {
     title: 'Prompt Scanner',
-    desc: '168 detection rules across keyword, regex, heuristic, NLP, and file-based analysis. Real-time confidence scoring with OWASP and MITRE ATLAS compliance mapping.',
+    desc: '176 detection rules across keyword, regex, heuristic, NLP, and file-based analysis. Real-time confidence scoring with OWASP and MITRE ATLAS compliance mapping.',
     link: '/scanner',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
@@ -77,7 +77,7 @@ export default function Landing() {
       <section className="text-center pt-8 md:pt-16">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#c9a227]/10 border border-[#c9a227]/30 text-[#c9a227] text-xs mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          168 detection rules across 20 categories
+          176 detection rules across 20 categories
         </div>
 
         <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight" style={{ fontFamily: 'serif' }}>

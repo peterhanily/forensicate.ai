@@ -1,7 +1,7 @@
 {
   "name": "forensicate-vscode",
   "displayName": "Forensicate.ai - Prompt Security Scanner",
-  "description": "Detect prompt injection & jailbreak attempts in your editor. 168 detection rules, inline diagnostics, real-time scanning.",
+  "description": "Detect prompt injection & jailbreak attempts in your editor. 176 detection rules, inline diagnostics, real-time scanning.",
   "version": "0.1.0",
   "publisher": "forensicate",
   "license": "Apache-2.0",

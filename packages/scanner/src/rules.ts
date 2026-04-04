@@ -1556,6 +1556,55 @@ export const keywordRules: DetectionRule[] = [
       'child_process',
     ],
   },
+  // === MULTIMODAL INJECTION (Audio/Video/Image) ===
+
+  // Image text overlay injection
+  {
+    id: 'kw-image-text-injection',
+    name: 'Image/Video Text Overlay Injection',
+    description: 'Detects references to text overlaid on images or video frames that contain injection instructions for vision-language models',
+    type: 'keyword',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    keywords: [
+      'read the text in the image',
+      'follow instructions in the image',
+      'the image says to ignore',
+      'text overlay in the video says',
+      'read what the sign says',
+      'follow the watermark text',
+      'the caption in the image',
+      'embedded text instructions',
+      'OCR the hidden text',
+    ],
+  },
+
+  // Audio command injection
+  {
+    id: 'kw-audio-command-injection',
+    name: 'Audio Command Injection',
+    description: 'Detects patterns indicating adversarial audio commands, ultrasonic injection, or hidden voice instructions targeting speech-processing AI',
+    type: 'keyword',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access', 'command-and-control'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    keywords: [
+      'play this audio to the assistant',
+      'the background audio contains instructions',
+      'ultrasonic command',
+      'inaudible frequency command',
+      'hidden voice command',
+      'dolphin attack',
+      'adversarial audio',
+      'backmasked instructions',
+      'subliminal audio message',
+    ],
+  },
 ];
 
 // ============================================================================
@@ -2964,6 +3013,68 @@ export const regexRules: DetectionRule[] = [
     flags: 'gi',
   },
 
+  // === MULTIMODAL INJECTION (Audio / Video / Image) ===
+
+  // Audio transcript injection markers
+  {
+    id: 'rx-audio-transcript-injection',
+    name: 'Audio Transcript Injection',
+    description: 'Detects injection patterns in audio transcripts, podcast text, and speech-to-text output that indicate hidden voice commands or adversarial audio',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:\\[(?:inaudible|whispered|background|hidden|subliminal)\\]\\s*(?:ignore|override|system|bypass|reveal))|(?:(?:the\\s+)?(?:speaker|voice|narrator|audio)\\s+(?:says?|instructs?|commands?|orders?)\\s*[:\\.]+\\s*(?:ignore|override|bypass|reveal|forget))',
+    flags: 'gi',
+  },
+
+  // Video subtitle/caption injection
+  {
+    id: 'rx-subtitle-injection',
+    name: 'Subtitle/Caption Injection',
+    description: 'Detects injection payloads hidden in subtitle formats (SRT, WebVTT, SSA) or video captions that AI systems may process',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access', 'persistence'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:^\\d+\\s*\\n\\d{2}:\\d{2}:\\d{2}[,.]\\d{3}\\s*-->\\s*\\d{2}:\\d{2}:\\d{2}[,.]\\d{3}\\s*\\n.*?(?:ignore|override|system\\s*prompt|bypass|jailbreak))|(?:WEBVTT|NOTE\\s+injection|::cue\\s*\\()',
+    flags: 'gim',
+  },
+
+  // Multimodal reference injection — instructions referencing hidden content in images/audio/video
+  {
+    id: 'rx-multimodal-hidden-instruction',
+    name: 'Multimodal Hidden Instruction Reference',
+    description: 'Detects prompts that reference hidden or invisible content in images, audio, or video as a source of instructions to follow',
+    type: 'regex',
+    severity: 'critical',
+    enabled: true,
+    killChain: ['initial-access', 'command-and-control'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:(?:follow|read|decode|extract|obey|execute)\\s+(?:the\\s+)?(?:hidden|invisible|embedded|encoded|secret|concealed)\\s+(?:instructions?|text|message|commands?|prompt)\\s+(?:in|from|within)\\s+(?:the|this)\\s+(?:image|photo|picture|video|audio|recording|clip|frame))|(?:(?:the|this)\\s+(?:image|photo|video|audio)\\s+(?:contains?|has|includes?)\\s+(?:hidden|invisible|embedded|secret)\\s+(?:instructions?|commands?|text))',
+    flags: 'gi',
+  },
+
+  // Video frame-level injection
+  {
+    id: 'rx-video-frame-injection',
+    name: 'Video Frame Injection',
+    description: 'Detects references to single-frame or subliminal frame injection in video content targeting vision-language models',
+    type: 'regex',
+    severity: 'high',
+    enabled: true,
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0051.001'],
+    euAiActRisk: 'high',
+    pattern: '(?:(?:single|one|hidden|subliminal|invisible|brief)\\s+frame\\s+(?:at|in|contains?|shows?|displays?|says?))|(?:frame\\s+(?:\\d+|#\\d+)\\s+(?:contains?|has|shows?|displays?)\\s+(?:instructions?|text|commands?))|(?:(?:insert|add|embed|hide)\\s+(?:instructions?|text|commands?)\\s+(?:in|into|within)\\s+(?:a\\s+)?(?:single\\s+)?frame)',
+    flags: 'gi',
+  },
+
   // API/Function Schema Poisoning
   {
     id: 'rx-schema-poisoning',
@@ -3264,6 +3375,19 @@ export const ruleCategories: RuleCategory[] = [
       regexRules.find(r => r.id === 'rx-output-exfil-dump')!,
       regexRules.find(r => r.id === 'rx-output-guardrail-ack')!,
       regexRules.find(r => r.id === 'rx-image-instruction-ref')!,
+    ],
+  },
+  {
+    id: 'multimodal-injection',
+    name: 'Multimodal Injection (Audio/Video/Image)',
+    description: 'Rules detecting prompt injection via audio transcripts, video subtitles/frames, image text overlays, and cross-modal hidden instructions',
+    rules: [
+      keywordRules.find(r => r.id === 'kw-image-text-injection')!,
+      keywordRules.find(r => r.id === 'kw-audio-command-injection')!,
+      regexRules.find(r => r.id === 'rx-audio-transcript-injection')!,
+      regexRules.find(r => r.id === 'rx-subtitle-injection')!,
+      regexRules.find(r => r.id === 'rx-multimodal-hidden-instruction')!,
+      regexRules.find(r => r.id === 'rx-video-frame-injection')!,
     ],
   },
   heuristicCategory,

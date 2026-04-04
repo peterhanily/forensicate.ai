@@ -755,6 +755,97 @@ export function adversarialSuffixDetection(text: string): HeuristicResult | null
   };
 }
 
+/**
+ * Unicode typographic ligature detection.
+ * Detects ligature codepoints (U+FB00-FB04: ff, fi, fl, ffi, ffl) and other
+ * precomposed characters that render identically to their decomposed forms
+ * but may tokenize differently, enabling keyword filter bypass.
+ * NOVEL: This specific detection is original Forensicate.ai research.
+ */
+export function ligatureDetection(text: string): HeuristicResult | null {
+  if (text.length < 5) return null;
+
+  // Typographic ligatures (U+FB00-FB04)
+  const ligatures = [
+    { char: '\uFB00', name: 'ff', decomposed: 'ff' },
+    { char: '\uFB01', name: 'fi', decomposed: 'fi' },
+    { char: '\uFB02', name: 'fl', decomposed: 'fl' },
+    { char: '\uFB03', name: 'ffi', decomposed: 'ffi' },
+    { char: '\uFB04', name: 'ffl', decomposed: 'ffl' },
+  ];
+
+  // Also check for mathematical alphanumeric symbols used as letter substitutes
+  // U+1D400-1D7FF (Bold, Italic, Script, etc. letters that look like normal letters)
+  const mathAlphaRegex = /[\u{1D400}-\u{1D7FF}]/u;
+
+  const foundLigatures: string[] = [];
+  for (const lig of ligatures) {
+    if (text.includes(lig.char)) {
+      foundLigatures.push(lig.name);
+    }
+  }
+
+  const hasMathAlpha = mathAlphaRegex.test(text);
+
+  if (foundLigatures.length === 0 && !hasMathAlpha) return null;
+
+  const details: string[] = [];
+  if (foundLigatures.length > 0) {
+    details.push(`Typographic ligatures found: ${foundLigatures.join(', ')}`);
+  }
+  if (hasMathAlpha) {
+    details.push('Mathematical alphanumeric symbols detected (possible letter substitution)');
+  }
+
+  return {
+    matched: true,
+    details: details.join('. ') + '. These characters may bypass keyword detection while appearing identical to the model.',
+    confidence: foundLigatures.length >= 2 || hasMathAlpha ? 0.8 : 0.5,
+  };
+}
+
+/**
+ * Whitespace steganography detection.
+ * Detects suspicious patterns in tab/space usage that may encode hidden
+ * binary data in whitespace — a steganographic injection technique.
+ */
+export function whitespaceStegDetection(text: string): HeuristicResult | null {
+  if (text.length < 50) return null;
+
+  const lines = text.split('\n');
+  if (lines.length < 3) return null;
+
+  // Count lines with suspicious trailing whitespace patterns
+  let suspiciousLines = 0;
+  let totalTrailingWS = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trimEnd();
+    const trailing = line.length - trimmed.length;
+    if (trailing > 0) {
+      totalTrailingWS += trailing;
+      // Check for alternating tab/space patterns (binary encoding)
+      const trailingChars = line.slice(trimmed.length);
+      if (/[\t ]{4,}/.test(trailingChars) && /\t/.test(trailingChars) && / /.test(trailingChars)) {
+        suspiciousLines++;
+      }
+    }
+  }
+
+  // Also check for unusual mid-line whitespace patterns
+  const multiSpaceRuns = (text.match(/  {3,}/g) || []).length;
+
+  if (suspiciousLines >= 3 || (totalTrailingWS > 20 && suspiciousLines >= 2) || multiSpaceRuns >= 5) {
+    return {
+      matched: true,
+      details: `Suspicious whitespace patterns: ${suspiciousLines} lines with mixed tab/space trailing whitespace, ${multiSpaceRuns} multi-space runs. May encode hidden instructions via whitespace steganography.`,
+      confidence: suspiciousLines >= 5 ? 0.9 : 0.6,
+    };
+  }
+
+  return null;
+}
+
 // ============================================================================
 // HEURISTIC RULE DEFINITIONS
 // ============================================================================
@@ -914,6 +1005,33 @@ export const heuristicRules: DetectionRule[] = [
     euAiActRisk: 'high',
     heuristic: adversarialSuffixDetection,
   },
+  // === NOVEL DETECTIONS (Forensicate.ai Research) ===
+  {
+    id: 'h-ligature-detection',
+    name: 'Unicode Ligature Tokenizer Bypass',
+    description: 'Detects typographic ligatures (fi/fl/ff/ffi/ffl) and mathematical alphanumeric symbols that render identically to normal text but may tokenize differently, enabling keyword filter bypass (Forensicate.ai original research)',
+    type: 'heuristic',
+    severity: 'medium',
+    enabled: true,
+    owaspLlm: ['LLM01'],
+    killChain: ['initial-access'],
+    mitreAtlas: ['AML.T0053'],
+    euAiActRisk: 'limited',
+    heuristic: ligatureDetection,
+  },
+  {
+    id: 'h-whitespace-steg',
+    name: 'Whitespace Steganography',
+    description: 'Detects hidden data encoded in whitespace patterns (alternating tabs/spaces as binary) — a steganographic technique for embedding invisible instructions in normal-looking text',
+    type: 'heuristic',
+    severity: 'high',
+    enabled: true,
+    owaspLlm: ['LLM01'],
+    killChain: ['initial-access', 'persistence'],
+    mitreAtlas: ['AML.T0053'],
+    euAiActRisk: 'high',
+    heuristic: whitespaceStegDetection,
+  },
 ];
 
 // ============================================================================
@@ -950,6 +1068,8 @@ const heuristicFunctionMap: Record<string, (text: string) => HeuristicResult | n
   'h-encoding-depth': encodingDepthDetection,
   'h-attack-genealogy': attackGenealogyFingerprint,
   'h-adversarial-suffix': adversarialSuffixDetection,
+  'h-ligature-detection': ligatureDetection,
+  'h-whitespace-steg': whitespaceStegDetection,
   ...nlpHeuristicFunctionMap,
   ...fileHeuristicFunctionMap,
 };
