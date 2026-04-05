@@ -1654,28 +1654,64 @@ export default function UltrasonicAnalyzer() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-300">Detection Findings</h3>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      // Compute SHA-256 hash of audio data for chain-of-custody
+                      let fileHash = 'unavailable';
+                      try {
+                        const wavBlob = audioBufferToWav(audioBuffer!);
+                        const hashBuffer = await crypto.subtle.digest('SHA-256', await wavBlob.arrayBuffer());
+                        fileHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+                      } catch { /* hash computation failed */ }
+
                       const report = {
-                        timestamp: new Date().toISOString(),
-                        file: fileName,
-                        sampleRate: result.sampleRate,
-                        duration: result.duration,
-                        overallRisk: result.overallRisk,
-                        overallConfidence: result.overallConfidence,
-                        findings: result.findings,
+                        forensicReport: {
+                          toolVersion: 'Forensicate.ai Ultrasonic Analyzer v1.0',
+                          analysisTimestamp: new Date().toISOString(),
+                          analyst: '(not specified)',
+                        },
+                        chainOfCustody: {
+                          fileName,
+                          fileMimeType: fileMime,
+                          audioHashSHA256: fileHash,
+                          sampleRate: result.sampleRate,
+                          duration: result.duration,
+                          channelCount: result.channelCount,
+                          maxAnalyzableFreqHz: result.maxAnalyzableFreq,
+                          fftSize: result.fftSize,
+                          frequencyResolutionHz: result.frequencyResolution,
+                        },
+                        assessment: {
+                          overallRisk: result.overallRisk,
+                          overallConfidence: result.overallConfidence,
+                          findingsCount: result.findings.length,
+                        },
+                        findings: result.findings.map(f => ({
+                          ...f,
+                          analysisNote: f.severity === 'critical'
+                            ? 'Requires immediate investigation — consistent with active ultrasonic attack'
+                            : f.severity === 'high'
+                            ? 'Elevated risk — review in context of deployment environment'
+                            : 'Informational — may indicate environmental factors or codec artifacts',
+                        })),
+                        limitations: [
+                          `Maximum analyzable frequency: ${(result.maxAnalyzableFreq / 1000).toFixed(1)} kHz (Nyquist limit)`,
+                          'Lossy codecs (MP3, AAC) may have stripped ultrasonic content before analysis',
+                          'Detection thresholds are tuned for DolphinAttack/NUIT/SurfingAttack profiles',
+                          'Chirp/FM attacks with sweep rates >5 kHz/s may not be fully characterized',
+                        ],
                       };
                       const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = `ultrasonic-report-${fileName.replace(/\.[^.]+$/, '')}.json`;
+                      a.download = `ultrasonic-forensic-report-${fileName.replace(/\.[^.]+$/, '')}.json`;
                       a.click();
                       setTimeout(() => URL.revokeObjectURL(url), 100);
                     }}
                     className="text-xs text-gray-500 hover:text-[#c9a227] transition-colors"
-                    title="Export findings as JSON"
+                    title="Export forensic report as JSON"
                   >
-                    Export
+                    Export Report
                   </button>
                 </div>
                 {result.findings.map((finding, i) => (

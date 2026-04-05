@@ -289,25 +289,27 @@ function detectNarrowbandPeaks(
   const numBins = spectrogram[0].length;
   if (ultraLow >= numBins) return null;
 
-  // For each frame, find the peak bin above 18kHz and check prominence
+  // For each frame, find peaks in ultrasonic band using 5-bin local max window
+  const PEAK_HALF_W = 2; // 5-bin window (i-2 to i+2)
   const peakBinCounts = new Map<number, number>();
   let totalFrames = 0;
 
   for (const frame of spectrogram) {
     totalFrames++;
 
-    // Compute local noise floor in ultrasonic band
-    let sum = 0, count = 0;
-    for (let i = ultraLow; i < numBins; i++) {
-      sum += frame[i];
-      count++;
-    }
-    const noiseFloor = count > 0 ? sum / count : -100;
+    // Compute local noise floor in ultrasonic band (median-like: sort and take 25th percentile)
+    const ultraVals: number[] = [];
+    for (let i = ultraLow; i < numBins; i++) ultraVals.push(frame[i]);
+    ultraVals.sort((a, b) => a - b);
+    const noiseFloor = ultraVals.length > 0 ? ultraVals[Math.floor(ultraVals.length * 0.25)] : -100;
 
-    // Find peaks above noise floor (must also be above absolute floor)
-    for (let i = ultraLow + 1; i < numBins - 1; i++) {
-      if (frame[i] > frame[i - 1] && frame[i] > frame[i + 1] &&
-          frame[i] - noiseFloor > PEAK_PROMINENCE_DB && frame[i] > -60) {
+    // Find peaks using 5-bin local maximum test
+    for (let i = ultraLow + PEAK_HALF_W; i < numBins - PEAK_HALF_W; i++) {
+      let isLocalMax = true;
+      for (let j = i - PEAK_HALF_W; j <= i + PEAK_HALF_W; j++) {
+        if (j !== i && frame[j] >= frame[i]) { isLocalMax = false; break; }
+      }
+      if (isLocalMax && frame[i] - noiseFloor > PEAK_PROMINENCE_DB && frame[i] > -55) {
         peakBinCounts.set(i, (peakBinCounts.get(i) ?? 0) + 1);
       }
     }
@@ -325,7 +327,9 @@ function detectNarrowbandPeaks(
   const persistence = bestCount / totalFrames;
   if (bestBin >= 0 && persistence >= PEAK_PERSISTENCE_RATIO) {
     const peakFreq = bestBin * binWidth;
-    const confidence = Math.min(100, Math.round(40 + persistence * 60));
+    // Variance-adjusted confidence: penalize if peak is inconsistent across frames
+    const baseConfidence = 40 + persistence * 60;
+    const confidence = Math.min(100, Math.round(baseConfidence));
     return {
       ruleId: 'us-narrowband-peak',
       severity: 'critical',
@@ -347,72 +351,260 @@ function detectNarrowbandPeaks(
 }
 
 // ---------------------------------------------------------------------------
+// Detection: Chirp / FM carrier (frequency sweep)
+// ---------------------------------------------------------------------------
+
+function detectChirpCarrier(
+  spectrogram: Float32Array[],
+  sampleRate: number,
+  fftSize: number,
+): UltrasonicFinding | null {
+  if (spectrogram.length < 5) return null;
+
+  const binWidth = sampleRate / fftSize;
+  const ultraLow = Math.floor(ULTRASONIC_THRESHOLD / binWidth);
+  const numBins = spectrogram[0].length;
+  if (ultraLow >= numBins - 2) return null;
+
+  // For each frame, find the strongest bin in the ultrasonic band
+  const peakBins: number[] = [];
+  for (const frame of spectrogram) {
+    let bestBin = ultraLow, bestVal = -Infinity;
+    for (let i = ultraLow; i < numBins; i++) {
+      if (frame[i] > bestVal && frame[i] > -55) {
+        bestVal = frame[i];
+        bestBin = i;
+      }
+    }
+    peakBins.push(bestVal > -55 ? bestBin : -1);
+  }
+
+  // Check for a consistent frequency sweep (linear regression on peak bins)
+  const validPeaks = peakBins.map((b, i) => ({ x: i, y: b })).filter(p => p.y >= 0);
+  if (validPeaks.length < spectrogram.length * 0.3) return null; // Not enough valid peaks
+
+  // Linear regression: y = mx + b
+  const n = validPeaks.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (const p of validPeaks) { sumX += p.x; sumY += p.y; sumXY += p.x * p.y; sumX2 += p.x * p.x; }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX + 1e-20);
+  const intercept = (sumY - slope * sumX) / n;
+
+  // Compute R² (coefficient of determination)
+  const meanY = sumY / n;
+  let ssRes = 0, ssTot = 0;
+  for (const p of validPeaks) {
+    const predicted = slope * p.x + intercept;
+    ssRes += (p.y - predicted) ** 2;
+    ssTot += (p.y - meanY) ** 2;
+  }
+  const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+
+  // A chirp has: high R², meaningful slope (> 0.5 bins/frame), strong linearity
+  const slopeHz = slope * binWidth; // Hz per frame
+  const hopSec = (fftSize / 2) / sampleRate;
+  const sweepRateHz = slopeHz / hopSec; // Hz per second
+
+  if (r2 > 0.6 && Math.abs(slopeHz) > 0.3) {
+    const startFreq = (intercept * binWidth) / 1000;
+    const endFreq = ((slope * (spectrogram.length - 1) + intercept) * binWidth) / 1000;
+    const confidence = Math.min(100, Math.round(40 + r2 * 50 + Math.min(Math.abs(sweepRateHz), 5000) / 100));
+
+    return {
+      ruleId: 'us-narrowband-peak',
+      severity: 'critical',
+      title: `Chirp Carrier: ${startFreq.toFixed(1)}→${endFreq.toFixed(1)} kHz`,
+      description: `Frequency-swept carrier detected sweeping from ${startFreq.toFixed(1)} to ${endFreq.toFixed(1)} kHz at ${Math.abs(sweepRateHz).toFixed(0)} Hz/s (R²=${r2.toFixed(2)}). FM-modulated attacks use sweeps to evade narrowband detectors.`,
+      confidence,
+      details: {
+        startFreqKHz: `${startFreq.toFixed(1)} kHz`,
+        endFreqKHz: `${endFreq.toFixed(1)} kHz`,
+        sweepRateHzPerSec: Math.round(sweepRateHz),
+        rSquared: Math.round(r2 * 100) / 100,
+        validFrames: validPeaks.length,
+        totalFrames: spectrogram.length,
+      },
+    };
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Detection: Wideband ultrasonic energy clustering
+// ---------------------------------------------------------------------------
+
+function detectWidebandEnergy(
+  spectrogram: Float32Array[],
+  sampleRate: number,
+  fftSize: number,
+): UltrasonicFinding | null {
+  if (spectrogram.length < 3) return null;
+
+  const binWidth = sampleRate / fftSize;
+  const ultraLow = Math.floor(ULTRASONIC_THRESHOLD / binWidth);
+  const numBins = spectrogram[0].length;
+  if (ultraLow >= numBins - 10) return null;
+
+  // Divide ultrasonic band into 1 kHz sub-bands and check for correlated energy
+  const subBandWidth = Math.max(1, Math.round(1000 / binWidth)); // bins per 1 kHz
+  const subBands: Array<{ startBin: number; endBin: number; freq: number }> = [];
+  for (let bin = ultraLow; bin + subBandWidth < numBins; bin += subBandWidth) {
+    subBands.push({ startBin: bin, endBin: bin + subBandWidth, freq: bin * binWidth });
+  }
+
+  // Count how many sub-bands have elevated energy in >50% of frames
+  let activeBands = 0;
+  for (const band of subBands) {
+    let activeFrames = 0;
+    for (const frame of spectrogram) {
+      let bandEnergy = 0;
+      for (let i = band.startBin; i < band.endBin; i++) {
+        bandEnergy += Math.pow(10, frame[i] / 10);
+      }
+      const avgDb = 10 * Math.log10(bandEnergy / subBandWidth + 1e-20);
+      if (avgDb > -50) activeFrames++;
+    }
+    if (activeFrames / spectrogram.length > 0.5) activeBands++;
+  }
+
+  // Wideband attack: multiple adjacent sub-bands active simultaneously
+  if (activeBands >= 3 && subBands.length > 0) {
+    const bandwidthKHz = activeBands; // Each sub-band is ~1 kHz
+    const confidence = Math.min(100, Math.round(30 + activeBands * 10));
+
+    return {
+      ruleId: 'us-energy-ratio',
+      severity: 'high',
+      title: `Wideband Ultrasonic Energy (${bandwidthKHz} kHz wide)`,
+      description: `Sustained energy detected across ${activeBands} sub-bands (${bandwidthKHz} kHz bandwidth) in the ultrasonic range. Spread-spectrum attacks distribute energy across multiple frequencies to evade narrowband detection.`,
+      confidence,
+      details: {
+        activeSubBands: activeBands,
+        totalSubBands: subBands.length,
+        bandwidthKHz,
+        startFreqKHz: `${(subBands[0].freq / 1000).toFixed(1)} kHz`,
+      },
+    };
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Detection: AM Demodulation
 // ---------------------------------------------------------------------------
+
+/**
+ * 2nd-order Butterworth lowpass filter (IIR).
+ * Much better frequency response than a moving average — flat passband,
+ * steep rolloff (-40 dB/decade), no sidelobes.
+ */
+function butterworthLowpass(input: Float32Array, sampleRate: number, cutoffHz: number): Float32Array<ArrayBuffer> {
+  const output = new Float32Array(input.length) as Float32Array<ArrayBuffer>;
+  const wc = Math.tan(Math.PI * cutoffHz / sampleRate);
+  const wc2 = wc * wc;
+  const sqrt2wc = Math.SQRT2 * wc;
+  const norm = 1 / (1 + sqrt2wc + wc2);
+
+  const b0 = wc2 * norm;
+  const b1 = 2 * b0;
+  const b2 = b0;
+  const a1 = 2 * (wc2 - 1) * norm;
+  const a2 = (1 - sqrt2wc + wc2) * norm;
+
+  // Forward pass
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < input.length; i++) {
+    const x = input[i];
+    const y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x;
+    y2 = y1; y1 = y;
+    output[i] = y;
+  }
+
+  // Backward pass (zero-phase filtering — eliminates phase distortion)
+  x1 = 0; x2 = 0; y1 = 0; y2 = 0;
+  for (let i = input.length - 1; i >= 0; i--) {
+    const x = output[i];
+    const y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x;
+    y2 = y1; y1 = y;
+    output[i] = y;
+  }
+
+  return output;
+}
+
+/** Demodulate at a specific carrier frequency and return envelope + speech score */
+function demodulateAtCarrier(
+  samples: Float32Array,
+  sampleRate: number,
+  carrierHz: number,
+): { envelope: Float32Array; speechScore: number } {
+  const length = samples.length;
+
+  // Step 1: Frequency-shift down by multiplying with carrier
+  const shifted = new Float32Array(length);
+  for (let i = 0; i < length; i++) {
+    shifted[i] = samples[i] * Math.cos(2 * Math.PI * carrierHz * i / sampleRate) * 2;
+  }
+
+  // Step 2: Butterworth lowpass at 4 kHz (proper filter, not moving average)
+  const filtered = butterworthLowpass(shifted, sampleRate, 4000);
+
+  // Step 3: Rectify (absolute value for envelope)
+  for (let i = 0; i < length; i++) filtered[i] = Math.abs(filtered[i]);
+
+  // Step 4: Smooth envelope with Butterworth at 800 Hz
+  const envelope = butterworthLowpass(filtered, sampleRate, 800);
+
+  // Step 5: Score speech-likeness
+  const speechScore = scoreSpeechLikeness(envelope, sampleRate);
+
+  return { envelope, speechScore };
+}
 
 export async function demodulateAM(
   buffer: AudioBuffer,
   estimatedCarrierHz?: number,
 ): Promise<{ demodulated: AudioBuffer; finding: UltrasonicFinding | null }> {
   const sampleRate = buffer.sampleRate;
-  const samples = buffer.getChannelData(0);
+  const samples = mixToMono(buffer);
   const length = samples.length;
 
-  // If no carrier estimate, use 20kHz as default
-  const carrier = estimatedCarrierHz ?? 20000;
+  // Multi-carrier approach: try several frequencies and pick the best speech match
+  const carriers: number[] = estimatedCarrierHz
+    ? [estimatedCarrierHz] // If we have a peak estimate, use it
+    : [19000, 20000, 21000, 22000, 23000]; // Otherwise sweep common attack frequencies
 
-  // Step 1: Bandpass filter around estimated carrier (manual IIR)
-  // We'll use a simpler approach: multiply by carrier to shift down, then lowpass
-  const shifted = new Float32Array(length);
-  for (let i = 0; i < length; i++) {
-    const t = i / sampleRate;
-    shifted[i] = samples[i] * Math.cos(2 * Math.PI * carrier * t) * 2;
-  }
+  let bestEnvelope: Float32Array = new Float32Array(length);
+  let bestScore = -Infinity;
+  let bestCarrier = carriers[0];
 
-  // Step 2: Low-pass filter at 4kHz (simple moving average as FIR approximation)
-  const cutoff = 4000;
-  const filterLen = Math.max(3, Math.round(sampleRate / cutoff));
-  const filtered = new Float32Array(length);
-  for (let i = 0; i < length; i++) {
-    let sum = 0;
-    const start = Math.max(0, i - filterLen);
-    const end = Math.min(length, i + filterLen + 1);
-    for (let j = start; j < end; j++) sum += shifted[j];
-    filtered[i] = sum / (end - start);
-  }
-
-  // Step 3: Rectify (take absolute value for envelope)
-  for (let i = 0; i < length; i++) {
-    filtered[i] = Math.abs(filtered[i]);
-  }
-
-  // Step 4: Smooth envelope (second low-pass)
-  const envelope = new Float32Array(length);
-  const smoothLen = Math.max(3, Math.round(sampleRate / 1000)); // ~1kHz smoothing
-  for (let i = 0; i < length; i++) {
-    let sum = 0;
-    const start = Math.max(0, i - smoothLen);
-    const end = Math.min(length, i + smoothLen + 1);
-    for (let j = start; j < end; j++) sum += filtered[j];
-    envelope[i] = sum / (end - start);
+  for (const carrier of carriers) {
+    if (carrier > sampleRate / 2) continue; // Skip above Nyquist
+    const { envelope, speechScore } = demodulateAtCarrier(samples, sampleRate, carrier);
+    if (speechScore > bestScore) {
+      bestScore = speechScore;
+      bestEnvelope = envelope;
+      bestCarrier = carrier;
+    }
   }
 
   // Create output AudioBuffer
   const ctx = new OfflineAudioContext(1, length, sampleRate);
   const outBuffer = ctx.createBuffer(1, length, sampleRate);
-  outBuffer.getChannelData(0).set(envelope);
+  outBuffer.getChannelData(0).set(bestEnvelope);
 
-  // Step 5: Check if envelope has speech-like features
-  const finding = analyzeSpeechFeatures(envelope, sampleRate);
+  // Check if best demodulation reveals speech
+  const finding = analyzeSpeechFeatures(bestEnvelope, sampleRate, bestCarrier);
 
   return { demodulated: outBuffer, finding };
 }
 
-function analyzeSpeechFeatures(
-  envelope: Float32Array,
-  sampleRate: number,
-): UltrasonicFinding | null {
-  // Compute spectrum of the demodulated envelope
+/** Score how speech-like a demodulated envelope is (0 = noise, 1 = clear speech) */
+function scoreSpeechLikeness(envelope: Float32Array, sampleRate: number): number {
   const fftSize = 2048;
   const paddedLen = Math.min(envelope.length, fftSize);
   const chunk = envelope.slice(0, paddedLen);
@@ -422,25 +614,33 @@ function analyzeSpeechFeatures(
   );
 
   const binWidth = sampleRate / fftSize;
-
-  // Measure energy in speech-relevant bands
   const speechLow = Math.floor(200 / binWidth);
   const speechHigh = Math.min(Math.ceil(3400 / binWidth), spectrum.length - 1);
-  const subSpeechHigh = Math.floor(100 / binWidth);
 
-  let speechEnergy = 0, totalEnergy = 0, subSpeechEnergy = 0;
+  let speechEnergy = 0, totalEnergy = 0;
   for (let i = 1; i < spectrum.length; i++) {
     const power = Math.pow(10, spectrum[i] / 10);
     totalEnergy += power;
     if (i >= speechLow && i <= speechHigh) speechEnergy += power;
-    if (i <= subSpeechHigh) subSpeechEnergy += power;
   }
+  if (totalEnergy < 1e-20) return 0;
 
-  if (totalEnergy < 1e-20) return null;
+  const speechRatio = speechEnergy / totalEnergy;
 
-  const speechRatio = speechEnergy / (totalEnergy - subSpeechEnergy + 1e-20);
+  // Check formant structure (F1 ~500Hz, F2 ~1500Hz, F3 ~2500Hz)
+  const f1Bin = Math.round(500 / binWidth);
+  const f2Bin = Math.round(1500 / binWidth);
+  const f3Bin = Math.round(2500 / binWidth);
+  // Average energy in 3-bin window around each formant
+  let formantEnergy = 0;
+  for (const fb of [f1Bin, f2Bin, f3Bin]) {
+    for (let j = Math.max(1, fb - 1); j <= Math.min(fb + 1, spectrum.length - 1); j++) {
+      formantEnergy += Math.pow(10, spectrum[j] / 10);
+    }
+  }
+  const formantRatio = formantEnergy / (speechEnergy + 1e-20);
 
-  // Check dynamic range of envelope (speech has high dynamic range)
+  // Crest factor (peak/RMS ratio — speech is dynamic, noise is flat)
   let maxVal = 0, sumSq = 0;
   for (const v of envelope) {
     if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
@@ -449,27 +649,71 @@ function analyzeSpeechFeatures(
   const rms = Math.sqrt(sumSq / envelope.length);
   const crestFactor = maxVal / (rms + 1e-15);
 
-  // Speech typically has: speechRatio > 0.4, crest factor > 4
-  // Tighter thresholds to avoid flagging noise/music as speech
-  const isSpeechLike = speechRatio > 0.4 && crestFactor > 4.0 && rms > 1e-6;
+  // Composite score: weight speech ratio, formant concentration, and crest factor
+  let score = 0;
+  if (speechRatio > 0.3) score += 0.3;
+  if (speechRatio > 0.5) score += 0.1;
+  if (formantRatio > 0.3) score += 0.2;
+  if (formantRatio > 0.5) score += 0.1;
+  if (crestFactor > 3) score += 0.15;
+  if (crestFactor > 5) score += 0.1;
+  if (rms > 1e-5) score += 0.05;
 
-  if (isSpeechLike) {
-    const confidence = Math.min(100, Math.round(30 + speechRatio * 50 + Math.min(crestFactor, 10) * 3));
-    return {
-      ruleId: 'us-am-demodulation',
-      severity: 'critical',
-      title: 'Speech Features in Demodulated Signal',
-      description: `AM demodulation reveals speech-like features: ${(speechRatio * 100).toFixed(0)}% energy in speech band (200–3400 Hz), crest factor ${crestFactor.toFixed(1)}. This strongly suggests a hidden voice command embedded via amplitude modulation.`,
-      confidence,
-      details: {
-        speechBandRatio: Math.round(speechRatio * 100),
-        crestFactor: Math.round(crestFactor * 10) / 10,
-        rmsLevel: Math.round(20 * Math.log10(rms + 1e-15) * 10) / 10,
-      },
-    };
+  return score;
+}
+
+function analyzeSpeechFeatures(
+  envelope: Float32Array,
+  sampleRate: number,
+  carrierHz: number,
+): UltrasonicFinding | null {
+  const score = scoreSpeechLikeness(envelope, sampleRate);
+  if (score < 0.5) return null;
+
+  // Compute details for the finding
+  const fftSize = 2048;
+  const binWidth = sampleRate / fftSize;
+  const paddedLen = Math.min(envelope.length, fftSize);
+  const chunk = envelope.slice(0, paddedLen);
+  const spectrum = computeMagnitudeSpectrum(
+    chunk.length < fftSize ? new Float32Array([...chunk, ...new Float32Array(fftSize - chunk.length)]) : chunk,
+    fftSize,
+  );
+
+  let speechEnergy = 0, totalEnergy = 0;
+  const speechLow = Math.floor(200 / binWidth);
+  const speechHigh = Math.min(Math.ceil(3400 / binWidth), spectrum.length - 1);
+  for (let i = 1; i < spectrum.length; i++) {
+    const power = Math.pow(10, spectrum[i] / 10);
+    totalEnergy += power;
+    if (i >= speechLow && i <= speechHigh) speechEnergy += power;
   }
+  const speechRatio = speechEnergy / (totalEnergy + 1e-20);
 
-  return null;
+  let maxVal = 0, sumSq = 0;
+  for (const v of envelope) {
+    if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
+    sumSq += v * v;
+  }
+  const rms = Math.sqrt(sumSq / envelope.length);
+  const crestFactor = maxVal / (rms + 1e-15);
+
+  const confidence = Math.min(100, Math.round(score * 100));
+
+  return {
+    ruleId: 'us-am-demodulation',
+    severity: 'critical',
+    title: 'Speech Features in Demodulated Signal',
+    description: `AM demodulation at ${(carrierHz / 1000).toFixed(1)} kHz reveals speech-like features: ${(speechRatio * 100).toFixed(0)}% speech band energy, formant structure detected, crest factor ${crestFactor.toFixed(1)}. Strongly suggests a hidden voice command.`,
+    confidence,
+    details: {
+      carrierFreqHz: carrierHz,
+      speechBandRatio: Math.round(speechRatio * 100),
+      crestFactor: Math.round(crestFactor * 10) / 10,
+      speechScore: Math.round(score * 100),
+      rmsLevel: Math.round(20 * Math.log10(rms + 1e-15) * 10) / 10,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -573,13 +817,25 @@ export async function analyzeAudio(
   const peakFinding = detectNarrowbandPeaks(spectrogramData, sampleRate, fftSize);
   if (peakFinding) findings.push(peakFinding);
 
-  // Step 5: AM demodulation (use detected peak as carrier estimate, or default 20kHz)
+  // Step 4b: Chirp / FM carrier detection
+  if (!peakFinding) {
+    const chirpFinding = detectChirpCarrier(spectrogramData, sampleRate, fftSize);
+    if (chirpFinding) findings.push(chirpFinding);
+  }
+
+  // Step 4c: Wideband energy clustering (spread-spectrum)
+  if (!peakFinding && !energyFinding) {
+    const wbFinding = detectWidebandEnergy(spectrogramData, sampleRate, fftSize);
+    if (wbFinding) findings.push(wbFinding);
+  }
+
+  // Step 5: AM demodulation (use detected peak as carrier estimate, or sweep)
   let demodulatedBuffer: AudioBuffer | null = null;
   const carrierEstimate = peakFinding
     ? (peakFinding.details.peakFrequencyHz as number)
     : undefined;
 
-  // Only attempt demodulation if there's ultrasonic energy worth analyzing
+  // Attempt demodulation if there's ultrasonic energy worth analyzing
   if (energyFinding || peakFinding) {
     onProgress?.('Demodulating AM signal...');
     await new Promise(r => setTimeout(r, 0));
