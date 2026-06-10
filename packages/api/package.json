@@ -15,8 +15,8 @@
     "@forensicate/scanner": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260504.1",
-    "@types/node": "^25.6.0",
+    "@cloudflare/workers-types": "^4.20260602.1",
+    "@types/node": "^25.9.1",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8",
     "wrangler": "^3.103.0"
