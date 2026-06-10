@@ -10,9 +10,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-nlp': ['compromise'],
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|react-router)[\\/]/.test(id)) {
+            return 'vendor-react'
+          }
+          if (/[\\/]node_modules[\\/]compromise[\\/]/.test(id)) {
+            return 'vendor-nlp'
+          }
         },
       },
     },
