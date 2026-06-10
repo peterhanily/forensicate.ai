@@ -376,7 +376,8 @@ export default function Scanner() {
 
    // Clear after pickup
    localStorage.removeItem(storageKey);
-   showToastMessage(`Imported ${suggestedRules.length} suggested rule${suggestedRules.length !== 1 ? 's' : ''} from Mutation Engine`, 4000);
+   // Defer toast out of the effect body to avoid a synchronous setState during mount
+   setTimeout(() => showToastMessage(`Imported ${suggestedRules.length} suggested rule${suggestedRules.length !== 1 ? 's' : ''} from Mutation Engine`, 4000), 0);
  } catch {
    // Ignore corrupt data
    localStorage.removeItem(storageKey);
