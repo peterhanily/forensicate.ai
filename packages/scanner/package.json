@@ -59,7 +59,7 @@
     "directory": "packages/scanner"
   },
   "dependencies": {
-    "compromise": "^14.15.1"
+    "compromise": "^14.16.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
