@@ -23,13 +23,13 @@
     "@forensicate/scanner": "workspace:*"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.8",
-    "@vitest/ui": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "archiver": "^8.0.0",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.2",
     "jsdom": "^29.1.1",
-    "sharp": "^0.34.5",
-    "vitest": "^4.1.8"
+    "sharp": "^0.35.4",
+    "vitest": "^4.1.11"
   },
   "author": "Forensicate.ai",
   "license": "Apache-2.0"
