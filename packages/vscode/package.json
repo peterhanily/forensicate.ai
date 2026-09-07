@@ -96,8 +96,8 @@
     "@forensicate/scanner": "workspace:*"
   },
   "devDependencies": {
-    "@types/vscode": "^1.120.0",
-    "esbuild": "^0.28.0",
+    "@types/vscode": "^1.136.0",
+    "esbuild": "^0.28.2",
     "typescript": "^6.0.3"
   }
 }
