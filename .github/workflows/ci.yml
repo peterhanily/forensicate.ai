@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -19,14 +22,14 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @forensicate/app lint
 
@@ -38,17 +41,17 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - name: Security audit
-        run: pnpm audit --audit-level=high || true
+        run: pnpm audit --audit-level=high
 
   test-scanner:
     name: Test Scanner
@@ -58,16 +61,20 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @forensicate/scanner test
+
+      - run: pnpm --filter @forensicate/scanner build
+
+      - run: pnpm --filter @forensicate/github-action test
 
   test-app:
     name: Test App
@@ -78,14 +85,14 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @forensicate/scanner build
 
@@ -100,14 +107,14 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @forensicate/scanner build
 
@@ -122,14 +129,14 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @forensicate/scanner build
 
@@ -143,14 +150,14 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @forensicate/scanner build
 
@@ -158,29 +165,47 @@ jobs:
 
       - run: pnpm --filter @forensicate/api type-check
 
+      - run: pnpm --filter forensicate-vscode lint
+
+      - run: pnpm --filter forensicate-vscode test
+
+  test-python:
+    name: Test Python (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.14']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install pytest
+      - run: python -m pytest packages/python/tests
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, security, test-app, test-api, test-extension, typecheck]
+    needs: [lint, security, test-app, test-api, test-extension, test-python, typecheck]
     steps:
       - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: 10.29.1
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
       - name: Build scanner
         run: pnpm --filter @forensicate/scanner build
 
-      - name: Build web app
-        run: pnpm --filter @forensicate/app build
+      - name: Build web app for GitHub Pages
+        run: pnpm --filter @forensicate/app build:gh-pages
 
       - name: Check bundle size
         run: |
@@ -197,14 +222,22 @@ jobs:
       - name: Build extensions (Chrome + Firefox)
         run: pnpm --filter @forensicate/extension build:all
 
+      - name: Build VS Code extension
+        run: pnpm --filter forensicate-vscode build
+
+      - name: Build API (dry run)
+        run: pnpm build:api
+
       - name: Verify rule counts
         run: pnpm verify:rules
 
       - name: Upload web app artifact
         uses: actions/upload-artifact@v7
         with:
-          name: web-app
+          # A re-run must publish its own tested build, never reuse an older attempt.
+          name: web-app-${{ github.run_id }}-${{ github.run_attempt }}
           path: packages/app/dist/
+          if-no-files-found: error
           retention-days: 7
 
       - name: Upload Chrome extension

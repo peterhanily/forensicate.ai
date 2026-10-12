@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   FileExtractionResult,
   FileScanResult,
@@ -199,19 +199,25 @@ export function useFileScanner(): UseFileScannerReturn {
   const [fileScanResult, setFileScanResult] = useState<FileScanResult | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState('');
+  const requestId = useRef(0);
+
+  useEffect(() => () => { requestId.current += 1; }, []);
 
   const handleFileSelected = useCallback(async (
     file: File,
     customRules?: DetectionRule[],
     confidenceThreshold?: number,
   ) => {
+    const currentRequest = ++requestId.current;
     setIsExtracting(true);
     setExtractionProgress('Extracting text...');
+    setFileExtractionResult(null);
     setFileScanResult(null);
 
     try {
       // Extract text from file
       const extraction = await extractTextFromFile(file);
+      if (currentRequest !== requestId.current) return;
       setFileExtractionResult(extraction);
       setExtractionProgress('Scanning extracted text...');
 
@@ -247,15 +253,19 @@ export function useFileScanner(): UseFileScannerReturn {
 
       setFileScanResult(result);
     } catch (error) {
+      if (currentRequest !== requestId.current) return;
       setFileExtractionResult(null);
       throw error;
     } finally {
-      setIsExtracting(false);
-      setExtractionProgress('');
+      if (currentRequest === requestId.current) {
+        setIsExtracting(false);
+        setExtractionProgress('');
+      }
     }
   }, []);
 
   const resetFileScanner = useCallback(() => {
+    requestId.current += 1;
     setFileExtractionResult(null);
     setFileScanResult(null);
     setIsExtracting(false);

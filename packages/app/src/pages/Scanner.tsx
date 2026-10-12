@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useRef, useCallback, Suspense, lazy } fro
 import { type PromptCategory, type PromptItem } from '../data/samplePrompts';
 import {
  scanPrompt,
+ MAX_SCAN_LENGTH,
+ ScanInputTooLargeError,
  ruleCategories,
  rehydrateHeuristics,
  fetchAllCommunityRules,
@@ -113,7 +115,12 @@ export default function Scanner() {
    } catch { /* ignore in test/SSR */ }
    return initialPromptText || '';
  });
- const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+ const [lastScanResult, setScanResult] = useState<ScanResult | null>(null);
+ const [scanFailure, setScanFailure] = useState<string | null>(null);
+ const inputSizeError = promptText.length > MAX_SCAN_LENGTH
+ ? new ScanInputTooLargeError(promptText.length).message : null;
+ const scanError = inputSizeError ?? scanFailure;
+ const scanResult = scanError ? null : lastScanResult;
  const [isScanning, setIsScanning] = useState(false);
  const [editingKeywords, setEditingKeywords] = useState<string | null>(null);
 
@@ -121,6 +128,7 @@ export default function Scanner() {
  const [selectedPrompts, setSelectedPrompts] = useState<Set<string>>(new Set());
  const [batchResults, setBatchResults] = useState<Array<{ prompt: PromptItem; result: ScanResult }> | null>(null);
  const [showBatchResults, setShowBatchResults] = useState(false);
+ const [batchError, setBatchError] = useState<string | null>(null);
 
  // Scan history state (session-only, not persisted)
  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
@@ -513,6 +521,13 @@ export default function Scanner() {
  const [showConfidenceInfo, setShowConfidenceInfo] = useState(false);
  const lastScannedRef = useRef<string>('');
  const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const scanTaskTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+ // Cancel queued work when its input/settings change, or the page unmounts.
+ useEffect(() => () => {
+ if (scanTaskTimerRef.current) clearTimeout(scanTaskTimerRef.current);
+ setIsScanning(false);
+ }, [promptText, localRules, confidenceThreshold, autoScan]);
 
  // ============================================================================
  // Scan History Helpers (declared before auto-scan effect that uses them)
@@ -539,6 +554,7 @@ export default function Scanner() {
 
  const handleSelectHistoryEntry = (entry: ScanHistoryEntry) => {
  setPromptText(entry.fullPrompt);
+ setScanFailure(null);
  setScanResult(entry.result);
  lastScannedRef.current = ''; // Allow rescan if rules changed
  };
@@ -548,7 +564,7 @@ export default function Scanner() {
  // ============================================================================
 
  useEffect(() => {
- if (!autoScan) return;
+ if (!autoScan || inputSizeError) return;
  if (!promptText.trim()) {
  lastScannedRef.current = '';
  return;
@@ -563,20 +579,28 @@ export default function Scanner() {
 
  autoScanTimerRef.current = setTimeout(() => {
  setIsScanning(true);
+ setScanFailure(null);
+ setScanResult(null);
  // Use nested timeout so React can paint the scanning state
- setTimeout(() => {
+ scanTaskTimerRef.current = setTimeout(() => {
+ try {
  const result = scanPrompt(promptText, localRules, confidenceThreshold);
  setScanResult(result);
- setIsScanning(false);
  lastScannedRef.current = scanKey;
  addToHistory(promptText, result);
+ } catch (error) {
+ setScanFailure(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
+ } finally {
+ setIsScanning(false);
+ }
  }, 0);
  }, 300);
 
  return () => {
  if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
+ if (scanTaskTimerRef.current) clearTimeout(scanTaskTimerRef.current);
  };
- }, [promptText, localRules, autoScan, confidenceThreshold]);
+ }, [promptText, localRules, autoScan, confidenceThreshold, inputSizeError]);
 
  // ============================================================================
  // Scan Handlers
@@ -592,36 +616,42 @@ export default function Scanner() {
  });
  setPromptText(prompt.content || '');
  setScanResult(null);
+ setScanFailure(null);
  lastScannedRef.current = ''; // Force rescan
  };
 
  const handleManualScan = () => {
- if (!promptText.trim()) return;
+ if (!promptText.trim() || inputSizeError) return;
 
  setIsScanning(true);
  setScanResult(null);
+ setScanFailure(null);
 
- setTimeout(() => {
+ scanTaskTimerRef.current = setTimeout(() => {
+ try {
  const result = scanPrompt(promptText, localRules, confidenceThreshold);
  setScanResult(result);
- setIsScanning(false);
  lastScannedRef.current = promptText + '|' + localRules.filter(r => r.enabled).map(r => r.id).join(',') + '|' + confidenceThreshold;
  addToHistory(promptText, result);
+ } catch (error) {
+ setScanFailure(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
+ } finally {
+ setIsScanning(false);
+ }
  }, 150);
  };
 
  const handlePromptChange = (text: string) => {
  setPromptText(text);
- if (!autoScan) {
+ setScanFailure(null);
  setScanResult(null);
- } else if (!text.trim()) {
- setScanResult(null);
- }
+ lastScannedRef.current = '';
  };
 
  const handleClear = () => {
  setPromptText('');
  setScanResult(null);
+ setScanFailure(null);
  lastScannedRef.current = '';
  };
 
@@ -655,8 +685,11 @@ export default function Scanner() {
 
  setIsScanning(true);
  setBatchResults(null);
+ setShowBatchResults(false);
+ setBatchError(null);
 
- setTimeout(() => {
+ scanTaskTimerRef.current = setTimeout(() => {
+ try {
  const results: Array<{ prompt: PromptItem; result: ScanResult }> = [];
 
  for (const cat of allPromptCategories) {
@@ -670,7 +703,11 @@ export default function Scanner() {
 
  setBatchResults(results);
  setShowBatchResults(true);
+ } catch (error) {
+ setBatchError(`Batch was not completed. ${error instanceof Error ? error.message : 'Please try again.'}`);
+ } finally {
  setIsScanning(false);
+ }
  }, 150);
  };
 
@@ -1225,6 +1262,7 @@ export default function Scanner() {
  />
  ) : (
  <Suspense fallback={null}><FileDropZone
+ onClear={resetFileScanner}
  onFileSelected={async (file) => {
  try {
  await handleFileSelected(file, localRules, confidenceThreshold);
@@ -1265,9 +1303,9 @@ export default function Scanner() {
  {!autoScan && (
  <button
  onClick={handleManualScan}
- disabled={!promptText.trim() || isScanning}
+ disabled={!promptText.trim() || !!inputSizeError || isScanning}
  className={`px-4 py-1 text-xs font-semibold uppercase tracking-wider rounded transition-all ${
- promptText.trim() && !isScanning
+ promptText.trim() && !inputSizeError && !isScanning
  ? 'bg-gradient-to-r from-[#8b0000] to-[#5c0000] text-[#c9a227] hover:from-[#a00000] hover:to-[#700000]'
  : 'bg-gray-800 text-gray-600 cursor-not-allowed'
  }`}
@@ -1335,6 +1373,16 @@ export default function Scanner() {
  )}
  </div>
 
+ {batchError && (
+ <p role="alert" className="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">
+ {batchError}
+ </p>
+ )}
+ {scanMode === 'text_input' && scanError && (
+ <p role="alert" className="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">
+ {scanError}
+ </p>
+ )}
  <div data-tour="scan-results">
  <ScannerResults
  scanResult={scanMode === 'file_scan' ? fileScanResult : scanResult}

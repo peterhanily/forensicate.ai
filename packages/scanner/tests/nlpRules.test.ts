@@ -42,6 +42,12 @@ describe('NLP Rules', () => {
   });
 
   describe('posImperativeDetection', () => {
+    it('counts ordinary imperative sentences using the NLP tag API', () => {
+      const result = posImperativeDetection('Make some tea. Read a book. Walk outside. Open the window.');
+      expect(result).toMatchObject({ matched: true });
+      expect(result!.details).toContain('4/4');
+    });
+
     it('returns null for short text', () => {
       expect(posImperativeDetection('Do this.')).toBeNull();
     });
@@ -106,6 +112,12 @@ describe('NLP Rules', () => {
   });
 
   describe('sentenceStructureAnomaly', () => {
+    it('counts short ordinary commands without conditional assertions', () => {
+      const result = sentenceStructureAnomaly('Make some tea. Read a book. Walk outside. Open the window.');
+      expect(result).toMatchObject({ matched: true });
+      expect(result!.details).toContain('4 are short imperatives');
+    });
+
     it('returns null for few sentences', () => {
       expect(sentenceStructureAnomaly('Do this. Do that.')).toBeNull();
     });

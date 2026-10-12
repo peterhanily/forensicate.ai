@@ -13,15 +13,15 @@ inputs:
   confidence-threshold:
     description: 'Minimum confidence percentage to report (0-100)'
     required: false
-    default: '50'
+    default: ''
   fail-on-finding:
     description: 'Fail the action if injection is detected'
     required: false
-    default: 'true'
+    default: ''
   scan-mode:
     description: 'What to scan: "changed" (PR diff only), "all" (all matching files)'
     required: false
-    default: 'changed'
+    default: ''
   comment-on-pr:
     description: 'Post scan results as a PR comment (requires github-token)'
     required: false
@@ -29,7 +29,7 @@ inputs:
   sarif-upload:
     description: 'Generate SARIF report and upload to GitHub Security tab'
     required: false
-    default: 'false'
+    default: ''
   github-token:
     description: 'GitHub token for PR comments and SARIF upload (defaults to GITHUB_TOKEN)'
     required: false
@@ -38,31 +38,44 @@ inputs:
 outputs:
   findings-count:
     description: 'Number of files with detected injections'
+    value: ${{ steps.scan.outputs.findings-count }}
   total-files-scanned:
     description: 'Total number of files scanned'
+    value: ${{ steps.scan.outputs.total-files-scanned }}
   max-confidence:
     description: 'Highest confidence score found'
+    value: ${{ steps.scan.outputs.max-confidence }}
   sarif-file:
     description: 'Path to generated SARIF file (when sarif-upload is enabled)'
+    value: ${{ steps.scan.outputs.sarif-file }}
 
 runs:
   using: 'composite'
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
-        node-version: '22'
+        node-version: '24'
 
-    - name: Install scanner
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v6
+      with:
+        version: 10.29.1
+        package_json_file: ${{ github.action_path }}/../../package.json
+
+    - name: Build scanner from action source
       shell: bash
-      run: npm install --no-save @forensicate/scanner@latest
-      working-directory: ${{ github.action_path }}
+      run: |
+        pnpm install --filter @forensicate/scanner... --frozen-lockfile --ignore-scripts
+        pnpm --filter @forensicate/scanner build
+      working-directory: ${{ github.action_path }}/../..
 
     - name: Run scan
       id: scan
       shell: bash
-      run: node ${{ github.action_path }}/scan.mjs
+      run: node "$FORENSICATE_ACTION_PATH/scan.mjs"
       env:
+        FORENSICATE_ACTION_PATH: ${{ github.action_path }}
         INPUT_PATHS: ${{ inputs.paths }}
         INPUT_CONFIDENCE_THRESHOLD: ${{ inputs.confidence-threshold }}
         INPUT_FAIL_ON_FINDING: ${{ inputs.fail-on-finding }}
@@ -72,9 +85,9 @@ runs:
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
 
     - name: Upload SARIF to GitHub Security
-      if: inputs.sarif-upload == 'true' && always()
+      if: always() && steps.scan.outputs.sarif-file != ''
       uses: github/codeql-action/upload-sarif@v3
       with:
-        sarif_file: forensicate-results.sarif
+        sarif_file: ${{ steps.scan.outputs.sarif-file }}
         category: forensicate-ai
       continue-on-error: true

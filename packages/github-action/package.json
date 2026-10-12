@@ -10,5 +10,8 @@
     "type": "git",
     "url": "https://github.com/peterhanily/forensicate.ai",
     "directory": "packages/github-action"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
   }
 }

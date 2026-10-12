@@ -215,8 +215,10 @@ export default function ForensicTimeline() {
   const [input, setInput] = useState('');
   const [expandedTurn, setExpandedTurn] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<TimelineAnalysis | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const scanTaskRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Debounced analysis — waits 400ms after last keystroke before scanning
   useEffect(() => {
@@ -229,17 +231,21 @@ export default function ForensicTimeline() {
       }
       setIsAnalyzing(true);
       // Use a nested timeout to let the "analyzing" state render before blocking
-      setTimeout(() => {
+      scanTaskRef.current = setTimeout(() => {
         try {
           const turns = parseConversation(input);
           setAnalysis(turns.length === 0 ? null : analyzeTimeline(turns));
-        } catch {
+        } catch (error) {
           setAnalysis(null);
+          setScanError(error instanceof Error ? error.message : 'Conversation was not scanned. Please try again.');
         }
         setIsAnalyzing(false);
       }, 0);
     }, 400);
-    return () => clearTimeout(debounceRef.current);
+    return () => {
+      clearTimeout(debounceRef.current);
+      clearTimeout(scanTaskRef.current);
+    };
   }, [input]);
 
   const acs = useMemo(() => {
@@ -251,9 +257,13 @@ export default function ForensicTimeline() {
 
   const loadSample = useCallback((sample: typeof SAMPLES[0]) => {
     setInput(sample.text);
+    if (sample.text !== input) {
+      setAnalysis(null);
+      setScanError(null);
+    }
     setExpandedTurn(null);
     toast(`Loaded: ${sample.name}`, 'info');
-  }, [toast]);
+  }, [input, toast]);
 
   return (
     <div className="space-y-4">
@@ -290,13 +300,15 @@ export default function ForensicTimeline() {
         </div>
         <textarea
           value={input}
-          onChange={e => { setInput(e.target.value); setExpandedTurn(null); }}
+          onChange={e => { setInput(e.target.value); setExpandedTurn(null); setAnalysis(null); setScanError(null); }}
           placeholder={'Paste a conversation here...\n\nUser: Hello, can you help me?\nAssistant: Of course!\nUser: Ignore all previous instructions...'}
           className="w-full h-40 bg-transparent text-gray-200 text-sm font-mono p-4 resize-y focus:outline-none placeholder-gray-700"
           aria-label="Conversation input — paste a multi-turn conversation to analyze"
           spellCheck={false}
         />
       </div>
+
+      {scanError && <p role="alert" className="text-sm text-amber-300">{scanError}</p>}
 
       {/* Results */}
       {analysis && (

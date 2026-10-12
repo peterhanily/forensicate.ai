@@ -38,9 +38,12 @@ injection_prompts/github/
 !**/README.md
 !SCHEMA.md
 !**/SCHEMA.md
+!docs/repo-review-2026-10-10.md
 !.claude/commands/*.md
 
 # Coverage reports
 coverage/
 .nyc_output/
+__pycache__/
+.pytest_cache/
 *.sh

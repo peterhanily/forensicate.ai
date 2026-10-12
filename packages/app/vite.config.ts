@@ -23,6 +23,8 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Bound concurrent jsdom instances so large-input checks are stable in CI.
+    maxWorkers: 2,
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',
     include: ['tests/**/*.test.{ts,tsx}'],

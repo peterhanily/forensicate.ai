@@ -4,11 +4,19 @@ AI prompt injection detection engine for Python. Zero dependencies.
 
 87 detection rules across keyword, regex, and heuristic analysis -- ported from the [Forensicate.ai](https://forensicate.ai) TypeScript scanner engine.
 
-## Installation
+This implementation is maintained as source in this repository. Use a local checkout for development.
+
+## Local Setup
 
 ```bash
-pip install forensicate
+git clone https://github.com/peterhanily/forensicate.ai.git
+cd forensicate.ai
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ./packages/python
 ```
+
+The Python examples and CLI commands below assume this virtual environment is active.
 
 ## Quick Start
 
@@ -130,7 +138,7 @@ echo "hello world" | forensicate --quiet && echo "clean"
 
 - Web App: [forensicate.ai](https://forensicate.ai)
 - GitHub: [github.com/peterhanily/forensicate.ai](https://github.com/peterhanily/forensicate.ai)
-- Chrome Extension: [Chrome Web Store](https://chromewebstore.google.com/detail/forensicateai/placeholder)
+- Chrome Extension: [Chrome Web Store](https://chromewebstore.google.com/detail/forensicateai-prompt-secu/ckohijglmbhlmbpiplcjhnlpijcbkapa)
 
 ## License
 

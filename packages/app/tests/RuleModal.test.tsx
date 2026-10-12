@@ -9,7 +9,7 @@ import {
   AddPromptSectionModal,
   ExportImportModal,
 } from '../src/components/RuleModal';
-import type { DetectionRule, RuleCategory } from '../src/lib/scanner/types';
+import type { DetectionRule, RuleCategory } from '@forensicate/scanner';
 
 describe('AddRuleModal', () => {
   const mockCategories: RuleCategory[] = [

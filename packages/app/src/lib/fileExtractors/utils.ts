@@ -93,10 +93,11 @@ export function detectZeroWidthChars(text: string): {
 
   for (let i = 0; i < text.length; i++) {
     const code = text.codePointAt(i)!;
+    const char = String.fromCodePoint(code);
     if (ZERO_WIDTH_CODEPOINTS.has(code) || (code >= 0xE0000 && code <= 0xE007F)) {
-      hiddenChars.push({ char: text[i], code, position: i });
+      hiddenChars.push({ char, code, position: i });
     } else {
-      cleanText += text[i];
+      cleanText += char;
     }
     if (code > 0xFFFF) i++; // Skip surrogate pair
   }

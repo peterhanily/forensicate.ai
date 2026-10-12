@@ -1,4 +1,4 @@
-import type { DetectionRule, RuleCategory } from '../scanner/types';
+import type { DetectionRule, RuleCategory } from '@forensicate/scanner';
 import type { PromptCategory } from '../../data/samplePrompts';
 
 export interface PersistedConfig {
@@ -16,7 +16,7 @@ export interface PersistedConfig {
   session?: {
     promptText?: string;
   };
-  // UI preferences (persisted locally, not shared)
+  // UI preferences (persisted locally; only confidenceThreshold is shared)
   ui?: {
     expandedRuleCategory?: string | null;
     expandedPromptCategory?: string | null;

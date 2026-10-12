@@ -5,17 +5,18 @@
 // and reports findings as GitHub Actions annotations, step summary, PR comment,
 // and SARIF report.
 
-import { readFileSync, readdirSync, existsSync, appendFileSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, appendFileSync, writeFileSync } from 'node:fs';
 import { resolve, extname, join, dirname } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
-// Import scanner from the locally-installed @forensicate/scanner package
+// Import the scanner built from the same action revision.
 // ---------------------------------------------------------------------------
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const scannerPath = join(__dirname, 'node_modules', '@forensicate', 'scanner', 'dist', 'index.js');
+const scannerPath = join(__dirname, '..', 'scanner', 'dist', 'index.js');
 const { scanPrompt, computeAttackComplexity, parseConfigYaml, applyConfigToRules, ruleCategories, getEnabledRules } = await import(scannerPath);
+const { readBoundedFile, DEFAULT_MAX_FILE_BYTES } = await import(join(__dirname, '..', 'scanner', 'dist', 'cliInput.js'));
 
 // ---------------------------------------------------------------------------
 // Configuration from environment (set by action.yml) + config file
@@ -37,13 +38,21 @@ for (const name of ['forensicate.yaml', 'forensicate.yml', '.forensicaterc.yaml'
 }
 
 const PATHS = (process.env.INPUT_PATHS || '').trim() || (fileConfig.paths || []).join(' ');
-const CONFIDENCE_THRESHOLD = parseInt(process.env.INPUT_CONFIDENCE_THRESHOLD || '50', 10);
-const FAIL_ON_FINDING = process.env.INPUT_FAIL_ON_FINDING != null
+const CONFIDENCE_THRESHOLD = Number(process.env.INPUT_CONFIDENCE_THRESHOLD || (fileConfig.threshold ?? 50));
+if (!Number.isFinite(CONFIDENCE_THRESHOLD) || CONFIDENCE_THRESHOLD < 0 || CONFIDENCE_THRESHOLD > 100) {
+  throw new Error('confidence-threshold must be a number between 0 and 100');
+}
+const FAIL_ON_FINDING = process.env.INPUT_FAIL_ON_FINDING
   ? process.env.INPUT_FAIL_ON_FINDING.toLowerCase() === 'true'
   : fileConfig.failOnFinding ?? true;
 const SCAN_MODE = process.env.INPUT_SCAN_MODE || fileConfig.scanMode || 'changed';
+if (!['changed', 'all'].includes(SCAN_MODE)) {
+  throw new Error('scan-mode must be "changed" or "all"');
+}
 const COMMENT_ON_PR = (process.env.INPUT_COMMENT_ON_PR || 'true').toLowerCase() === 'true';
-const SARIF_UPLOAD = (process.env.INPUT_SARIF_UPLOAD || fileConfig.output === 'sarif' ? 'true' : 'false').toLowerCase() === 'true';
+const SARIF_UPLOAD = process.env.INPUT_SARIF_UPLOAD
+  ? process.env.INPUT_SARIF_UPLOAD.toLowerCase() === 'true'
+  : fileConfig.output === 'sarif';
 const GITHUB_TOKEN = process.env.INPUT_GITHUB_TOKEN || process.env.GITHUB_TOKEN || '';
 
 // Build filtered rule set from config
@@ -64,9 +73,6 @@ const SCANNABLE_EXTENSIONS = new Set([
   '.toml', '.ini', '.cfg', '.conf', '.env', '.cursorrules',
   '.svelte', '.vue', '.astro', '.mdx',
 ]);
-
-// Maximum file size to scan (512 KB)
-const MAX_FILE_SIZE = 512 * 1024;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -90,24 +96,6 @@ function isScannable(filePath) {
   }
 
   return true;
-}
-
-/**
- * Read a file safely, returning null if it cannot be read or is too large.
- */
-function readFileSafe(filePath) {
-  try {
-    const absPath = resolve(filePath);
-    if (!existsSync(absPath)) return null;
-
-    const stats = statSync(absPath);
-    if (stats.size > MAX_FILE_SIZE) return null;
-    if (!stats.isFile()) return null;
-
-    return readFileSync(absPath, 'utf-8');
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -136,14 +124,13 @@ function getChangedFiles() {
       return null;
     }
 
-    const output = execSync(`git diff --name-only --diff-filter=ACMR ${baseSha}...HEAD`, {
+    const output = execFileSync('git', ['diff', '--name-only', '-z', '--diff-filter=ACMR', `${baseSha}...HEAD`], {
       encoding: 'utf-8',
       timeout: 30_000,
     });
 
     return output
-      .split('\n')
-      .map(f => f.trim())
+      .split('\0')
       .filter(f => f.length > 0);
   } catch (err) {
     console.log(`::warning::Failed to get changed files via git diff: ${err.message}`);
@@ -159,9 +146,11 @@ function matchGlob(filePath, pattern) {
   // Convert glob to regex
   let regex = pattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')  // Escape regex special chars (except * and ?)
+    .replace(/\*\*\//g, '{{GLOBSTAR_DIR}}') // **/ also matches the root directory
     .replace(/\*\*/g, '{{GLOBSTAR}}')        // Placeholder for **
     .replace(/\*/g, '[^/]*')                 // * matches anything except /
     .replace(/\?/g, '[^/]')                  // ? matches single char except /
+    .replace(/\{\{GLOBSTAR_DIR\}\}/g, '(?:.*/)?')
     .replace(/\{\{GLOBSTAR\}\}/g, '.*');     // ** matches everything including /
 
   regex = `^${regex}$`;
@@ -173,27 +162,20 @@ function matchGlob(filePath, pattern) {
  */
 function listFiles(dir, base = '') {
   const results = [];
-  let entries;
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return results;
-  }
+  // Discovery failures must not turn an incomplete scan into a clean result.
+  const entries = readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
-    const fullPath = join(dir, entry);
-    const relPath = base ? join(base, entry) : entry;
-    try {
-      const stats = statSync(fullPath);
-      if (stats.isDirectory()) {
-        if (['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv'].includes(entry)) {
-          continue;
-        }
-        results.push(...listFiles(fullPath, relPath));
-      } else if (stats.isFile()) {
-        results.push(relPath);
+    const fullPath = join(dir, entry.name);
+    const relPath = base ? join(base, entry.name) : entry.name;
+    if (entry.isDirectory()) {
+      if (['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv'].includes(entry.name)) {
+        continue;
       }
-    } catch {
-      // Skip files we can't stat
+      results.push(...listFiles(fullPath, relPath));
+    } else {
+      // Keep symlinks and special files in the selection so the bounded reader
+      // can reject them explicitly if their path and extension are selected.
+      results.push(relPath);
     }
   }
   return results;
@@ -203,11 +185,13 @@ function listFiles(dir, base = '') {
  * Get files to scan based on configured paths and scan mode.
  */
 function getFilesToScan() {
-  // If explicit paths/globs are provided, use them
+  const changed = SCAN_MODE === 'changed' ? getChangedFiles() : null;
+
+  // Paths constrain the selected scan mode, including changed files in PRs.
   if (PATHS) {
     const patterns = PATHS.split(/\s+/).filter(p => p.length > 0);
     const cwd = process.cwd();
-    const allFiles = listFiles(cwd);
+    const allFiles = changed ?? listFiles(cwd);
     const matched = new Set();
 
     for (const pattern of patterns) {
@@ -222,12 +206,8 @@ function getFilesToScan() {
   }
 
   // "changed" mode: get files from PR diff
-  if (SCAN_MODE === 'changed') {
-    const changed = getChangedFiles();
-    if (changed !== null) {
-      return changed;
-    }
-    // Fall through to all-files mode if we couldn't get changed files
+  if (changed !== null) {
+    return changed;
   }
 
   // "all" mode or fallback: list all files in the repo
@@ -255,6 +235,10 @@ function severityToAnnotationLevel(severity) {
  */
 function escapeAnnotation(str) {
   return str.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+}
+
+function escapeAnnotationProperty(str) {
+  return escapeAnnotation(str).replace(/:/g, '%3A').replace(/,/g, '%2C');
 }
 
 /**
@@ -651,8 +635,7 @@ async function main() {
   let maxConfidence = 0;
 
   for (const file of scannableFiles) {
-    const content = readFileSafe(file);
-    if (content === null) continue;
+    const content = readBoundedFile(file, DEFAULT_MAX_FILE_BYTES);
     if (content.trim().length === 0) continue;
 
     filesScanned++;
@@ -674,7 +657,7 @@ async function main() {
           ? `${rule.ruleName} (${rule.severity}): ${rule.details}`
           : `${rule.ruleName} (${rule.severity}): ${rule.matches.slice(0, 3).map(m => m.slice(0, 60)).join(', ')}`;
 
-        console.log(`::${level} file=${escapeAnnotation(file)},line=${line},title=${escapeAnnotation(title)}::${escapeAnnotation(message)}`);
+        console.log(`::${level} file=${escapeAnnotationProperty(file)},line=${line},title=${escapeAnnotationProperty(title)}::${escapeAnnotation(message)}`);
       }
     }
   }
@@ -814,7 +797,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('::error::Forensicate.ai scan script failed:', err.message);
-  console.error(err.stack);
+  console.error(`::error::Forensicate.ai scan script failed: ${escapeAnnotation(err.message)}`);
   process.exit(2);
 });

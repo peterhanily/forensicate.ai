@@ -10,19 +10,32 @@ import type { ScanResult } from '@forensicate/scanner';
 function TryIt({ defaultText, label }: { defaultText: string; label: string }) {
   const [text, setText] = useState(defaultText);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+
+  function handleScan() {
+    setResult(null);
+    setScanError(null);
+    try {
+      setResult(scanPrompt(text));
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
+    }
+  }
+
   return (
     <div className="my-4 border border-gray-800 rounded-lg bg-gray-950 overflow-hidden">
       <div className="px-3 py-1.5 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
         <span className="text-[10px] text-gray-500 font-mono uppercase">{label}</span>
-        <button onClick={() => setResult(scanPrompt(text))} className="px-2 py-0.5 text-[10px] bg-[#c9a227]/20 text-[#c9a227] rounded hover:bg-[#c9a227]/30 transition-colors">Scan</button>
+        <button onClick={handleScan} className="px-2 py-0.5 text-[10px] bg-[#c9a227]/20 text-[#c9a227] rounded hover:bg-[#c9a227]/30 transition-colors">Scan</button>
       </div>
       <textarea
         value={text}
-        onChange={e => { setText(e.target.value); setResult(null); }}
+        onChange={e => { setText(e.target.value); setResult(null); setScanError(null); }}
         className="w-full bg-transparent text-gray-300 text-xs font-mono p-3 resize-none focus:outline-none"
         rows={3}
         aria-label={`Try it: ${label}`}
       />
+      {scanError && <p role="alert" className="p-3 text-xs text-amber-300">{scanError}</p>}
       {result && (
         <div className={`px-3 py-2 border-t border-gray-800 text-xs ${result.isPositive ? 'bg-red-950/30' : 'bg-green-950/30'}`}>
           <span className={result.isPositive ? 'text-red-400' : 'text-green-400'}>

@@ -1,6 +1,7 @@
 import type { TextLayer } from '@forensicate/scanner';
 import { buildExtractionResult } from './utils';
 import type { FileExtractionResult } from '@forensicate/scanner';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 // Text item from PDF text content (subset of pdfjs-dist TextItem)
 interface PDFTextItem {
@@ -11,15 +12,14 @@ interface PDFTextItem {
   hasEOL?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let pdfjsLib: any = null;
+let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
 async function loadPdfjs() {
   if (pdfjsLib) return pdfjsLib;
   const pdfjs = await import('pdfjs-dist');
   // Set worker source to bundled worker
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
+    'pdfjs-dist/build/pdf.worker.min.mjs',
     import.meta.url,
   ).toString();
   pdfjsLib = pdfjs;
@@ -32,12 +32,21 @@ async function loadPdfjs() {
  */
 export async function extractFromPDF(file: File): Promise<FileExtractionResult> {
   const startTime = performance.now();
-  const layers: TextLayer[] = [];
-  const warnings: string[] = [];
-
   const pdfjs = await loadPdfjs();
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+  const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+  try {
+    const pdf = await loadingTask.promise;
+    return await extractDocument(pdf, file, startTime);
+  } finally {
+    // Release the worker and document buffers even when parsing fails.
+    await loadingTask.destroy();
+  }
+}
+
+async function extractDocument(pdf: PDFDocumentProxy, file: File, startTime: number): Promise<FileExtractionResult> {
+  const layers: TextLayer[] = [];
+  const warnings: string[] = [];
 
   // Extract metadata
   try {
@@ -130,8 +139,9 @@ export async function extractFromPDF(file: File): Promise<FileExtractionResult> 
 
   // Extract JavaScript (potential exfiltration/execution)
   try {
-    const js = await pdf.getJavaScript();
-    if (js && js.length > 0) {
+    const actions = await pdf.getJSActions();
+    const js = actions ? [...actions.values()].flat().filter((value): value is string => typeof value === 'string') : [];
+    if (js.length > 0) {
       const jsContent = js.join('\n');
       layers.push({
         type: 'hidden',
@@ -141,7 +151,7 @@ export async function extractFromPDF(file: File): Promise<FileExtractionResult> 
       warnings.push(`Found ${js.length} JavaScript action(s) in PDF`);
     }
   } catch {
-    // getJavaScript may not be available in all pdfjs versions
+    warnings.push('Could not inspect PDF JavaScript actions');
   }
 
   // Extract AcroForm field values
@@ -174,23 +184,18 @@ export async function extractFromPDF(file: File): Promise<FileExtractionResult> 
   try {
     const ocgConfig = await pdf.getOptionalContentConfig();
     if (ocgConfig) {
-      const groups = ocgConfig.getGroups();
-      if (groups && typeof groups === 'object') {
-        const hiddenGroups: string[] = [];
-        for (const [id, group] of Object.entries(groups)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const g = group as any;
-          if (g && g.visible === false) {
-            hiddenGroups.push(g.name || id);
-          }
+      const hiddenGroups: string[] = [];
+      for (const [id, group] of ocgConfig) {
+        if (group && group.visible === false) {
+          hiddenGroups.push(group.name || id);
         }
-        if (hiddenGroups.length > 0) {
-          warnings.push(`Found ${hiddenGroups.length} hidden Optional Content Group(s): ${hiddenGroups.join(', ')}`);
-        }
+      }
+      if (hiddenGroups.length > 0) {
+        warnings.push(`Found ${hiddenGroups.length} hidden Optional Content Group(s): ${hiddenGroups.join(', ')}`);
       }
     }
   } catch {
-    // OCG API may not be available
+    warnings.push('Could not inspect PDF optional content groups');
   }
 
   return buildExtractionResult(file, 'pdf', layers, startTime, warnings, pdf.numPages);

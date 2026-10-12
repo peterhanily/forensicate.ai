@@ -29,7 +29,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest run --exclude tests/cli.test.ts && vitest run tests/cli.test.ts",
+    "test:cli": "vitest run tests/cli.test.ts",
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
@@ -59,11 +60,11 @@
     "directory": "packages/scanner"
   },
   "dependencies": {
-    "compromise": "^14.15.1"
+    "compromise": "^14.17.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^24.19.1",
     "typescript": "~6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   }
 }

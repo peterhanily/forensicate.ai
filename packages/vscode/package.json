@@ -24,7 +24,9 @@
     "llm"
   ],
   "icon": "assets/icon-128.png",
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -80,7 +82,14 @@
         },
         "forensicate.filePatterns": {
           "type": "array",
-          "default": ["**/*.md", "**/*.txt", "**/*.prompt", "**/*.json", "**/*.yaml", "**/*.yml"],
+          "default": [
+            "**/*.md",
+            "**/*.txt",
+            "**/*.prompt",
+            "**/*.json",
+            "**/*.yaml",
+            "**/*.yml"
+          ],
           "description": "File patterns to scan for prompt injection"
         }
       }
@@ -90,14 +99,16 @@
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
     "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "package": "vsce package --no-dependencies",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@forensicate/scanner": "workspace:*"
   },
   "devDependencies": {
-    "@types/vscode": "^1.120.0",
-    "esbuild": "^0.28.0",
+    "@types/node": "^24.19.1",
+    "@types/vscode": "^1.140.0",
+    "esbuild": "^0.28.2",
     "typescript": "^6.0.3"
   }
 }

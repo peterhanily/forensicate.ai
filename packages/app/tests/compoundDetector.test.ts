@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectCompoundThreats } from '../src/lib/scanner/compoundDetector';
-import { scanPrompt } from '../src/lib/scanner';
+import { detectCompoundThreats, scanPrompt } from '@forensicate/scanner';
 
 describe('Compound Threat Detection', () => {
   describe('detectCompoundThreats', () => {

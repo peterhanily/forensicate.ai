@@ -5,23 +5,16 @@ on:
     - cron: '0 9 1 * *'  # Monthly on the 1st at 9am UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   check-pricing:
     name: Check Pricing Freshness
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install
 
       - name: Check pricing age
         id: check

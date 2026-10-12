@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -93,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -108,9 +109,9 @@ jobs:
 
 ## How It Works
 
-1. **Setup**: Installs Node.js 22 and the `@forensicate/scanner` package.
+1. **Setup**: Installs Node.js and builds the scanner from the same repository revision as the action, using the committed dependency lockfile.
 2. **File discovery**: In `changed` mode, reads the PR event payload and uses `git diff` to find modified files. In `all` mode, recursively lists files matching the specified glob patterns.
-3. **Scanning**: Each file is read and analyzed by the Forensicate.ai detection engine, which checks against 118 rules across keyword, regex, heuristic, NLP, and file-based detection categories.
+3. **Scanning**: Each file is read and analyzed by the Forensicate.ai detection engine using keyword, regex, heuristic, NLP, and file-based detection rules.
 4. **Reporting**: Findings appear as inline PR annotations (errors, warnings, or notices depending on severity) and a summary table is added to the GitHub Actions step summary.
 
 ## Supported File Types
@@ -119,7 +120,11 @@ The scanner processes text-based files with common extensions including:
 
 `.md`, `.txt`, `.json`, `.yaml`, `.yml`, `.xml`, `.html`, `.csv`, `.prompt`, `.ts`, `.js`, `.py`, `.rb`, `.go`, `.rs`, `.java`, `.cursorrules`, and more.
 
-Binary files and `node_modules` directories are automatically skipped.
+Files with unsupported extensions and generated or dependency directories are automatically skipped.
+
+Selected files must be readable regular files no larger than 512 KiB (524,288 bytes). The action reads files in bounded chunks and rejects selected symbolic links. An oversized, missing, unreadable, or nonregular selected file fails the scan with exit code `2`, even when `fail-on-finding` is `false`. Directory discovery errors also fail the scan. These failures produce no success outputs, SARIF report, result summary, or PR comment.
+
+Path and extension filters still apply, along with the excluded directories `.git`, `node_modules`, `dist`, `build`, `.next`, `__pycache__`, and `.venv`. Deleted files are excluded from PR diffs. To fix an input failure, restore access to the named file, shorten it, or deliberately narrow `paths` to the files you intend to scan.
 
 ## License
 

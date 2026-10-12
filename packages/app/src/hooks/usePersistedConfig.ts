@@ -75,7 +75,7 @@ function mergeWithDefaultRules(storedRules: DetectionRule[]): DetectionRule[] {
   return [...storedRules, ...newBuiltInRules];
 }
 
-// Load initial config from URL or localStorage (called once during initialization)
+// Read initial config without mutating browser state; React may call this twice.
 function loadInitialConfig(): {
   source: LoadSource;
   rules: DetectionRule[];
@@ -94,8 +94,6 @@ function loadInitialConfig(): {
   // Priority: URL > localStorage > defaults
   const urlConfig = getConfigFromUrl();
   if (urlConfig) {
-    // Clear URL param after reading
-    clearUrlConfig();
     // For URL configs, also try to load UI prefs from localStorage
     const storedConfig = loadConfig();
 
@@ -121,7 +119,7 @@ function loadInitialConfig(): {
       savedAt: new Date(urlConfig.savedAt),
       expandedRuleCategory: storedConfig?.ui?.expandedRuleCategory ?? null,
       expandedPromptCategory: storedConfig?.ui?.expandedPromptCategory ?? null,
-      confidenceThreshold: storedConfig?.ui?.confidenceThreshold ?? 50,
+      confidenceThreshold: urlConfig.ui?.confidenceThreshold ?? storedConfig?.ui?.confidenceThreshold ?? 50,
       autoImportCommunityRules: storedConfig?.ui?.autoImportCommunityRules ?? true,
       autoImportCommunityPrompts: storedConfig?.ui?.autoImportCommunityPrompts ?? true,
       tourCompleted: storedConfig?.ui?.tourCompleted ?? false,
@@ -197,8 +195,11 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
 
   // Mark initial load as done after first render
   useEffect(() => {
+    if (initialConfig.source === 'url') {
+      clearUrlConfig();
+    }
     initialLoadDone.current = true;
-  }, []);
+  }, [initialConfig.source]);
 
   // Auto-save to localStorage on changes (debounced)
   // Note: promptText is NOT saved to localStorage, only to share URLs
@@ -264,13 +265,16 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
       !defaultRuleIds.has(r.id) && !r.id.startsWith('community-')
     );
 
-    // Only include modified built-in rules (compare by enabled/weight)
+    // Share every serializable rule edit; functions are restored by rule ID.
     const modifiedBuiltInRules = localRules.filter(r => {
       if (!defaultRuleIds.has(r.id)) return false; // Not built-in
       const defaultRule = defaultRules.find(dr => dr.id === r.id);
       if (!defaultRule) return false;
-      // Check if enabled state or weight differs from default
-      return r.enabled !== defaultRule.enabled || r.weight !== defaultRule.weight;
+      const fields = new Set([...Object.keys(r), ...Object.keys(defaultRule)]);
+      return [...fields].some(field => {
+        const key = field as keyof DetectionRule;
+        return JSON.stringify(r[key]) !== JSON.stringify(defaultRule[key]);
+      });
     });
 
     // Filter out community prompts from custom categories
@@ -293,9 +297,10 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
       },
       // Include session state in share URLs
       session: promptText ? { promptText } : undefined,
+      ui: { confidenceThreshold },
     };
     return generateShareUrl(config);
-  }, [localRules, customCategories, customPromptCategories]);
+  }, [localRules, customCategories, customPromptCategories, confidenceThreshold]);
 
   const resetToDefaults = useCallback(() => {
     setLocalRules(getDefaultRules());

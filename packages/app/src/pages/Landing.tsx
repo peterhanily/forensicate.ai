@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
+import { allRules, ruleCategories } from '@forensicate/scanner';
+
+const RULE_COUNT = allRules.length;
+const CATEGORY_COUNT = ruleCategories.length;
 
 const FEATURES = [
   {
     title: 'Prompt Scanner',
-    desc: '182 detection rules across keyword, regex, heuristic, NLP, and file-based analysis. Real-time confidence scoring with OWASP and MITRE ATLAS compliance mapping.',
+    desc: `${RULE_COUNT} detection rules across keyword, regex, heuristic, NLP, and file-based analysis. Real-time confidence scoring with OWASP and MITRE ATLAS compliance mapping.`,
     link: '/scanner',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
@@ -52,13 +56,12 @@ const FEATURES = [
 ];
 
 const CHANNELS = [
-  { name: 'npm', desc: '@forensicate/scanner', cmd: 'npm install @forensicate/scanner', color: 'text-red-400' },
-  { name: 'PyPI', desc: 'forensicate', cmd: 'pip install forensicate', color: 'text-blue-400' },
-  { name: 'CLI', desc: 'npx forensicate', cmd: 'echo "test" | npx forensicate', color: 'text-green-400' },
-  { name: 'GitHub Action', desc: 'CI/CD scanning', cmd: 'uses: peterhanily/forensicate.ai@main', color: 'text-purple-400' },
-  { name: 'Chrome', desc: 'Right-click scanning', cmd: 'Chrome Web Store', color: 'text-yellow-400' },
-  { name: 'VS Code', desc: 'Inline diagnostics', cmd: 'forensicate-vscode', color: 'text-cyan-400' },
-  { name: 'REST API', desc: 'api.forensicate.ai', cmd: 'POST /v1/scan', color: 'text-orange-400' },
+  { name: 'Web App', desc: 'Scan in your browser', color: 'text-blue-400' },
+  { name: 'Offline HTML', desc: 'Download and scan locally', color: 'text-green-400' },
+  { name: 'GitHub Action', desc: 'CI/CD scanning', color: 'text-purple-400' },
+  { name: 'Chrome', desc: 'Right-click scanning', color: 'text-yellow-400' },
+  { name: 'VS Code', desc: 'Build from source', color: 'text-cyan-400' },
+  { name: 'REST API', desc: 'Self-host from source', color: 'text-orange-400' },
 ];
 
 const FRAMEWORKS = [
@@ -77,7 +80,7 @@ export default function Landing() {
       <section className="text-center pt-8 md:pt-16">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#c9a227]/10 border border-[#c9a227]/30 text-[#c9a227] text-xs mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          182 detection rules across 20 categories
+          {RULE_COUNT} detection rules across {CATEGORY_COUNT} categories
         </div>
 
         <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight" style={{ fontFamily: 'serif' }}>
@@ -87,7 +90,7 @@ export default function Landing() {
 
         <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-8">
           Detect prompt injection, jailbreaks, and hidden payloads.
-          Zero dependencies. Works offline. Runs everywhere.
+          Scan in your browser or download the offline version.
         </p>
 
         <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -108,27 +111,15 @@ export default function Landing() {
           </a>
         </div>
 
-        {/* Quick install */}
-        <div className="mt-8 flex flex-col items-center gap-2">
-          <div className="flex items-center justify-center gap-4 flex-wrap">
-            <code className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300 font-mono">
-              npm install @forensicate/scanner
-            </code>
-            <code className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300 font-mono">
-              pip install forensicate
-            </code>
-          </div>
-          <span className="text-[10px] text-gray-600 uppercase tracking-wider">npm &amp; PyPI packages coming soon</span>
-        </div>
       </section>
 
       {/* Stats bar */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
         {[
-          { value: '160', label: 'Detection Rules' },
-          { value: '7', label: 'Distribution Channels' },
-          { value: '20', label: 'Attack Categories' },
-          { value: '921', label: 'Tests Passing' },
+          { value: String(RULE_COUNT), label: 'Detection Rules' },
+          { value: String(CHANNELS.length), label: 'Ways to Use' },
+          { value: String(CATEGORY_COUNT), label: 'Attack Categories' },
+          { value: 'Apache 2.0', label: 'Open Source License' },
         ].map(stat => (
           <div key={stat.label} className="text-center p-4 rounded-lg bg-gray-900/50 border border-gray-800">
             <div className="text-2xl md:text-3xl font-bold text-[#c9a227] font-mono">{stat.value}</div>
@@ -162,12 +153,12 @@ export default function Landing() {
       {/* Distribution */}
       <section className="max-w-4xl mx-auto">
         <h3 className="text-xl font-bold text-white text-center mb-2" style={{ fontFamily: 'serif' }}>
-          Runs Everywhere
+          Choose Your Workflow
         </h3>
         <p className="text-gray-500 text-sm text-center mb-6">
-          One detection engine, seven distribution channels. No vendor lock-in.
+          Scan in the browser, work offline, or build integrations from the source repository.
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           {CHANNELS.map(ch => (
             <div key={ch.name} className="p-3 rounded-lg bg-gray-900/50 border border-gray-800 text-center">
               <div className={`text-sm font-bold ${ch.color}`}>{ch.name}</div>
@@ -195,45 +186,19 @@ export default function Landing() {
       {/* Code example */}
       <section className="max-w-3xl mx-auto">
         <h3 className="text-xl font-bold text-white text-center mb-6" style={{ fontFamily: 'serif' }}>
-          Simple to Integrate
+          Scan Pull Requests
         </h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <div className="text-xs text-gray-500 mb-1 font-mono">JavaScript / TypeScript</div>
-            <pre className="bg-gray-950 border border-gray-800 rounded-lg p-4 text-xs text-gray-300 font-mono overflow-x-auto">
-{`import { scanPrompt } from '@forensicate/scanner';
-
-const result = scanPrompt(userInput);
-
-if (result.isPositive) {
-  console.log(\`Injection detected: \${result.confidence}%\`);
-  console.log(result.matchedRules.map(r => r.ruleName));
-}`}
-            </pre>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500 mb-1 font-mono">Python</div>
-            <pre className="bg-gray-950 border border-gray-800 rounded-lg p-4 text-xs text-gray-300 font-mono overflow-x-auto">
-{`from forensicate import scan_prompt
-
-result = scan_prompt(user_input)
-
-if result.is_positive:
-    print(f"Injection detected: {result.confidence}%")
-    for rule in result.matched_rules:
-        print(f"  {rule.rule_name}")`}
-            </pre>
-          </div>
-        </div>
+        <p className="text-gray-500 text-sm text-center mb-6">
+          Add the repository&apos;s GitHub Action to a pull request workflow after checking out your code.
+        </p>
         <div className="mt-4">
           <div className="text-xs text-gray-500 mb-1 font-mono">GitHub Action</div>
           <pre className="bg-gray-950 border border-gray-800 rounded-lg p-4 text-xs text-gray-300 font-mono overflow-x-auto">
 {`- name: Scan for prompt injection
   uses: peterhanily/forensicate.ai/packages/github-action@main
   with:
-    confidence-threshold: 50
-    comment-on-pr: true
-    sarif-upload: true`}
+    confidence-threshold: '50'
+    fail-on-finding: 'true'`}
           </pre>
         </div>
       </section>

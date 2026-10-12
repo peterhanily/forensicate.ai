@@ -1,9 +1,88 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MAX_SCAN_LENGTH } from '@forensicate/scanner';
 import Scanner from '../src/pages/Scanner';
+import { STORAGE_KEY } from '../src/lib/storage/storage';
+
+vi.mock('@forensicate/scanner', async importOriginal => ({
+  ...await importOriginal<typeof import('@forensicate/scanner')>(),
+  fetchAllCommunityRules: vi.fn().mockResolvedValue([]),
+  fetchAllCommunityPrompts: vi.fn().mockResolvedValue([]),
+}));
 
 describe('Scanner', () => {
+  it('shows a failed oversized batch even while file scan mode is selected', async () => {
+    const previous = localStorage.getItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: '1.0', savedAt: new Date().toISOString(),
+      rules: { localRules: [], customCategories: [] },
+      prompts: {
+        localPrompts: [],
+        customPromptCategories: [{
+          id: 'custom-prompt-section-limits', name: 'Input limits', description: 'Benign fixture', source: 'test',
+          prompts: [{ id: 'custom-large', name: 'Large note', content: 'a'.repeat(MAX_SCAN_LENGTH + 1), tags: [] }],
+        }],
+      },
+      ui: { autoImportCommunityRules: false, autoImportCommunityPrompts: false, tourCompleted: true },
+    }));
+    const { unmount } = render(<Scanner />);
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'file_scan', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Select All', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Batch Scan (1)', exact: true }));
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Batch was not completed'));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    } finally {
+      unmount();
+      if (previous === null) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, previous);
+    }
+  });
+
+  it('rescans the same prompt after an oversized edit clears its result', async () => {
+    await act(async () => { render(<Scanner />); });
+    const textarea = screen.getByRole('textbox', { name: 'Prompt text to analyze' });
+    fireEvent.change(textarea, { target: { value: 'Meeting at noon.' } });
+    await waitFor(() => expect(screen.getAllByText(/Scanned at/).length).toBeGreaterThan(0));
+    fireEvent.change(textarea, { target: { value: 'a'.repeat(MAX_SCAN_LENGTH + 1) } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Text was not scanned');
+    expect(screen.queryAllByText(/Scanned at/)).toHaveLength(0);
+    fireEvent.change(textarea, { target: { value: 'Meeting at noon.' } });
+    await waitFor(() => expect(screen.getAllByText(/Scanned at/).length).toBeGreaterThan(0));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows an oversized input as not scanned and recovers after shortening it', async () => {
+    await act(async () => { render(<Scanner />); });
+    const textarea = screen.getByRole('textbox', { name: 'Prompt text to analyze' });
+    fireEvent.change(textarea, { target: { value: 'a'.repeat(MAX_SCAN_LENGTH + 1) } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Text was not scanned');
+    expect(screen.getByRole('alert')).toHaveTextContent('1,000,000');
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByRole('button', { name: 'Scan', exact: true })).toBeDisabled();
+    fireEvent.change(textarea, { target: { value: 'Meeting at noon.' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Scan', exact: true }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')?.textContent ?? '').toBe('');
+      expect(screen.getAllByText(/Scanned at/).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('cancels a queued manual scan when the input changes', async () => {
+    await act(async () => { render(<Scanner />); });
+    fireEvent.click(screen.getByRole('checkbox'));
+    const textarea = screen.getByRole('textbox', { name: 'Prompt text to analyze' });
+    fireEvent.change(textarea, { target: { value: 'Meeting at noon.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Scan', exact: true }));
+    fireEvent.change(textarea, { target: { value: 'a'.repeat(MAX_SCAN_LENGTH + 1) } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Text was not scanned');
+    await new Promise(resolve => setTimeout(resolve, 200));
+    expect(screen.queryByText(/Scanned at/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Scanning...')).not.toBeInTheDocument();
+  });
+
   it('renders the scanner page title', () => {
     render(<Scanner />);
 

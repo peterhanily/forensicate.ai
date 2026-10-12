@@ -84,17 +84,12 @@ export function posImperativeDetection(text: string): HeuristicResult | null {
 
     // Check if the first significant word is a verb (imperative pattern)
     const firstTerm = sentDoc.terms().first();
-    const tags = firstTerm.out('tags') as Array<Record<string, boolean>>;
-
-    if (tags.length > 0 && tags[0]) {
-      const tagSet = tags[0];
-      // A sentence starting with a verb (not preceded by a subject) is imperative
-      if (tagSet['Verb'] && !tagSet['Copula'] && !tagSet['Modal']) {
-        imperativeCount++;
-        if (imperativeExamples.length < 3) {
-          const snippet = sentence.length > 40 ? sentence.slice(0, 37) + '...' : sentence;
-          imperativeExamples.push(snippet);
-        }
+    // Query tags through compromise's API; out('tags') is keyed by term text.
+    if (firstTerm.has('#Verb') && !firstTerm.has('#Copula') && !firstTerm.has('#Modal')) {
+      imperativeCount++;
+      if (imperativeExamples.length < 3) {
+        const snippet = sentence.length > 40 ? sentence.slice(0, 37) + '...' : sentence;
+        imperativeExamples.push(snippet);
       }
     }
   }
@@ -192,8 +187,7 @@ export function sentenceStructureAnomaly(text: string): HeuristicResult | null {
       // Check if it starts with a verb
       const sentDoc = nlp(sentence);
       const firstTerm = sentDoc.terms().first();
-      const tags = firstTerm.out('tags') as Array<Record<string, boolean>>;
-      if (tags.length > 0 && tags[0] && tags[0]['Verb']) {
+      if (firstTerm.has('#Verb')) {
         shortImperativeCount++;
       }
     }

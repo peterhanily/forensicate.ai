@@ -1,15 +1,17 @@
 import { useState, useRef, useCallback } from 'react';
 import { MAX_FILE_SIZE, formatFileSize, detectFileType } from '../lib/fileExtractors';
+import { EXTENSION_TYPE_MAP } from '../lib/fileExtractors/utils';
 
 interface FileDropZoneProps {
   onFileSelected: (file: File) => void;
+  onClear?: () => void;
   isProcessing: boolean;
   progress?: string;
 }
 
-const ACCEPTED_EXTENSIONS = '.pdf,.docx,.txt,.md,.csv,.json,.xml,.html,.htm,.svg,.eml,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff,.log,.yaml,.yml';
+const ACCEPTED_EXTENSIONS = Object.keys(EXTENSION_TYPE_MAP).join(',');
 
-export default function FileDropZone({ onFileSelected, isProcessing, progress }: FileDropZoneProps) {
+export default function FileDropZone({ onFileSelected, onClear, isProcessing, progress }: FileDropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export default function FileDropZone({ onFileSelected, isProcessing, progress }:
         </div>
         {selectedFile && !isProcessing && (
           <button
-            onClick={() => { setSelectedFile(null); setError(null); }}
+            onClick={() => { setSelectedFile(null); setError(null); onClear?.(); }}
             className="text-gray-500 hover:text-gray-300 text-xs font-mono transition-colors"
           >
             clear
@@ -135,7 +137,7 @@ export default function FileDropZone({ onFileSelected, isProcessing, progress }:
                 Drop a file here or click to browse
               </p>
               <p className="text-gray-600 text-xs font-mono mt-1">
-                PDF, DOCX, TXT, CSV, HTML, SVG, EML, Images, JSON, XML · Max {formatFileSize(MAX_FILE_SIZE)}
+                PDF, DOCX, TXT, CSV, HTML, SVG, EML, Images, Audio, Video, JSON, XML · Max {formatFileSize(MAX_FILE_SIZE)}
               </p>
             </div>
           </div>

@@ -8,7 +8,8 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "development"
 API_VERSION = "v1"
 MAX_TEXT_LENGTH = "100000"
-SCAN_TIMEOUT_MS = "5000"
+# Browser clients must also satisfy their API token's domain allowlist.
+CORS_ALLOWED_ORIGINS = "https://forensicate.ai,https://www.forensicate.ai"
 
 # KV Namespaces (for API tokens and tenant metadata)
 [[kv_namespaces]]

@@ -54,6 +54,8 @@ function scanKeywords(text: string, rule: DetectionRule): RuleMatch | null {
   const positions: Array<{ start: number; end: number }> = [];
 
   for (const keyword of rule.keywords) {
+    // Empty entries can occur in imported/custom rules and have no useful match.
+    if (keyword.length === 0) continue;
     const lowerKeyword = keyword.toLowerCase();
     let searchIndex = 0;
 
@@ -104,19 +106,16 @@ function scanRegex(text: string, rule: DetectionRule): RuleMatch | null {
   if (!rule.pattern) return null;
 
   try {
-    const regex = getCachedRegex(rule.pattern, rule.flags || 'gi');
+    const flags = rule.flags ?? 'gi';
+    const regex = getCachedRegex(rule.pattern, flags.includes('g') ? flags : `${flags}g`);
     const matches: string[] = [];
     const positions: Array<{ start: number; end: number }> = [];
 
-    let match;
-    while ((match = regex.exec(text)) !== null) {
+    // matchAll advances empty matches by a full Unicode code point when needed.
+    // Custom rules need global iteration even when their supplied flags omit g.
+    for (const match of text.matchAll(regex)) {
       matches.push(match[0]);
       positions.push({ start: match.index, end: match.index + match[0].length });
-
-      // Prevent infinite loop for zero-length matches
-      if (match[0].length === 0) {
-        regex.lastIndex++;
-      }
     }
 
     if (matches.length === 0) return null;
@@ -262,11 +261,23 @@ function generateReasons(matchedRules: RuleMatch[]): string[] {
   return reasons;
 }
 
-// Maximum input length to prevent excessive CPU usage from regex scanning
-const MAX_SCAN_LENGTH = 1_000_000; // 1MB
+// Text length is measured in JavaScript UTF-16 code units, not bytes.
+// Reject before running any rules; a prefix scan cannot describe the full input.
+export const MAX_SCAN_LENGTH = 1_000_000;
+
+export class ScanInputTooLargeError extends RangeError {
+  readonly code = 'INPUT_TOO_LARGE';
+  readonly maxLength = MAX_SCAN_LENGTH;
+
+  constructor(readonly actualLength: number) {
+    super(`Text was not scanned: ${actualLength.toLocaleString('en-US')} UTF-16 code units exceeds the ${MAX_SCAN_LENGTH.toLocaleString('en-US')} limit. Shorten the input and scan again.`);
+    this.name = 'ScanInputTooLargeError';
+  }
+}
 
 /**
  * Main scan function - analyzes text against all enabled rules
+ * @throws ScanInputTooLargeError when input exceeds MAX_SCAN_LENGTH.
  */
 export function scanPrompt(text: string, customRules?: DetectionRule[], confidenceThreshold = 0): ScanResult {
   // Guard against excessively large inputs
@@ -282,7 +293,7 @@ export function scanPrompt(text: string, customRules?: DetectionRule[], confiden
   }
 
   if (text.length > MAX_SCAN_LENGTH) {
-    text = text.substring(0, MAX_SCAN_LENGTH);
+    throw new ScanInputTooLargeError(text.length);
   }
 
   const rules = customRules || getEnabledRules();

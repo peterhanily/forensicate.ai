@@ -1,6 +1,7 @@
 // Authentication and Authorization
 
 import type { Env, APIToken, TenantMetadata } from './types';
+import { isOriginAllowed } from './origins';
 
 /**
  * Extract API token from Authorization header
@@ -39,7 +40,8 @@ export async function hashToken(token: string): Promise<string> {
  */
 export async function authenticate(
   request: Request,
-  env: Env
+  env: Env,
+  ctx?: Pick<ExecutionContext, 'waitUntil'>
 ): Promise<{ token: APIToken; tenant: TenantMetadata } | null> {
   // Extract token from header
   const token = extractToken(request);
@@ -64,9 +66,10 @@ export async function authenticate(
   const apiToken = tokenData as APIToken;
 
   // Check expiration
-  if (apiToken.expiresAt) {
-    const expiresAt = new Date(apiToken.expiresAt);
-    if (expiresAt < new Date()) {
+  if (apiToken.expiresAt !== undefined) {
+    if (typeof apiToken.expiresAt !== 'string') return null;
+    const expiresAt = Date.parse(apiToken.expiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
       return null;
     }
   }
@@ -78,13 +81,19 @@ export async function authenticate(
   }
 
   const tenant = tenantData as TenantMetadata;
+  if (tenant.id !== apiToken.tenantId) return null;
 
   // Track last usage in a separate key to avoid resurrecting revoked tokens
-  env.API_TOKENS.put(
+  const recordUsage = env.API_TOKENS.put(
     `usage:${tokenHash}`,
     JSON.stringify({ lastUsedAt: new Date().toISOString() }),
     { expirationTtl: 31536000 } // 1 year
   ).catch(console.error);
+  if (ctx) {
+    ctx.waitUntil(recordUsage);
+  } else {
+    await recordUsage;
+  }
 
   return { token: apiToken, tenant };
 }
@@ -126,18 +135,5 @@ export function checkDomainWhitelist(
     return false; // No origin header
   }
 
-  try {
-    const url = new URL(origin);
-    const domain = url.hostname;
-    return whitelist.some(allowedDomain => {
-      // Support wildcard subdomains (*.example.com)
-      if (allowedDomain.startsWith('*.')) {
-        const baseDomain = allowedDomain.slice(2);
-        return domain === baseDomain || domain.endsWith(`.${baseDomain}`);
-      }
-      return domain === allowedDomain;
-    });
-  } catch {
-    return false;
-  }
+  return isOriginAllowed(origin, whitelist);
 }

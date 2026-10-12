@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scanPrompt } from '../src/lib/scanner';
-import { ruleCategories } from '../src/lib/scanner/rules';
+import { scanPrompt, ruleCategories } from '@forensicate/scanner';
 
 describe('Annotation System', () => {
   it('should populate matchPositions for keyword matches', () => {

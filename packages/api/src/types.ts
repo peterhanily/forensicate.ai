@@ -11,6 +11,7 @@ export interface ScanResponse {
   success: true;
   data: {
     textLength: number;
+    isPositive: boolean;
     confidence: number;
     riskLevel: 'low' | 'medium' | 'high';
     matchCount: number;
@@ -140,7 +141,10 @@ export interface Env {
   ENVIRONMENT: string;
   API_VERSION: string;
   MAX_TEXT_LENGTH: string;
-  SCAN_TIMEOUT_MS: string;
+  /** @deprecated Synchronous scanning is bounded by the Worker CPU limit. */
+  SCAN_TIMEOUT_MS?: string;
+  // Comma-separated origins permitted to preflight browser requests.
+  CORS_ALLOWED_ORIGINS?: string;
 
   // Secrets
   HMAC_SECRET: string;

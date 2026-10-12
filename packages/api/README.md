@@ -4,13 +4,12 @@ REST API for Forensicate.ai prompt injection scanner, built on Cloudflare Worker
 
 ## Features
 
-- **Edge Computing**: Deployed globally on Cloudflare's network for <10ms latency
+- **Edge Runtime**: Can be deployed to Cloudflare Workers
 - **Privacy-First**: All scanning happens at the edge, no central logging of prompt content
 - **API Token Auth**: Secure authentication with SHA-256 hashed tokens
 - **Rate Limiting**: Token bucket algorithm via Durable Objects
 - **Multi-Tenant**: Support for multiple pricing tiers with different quotas
 - **CORS Support**: Configurable domain whitelisting
-- **Bundle Size**: <1MB for Cloudflare Workers compatibility
 
 ## API Endpoints
 
@@ -31,6 +30,7 @@ Scan a single prompt for injection attempts.
 {
   "success": true,
   "data": {
+    "isPositive": true,
     "confidence": 85,
     "riskLevel": "high",
     "matchCount": 3,
@@ -61,32 +61,31 @@ Check current usage and quota.
 
 ### Prerequisites
 
-- Node.js 22+
-- pnpm 10+
-- Cloudflare account
-- Wrangler CLI
+- Node.js 24.13 or later in the 24.x LTS line
+- pnpm 10.29.1 (pinned by the repository)
+- Cloudflare account for deployment
+- Wrangler is included as a development dependency
 
 ### Setup
 
-1. Install dependencies:
+1. From the repository root, install dependencies and build the shared scanner:
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
+pnpm --filter @forensicate/scanner build
+cd packages/api
 ```
 
-2. Create KV namespaces:
+2. Create KV namespaces for deployment:
 ```bash
-wrangler kv:namespace create API_TOKENS
-wrangler kv:namespace create TENANT_METADATA
+pnpm exec wrangler kv namespace create API_TOKENS
+pnpm exec wrangler kv namespace create TENANT_METADATA
 ```
+
+See the [Wrangler KV command reference](https://developers.cloudflare.com/kv/reference/kv-commands/) for namespace options.
 
 3. Update `wrangler.toml` with namespace IDs.
 
-4. Set HMAC secret:
-```bash
-wrangler secret put HMAC_SECRET
-```
-
-5. Run locally:
+4. Run locally:
 ```bash
 pnpm dev
 ```
@@ -107,16 +106,18 @@ pnpm test -- --coverage
 ### Deployment
 
 ```bash
-# Deploy to production
-pnpm deploy
+# Build and validate without deploying
+pnpm build
 
-# Deploy to staging
-wrangler deploy --env staging
+# Deploy after configuring namespace IDs and tenant/token records
+pnpm deploy
 ```
+
+The committed configuration uses placeholder KV IDs. Configure a separate environment before using staging-specific deployment commands.
 
 ## Authentication
 
-All API requests (except `/health`) require an API token in the `Authorization` header:
+API endpoints require an API token in the `Authorization` header. The `/health` and `/` health checks and CORS preflight requests do not require a token. Replace the example URL below with your deployed Worker URL:
 
 ```bash
 curl -X POST https://api.forensicate.ai/v1/scan \
@@ -147,7 +148,13 @@ When rate limited, the API returns `429 Too Many Requests` with a `Retry-After` 
 
 ## CORS
 
-Configure allowed domains in the tenant metadata:
+Set the comma-separated `CORS_ALLOWED_ORIGINS` variable in `wrangler.toml` for unauthenticated browser preflight requests:
+
+```toml
+CORS_ALLOWED_ORIGINS = "https://example.com,https://app.example.com"
+```
+
+Authenticated responses use the domain allowlist on the API token record. Configure both the preflight origins and the token's `metadata.domains` for browser clients:
 
 ```json
 {
@@ -160,7 +167,13 @@ Configure allowed domains in the tenant metadata:
 }
 ```
 
-Wildcards (`*.example.com`) are supported for subdomains.
+Exact origins such as `https://example.com:8443` restrict scheme and port. Bare domains match a hostname, and `*.example.com` matches the apex domain and its subdomains. Domain-restricted tokens require an `Origin` header. Tokens without a domain allowlist can serve non-browser clients, but their responses do not grant browser cross-origin access.
+
+## Request Limits
+
+`MAX_TEXT_LENGTH` controls the maximum text length, capped at 100,000 UTF-16 code units (JavaScript `String.length`). It is a character limit, not a 100 KB byte limit. The JSON request body is separately limited to `6 × MAX_TEXT_LENGTH + 8,192` bytes while streaming, including bodies without a `Content-Length` header.
+
+Scanning is synchronous. The Worker CPU limit configured in `wrangler.toml` is the execution safeguard; there is no application-level five-second scan deadline.
 
 ## Error Handling
 
@@ -185,9 +198,12 @@ All errors follow a consistent format:
 - `FORBIDDEN` (403): IP or domain not whitelisted
 - `NOT_FOUND` (404): Endpoint does not exist
 - `VALIDATION_ERROR` (400): Invalid request parameters
-- `TEXT_TOO_LONG` (413): Text exceeds 100KB limit
+- `INVALID_CONTENT_TYPE` (415): Request is not JSON
+- `INVALID_JSON` (400): Request body is not valid JSON
+- `TEXT_TOO_LONG` (413): Text exceeds the configured character limit
+- `REQUEST_TOO_LARGE` (413): JSON request body exceeds the byte limit
 - `RATE_LIMIT_EXCEEDED` (429): Rate limit exceeded
-- `SCAN_TIMEOUT` (504): Scan took too long (>5s)
+- `SERVICE_UNAVAILABLE` (503): Rate limiter cannot safely process the request
 - `OUT_OF_MEMORY` (507): Not enough memory to process
 - `INTERNAL_ERROR` (500): Unexpected server error
 
@@ -230,18 +246,11 @@ All errors follow a consistent format:
 - **Domain Whitelisting**: Optional domain-based access control
 - **Input Validation**: All inputs validated before processing
 - **Rate Limiting**: Prevents abuse and DoS attacks
-- **No PII Logging**: Prompt content never logged (GDPR compliant)
+- **Prompt Privacy**: Application code does not intentionally log prompt content; review deployment logging and retention settings separately
 
-## Bundle Size Optimization
+## Build Validation
 
-The API is optimized to stay under Cloudflare Workers' 1MB bundle limit:
-
-- **Tree-shaking**: Only import required scanner modules
-- **Minification**: esbuild with aggressive optimization
-- **Lazy Loading**: Heuristic rules loaded on-demand
-- **Pre-compilation**: Regex patterns compiled at build time
-
-Current bundle size: ~464KB minified, ~150KB brotli compressed
+Run `pnpm build` from this directory to perform a Wrangler dry run and inspect the current bundle size. This validates bundling without publishing the Worker. Production latency and resource use must be measured against your deployed configuration and representative inputs.
 
 ## License
 
