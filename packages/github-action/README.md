@@ -124,6 +124,8 @@ Files with unsupported extensions and generated or dependency directories are au
 
 Selected files must be readable regular files no larger than 512 KiB (524,288 bytes). The action reads files in bounded chunks and rejects selected symbolic links. An oversized, missing, unreadable, or nonregular selected file fails the scan with exit code `2`, even when `fail-on-finding` is `false`. Directory discovery errors also fail the scan. These failures produce no success outputs, SARIF report, result summary, or PR comment.
 
+In `all` mode (including fallback from `changed`), symbolic directory links are never traversed. If a path pattern could include scannable descendants of a linked directory, the action reports that directory as **not scanned** and fails with exit code `2`. It checks target metadata only, without reading or listing the target. Use a regular directory or narrow `paths` to exclude that subtree. Patterns selecting only unsupported file extensions and excluded generated/dependency directories remain skipped.
+
 Path and extension filters still apply, along with the excluded directories `.git`, `node_modules`, `dist`, `build`, `.next`, `__pycache__`, and `.venv`. Deleted files are excluded from PR diffs. To fix an input failure, restore access to the named file, shorten it, or deliberately narrow `paths` to the files you intend to scan.
 
 ## License

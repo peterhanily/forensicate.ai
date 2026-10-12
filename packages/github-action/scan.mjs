@@ -5,7 +5,7 @@
 // and reports findings as GitHub Actions annotations, step summary, PR comment,
 // and SARIF report.
 
-import { readFileSync, readdirSync, existsSync, appendFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, appendFileSync, writeFileSync, statSync } from 'node:fs';
 import { resolve, extname, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -157,22 +157,55 @@ function matchGlob(filePath, pattern) {
   return new RegExp(regex).test(filePath);
 }
 
+/** Whether a selected pattern could include a scannable descendant of a directory. */
+function selectsDescendants(directory, patterns) {
+  if (patterns.length === 0) return true;
+  return patterns.some(pattern => {
+    const extension = extname(pattern).toLowerCase();
+    if (extension && !/[*?]/.test(extension) && !SCANNABLE_EXTENSIONS.has(extension)) return false;
+
+    // Reuse the file matcher for directory prefixes instead of traversing links.
+    // A globstar can consume a directory boundary even inside the last segment.
+    const prefixes = [];
+    for (let i = 0; i < pattern.length; i++) {
+      if (pattern[i] === '/') prefixes.push(pattern.slice(0, i));
+      if (pattern.slice(i, i + 2) === '**') prefixes.push(pattern.slice(0, i + 2));
+    }
+    return prefixes.some(prefix => matchGlob(directory, prefix));
+  });
+}
+
 /**
  * Recursively list files in a directory.
  */
-function listFiles(dir, base = '') {
+function listFiles(dir, patterns, base = '') {
   const results = [];
   // Discovery failures must not turn an incomplete scan into a clean result.
   const entries = readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
     const relPath = base ? join(base, entry.name) : entry.name;
+    if ((entry.isDirectory() || entry.isSymbolicLink()) &&
+        ['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv'].includes(entry.name)) {
+      continue;
+    }
     if (entry.isDirectory()) {
-      if (['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv'].includes(entry.name)) {
-        continue;
-      }
-      results.push(...listFiles(fullPath, relPath));
+      results.push(...listFiles(fullPath, patterns, relPath));
     } else {
+      if (entry.isSymbolicLink() && selectsDescendants(relPath, patterns)) {
+        let target;
+        try {
+          // Inspect metadata only: never enumerate or read the link's target.
+          target = statSync(fullPath);
+        } catch (error) {
+          // A dangling link has no descendants. Selected file links still reach
+          // the bounded reader below, which rejects them without opening them.
+          if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error;
+        }
+        if (target?.isDirectory()) {
+          throw new Error(`${relPath}: Not scanned: symbolic directory links are not followed; narrow paths or use a regular directory`);
+        }
+      }
       // Keep symlinks and special files in the selection so the bounded reader
       // can reject them explicitly if their path and extension are selected.
       results.push(relPath);
@@ -186,12 +219,12 @@ function listFiles(dir, base = '') {
  */
 function getFilesToScan() {
   const changed = SCAN_MODE === 'changed' ? getChangedFiles() : null;
+  const patterns = PATHS.split(/\s+/).filter(p => p.length > 0);
 
   // Paths constrain the selected scan mode, including changed files in PRs.
   if (PATHS) {
-    const patterns = PATHS.split(/\s+/).filter(p => p.length > 0);
     const cwd = process.cwd();
-    const allFiles = changed ?? listFiles(cwd);
+    const allFiles = changed ?? listFiles(cwd, patterns);
     const matched = new Set();
 
     for (const pattern of patterns) {
@@ -211,7 +244,7 @@ function getFilesToScan() {
   }
 
   // "all" mode or fallback: list all files in the repo
-  return listFiles(process.cwd());
+  return listFiles(process.cwd(), patterns);
 }
 
 /**

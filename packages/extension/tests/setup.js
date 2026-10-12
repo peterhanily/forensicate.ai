@@ -48,7 +48,8 @@ global.chrome = {
   },
   tabs: {
     query: vi.fn().mockResolvedValue([{ id: 1, url: 'https://example.com' }]),
-    sendMessage: vi.fn().mockResolvedValue({ success: true })
+    sendMessage: vi.fn().mockResolvedValue({ success: true }),
+    onRemoved: { addListener: vi.fn() }
   },
   action: {
     setBadgeText: vi.fn().mockResolvedValue(undefined),

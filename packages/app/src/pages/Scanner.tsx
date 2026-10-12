@@ -129,6 +129,7 @@ export default function Scanner() {
  const [batchResults, setBatchResults] = useState<Array<{ prompt: PromptItem; result: ScanResult }> | null>(null);
  const [showBatchResults, setShowBatchResults] = useState(false);
  const [batchError, setBatchError] = useState<string | null>(null);
+ const [isBatchScanning, setIsBatchScanning] = useState(false);
 
  // Scan history state (session-only, not persisted)
  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
@@ -522,12 +523,24 @@ export default function Scanner() {
  const lastScannedRef = useRef<string>('');
  const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
  const scanTaskTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const batchTaskTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
- // Cancel queued work when its input/settings change, or the page unmounts.
+ // Text edits cancel text scans independently of any queued batch.
  useEffect(() => () => {
  if (scanTaskTimerRef.current) clearTimeout(scanTaskTimerRef.current);
  setIsScanning(false);
  }, [promptText, localRules, confidenceThreshold, autoScan]);
+
+ // A batch uses the settings chosen when it was requested. Cancel explicitly
+ // if those settings change before it starts, and also clear work on unmount.
+ useEffect(() => () => {
+ if (batchTaskTimerRef.current !== null) {
+ clearTimeout(batchTaskTimerRef.current);
+ batchTaskTimerRef.current = null;
+ setIsBatchScanning(false);
+ setBatchError('Batch was cancelled because scan settings changed. Run it again.');
+ }
+ }, [localRules, confidenceThreshold]);
 
  // ============================================================================
  // Scan History Helpers (declared before auto-scan effect that uses them)
@@ -681,14 +694,15 @@ export default function Scanner() {
  };
 
  const handleBatchScan = () => {
- if (selectedPrompts.size === 0) return;
+ if (selectedPrompts.size === 0 || isBatchScanning) return;
 
- setIsScanning(true);
+ setIsBatchScanning(true);
  setBatchResults(null);
  setShowBatchResults(false);
  setBatchError(null);
 
- scanTaskTimerRef.current = setTimeout(() => {
+ batchTaskTimerRef.current = setTimeout(() => {
+ batchTaskTimerRef.current = null;
  try {
  const results: Array<{ prompt: PromptItem; result: ScanResult }> = [];
 
@@ -706,7 +720,7 @@ export default function Scanner() {
  } catch (error) {
  setBatchError(`Batch was not completed. ${error instanceof Error ? error.message : 'Please try again.'}`);
  } finally {
- setIsScanning(false);
+ setIsBatchScanning(false);
  }
  }, 150);
  };
@@ -1481,7 +1495,7 @@ export default function Scanner() {
  onSelectAll={selectAllPrompts}
  onClearSelection={clearPromptSelection}
  onBatchScan={handleBatchScan}
- isScanning={isScanning}
+ isScanning={isBatchScanning}
  onImportCommunityPrompt={(prompt) => {
  const importedCategoryId = 'custom-prompt-section-community-imported';
 

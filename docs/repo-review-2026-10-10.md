@@ -83,7 +83,8 @@ remains unfinished and outside that release.
   protection still requires account configuration; hosted CI/Pages validation
   has not been performed.
 
-Current validation on Node **24.13.0** / pnpm **10.29.1**:
+Validation for the initial release candidate (`bc00eda`) on Node **24.13.0** /
+pnpm **10.29.1**; the second-review follow-up is recorded below:
 
 - **932 JavaScript/TypeScript tests passed:** scanner 423 (396 engine/config plus
   27 CLI), app 338, API 109, browser extension 33, GitHub Action 15, VSCode 14.
@@ -125,7 +126,7 @@ reset fix. Eight benign UI regressions cover these paths. CI's Python setup
 action now uses v6 for its Node 24 runtime. App lint and the Pages production
 build passed; the required rule-consistency hook runs when saving the commit.
 
-The public, standalone-build and deployment-build offline copies are identical:
+The initial candidate's public, standalone-build and deployment-build offline copies were identical:
 3,907,808 bytes, SHA-256
 `50bc348f48e2f866242150b448cee01a336f2c474ade7db78055c270ad8f3684`.
 Local logs are `/private/tmp/forensicate-release-build.log`,
@@ -144,6 +145,54 @@ preserving any intervening changes. Publish through the CI-to-Pages workflow,
 observe all required checks and deployment, then verify the live scanner and
 offline download. The user's release authorization is already recorded; no
 additional release permission is needed.
+
+## Second-review fixes — 12 October 2026
+
+The user requested another review of `bc00eda`, then authorized fixing all four
+findings. The follow-up remains on `release/2026-10-12-refresh`:
+
+- **YAML imports:** quotes are recognized at scalar boundaries. Apostrophes and
+  double quotes inside plain values no longer cause inline comments to become
+  part of keywords or paths. Actual quoted hashes and escaped quotes remain
+  supported. Twelve additional benign regressions cover these cases.
+- **Browser extension:** per-tab request generations and ordered UI updates
+  prevent older completions from replacing newer results/errors or clearing
+  newer warning badges. Shared current-result storage is ordered separately
+  across tabs, so in-flight writes/removals cannot overwrite the latest request.
+  Nine additional mocked overlap cases cover these transitions.
+- **GitHub Action:** all-mode discovery (including changed-mode fallback)
+  reports selected symbolic directory links as not scanned before success
+  outputs or reports. Target inspection reads metadata only; links are never
+  traversed. Intentional path, extension and generated-directory exclusions
+  remain supported. Seven additional benign remediation tests cover this.
+- **Web batch scans:** batch timers and busy state are separate from text
+  scans. Editing text leaves a queued batch running; changing scan settings
+  cancels the batch with an explanation and allows retry. Three additional
+  UI regressions cover automatic/manual text modes and cancellation recovery.
+
+Validation on Node **24.13.0** / pnpm **10.29.1**:
+
+- **840 tests passed in the changed packages:** scanner 435 (408 engine/config
+  plus 27 CLI), app 341, browser extension 42, GitHub Action 22. The unchanged
+  API 109 and VSCode 14 tests last passed earlier on 12 October, bringing the
+  recorded JavaScript/TypeScript total to **963**. Python remains unchanged;
+  its historical 163-pass result is from 10 October.
+- Scanner compilation, the Pages web/standalone build, full app lint and both
+  Chrome/Firefox extension builds passed. Independent reviews found no further
+  issue in the batch-cancellation and extension-request-ordering fixes.
+- All three offline HTML copies are identical: **3,908,327 bytes**, SHA-256
+  `6bc6e1d6e7fd9be5ed296917c98fa1cf11becb33a2aa8ff7593c3c455bb35aca`.
+  Web JavaScript assets total **2,080,043 bytes**, below the existing
+  2,097,152-byte budget. The separate PDF worker is still outside that budget.
+- Logs: `/private/tmp/forensicate-review-fixes-scanner.log`,
+  `/private/tmp/forensicate-review-fixes-build.log`,
+  `/private/tmp/forensicate-review-fixes-lint.log`, and
+  `/private/tmp/forensicate-followup-app-tests.log`.
+
+No deployment or other remote action occurred. The GitHub network restriction,
+pending hosted CI/deployment verification and real-browser limitation above
+remain unchanged. Continue publication from this follow-up commit, preserving
+the previously recorded release authorization.
 
 ## Remaining work in priority order
 

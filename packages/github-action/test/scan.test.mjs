@@ -161,6 +161,47 @@ test('selected symbolic links fail instead of being silently omitted', t => {
   assert.match(result.stderr, /linked\.md: Symbolic links are not followed/);
 });
 
+function directoryLink(t, cwd, name) {
+  const target = mkdtempSync(join(tmpdir(), 'forensicate-linked-notes-'));
+  t.after(() => rmSync(target, { recursive: true, force: true }));
+  writeFileSync(join(target, 'notes.md'), 'A short meeting agenda.');
+  symlinkSync(target, join(cwd, name), 'dir');
+}
+
+for (const [name, patterns] of [
+  ['linked', 'linked/**/*.md'],
+  ['linked', 'linked/notes.md'],
+  ['linked', '**/*.md'],
+  ['linked', ''],
+  ['docs/linked', 'docs/*/*.md'],
+]) {
+  test(`linked directory ${name} is explicitly not scanned for paths ${patterns || '(all)'}`, t => {
+    const cwd = fixture(t);
+    directoryLink(t, cwd, name);
+    const result = assertIncompleteScan(cwd, { INPUT_PATHS: patterns });
+    assert.match(result.stderr, /Not scanned: symbolic directory links are not followed/);
+    assert.ok(result.stderr.includes(`${name}: Not scanned`));
+  });
+}
+
+test('path and extension filters can intentionally exclude linked directories', t => {
+  const cwd = fixture(t);
+  directoryLink(t, cwd, 'linked');
+  const result = run(cwd, { INPUT_PATHS: 'notes.md docs/*.md linked/**/*.png' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /total-files-scanned=2/);
+});
+
+test('generated and dependency directory links remain excluded', t => {
+  const cwd = fixture(t);
+  for (const name of ['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv']) {
+    directoryLink(t, cwd, name);
+  }
+  const result = run(cwd);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /total-files-scanned=2/);
+});
+
 test('selected FIFOs fail without waiting for a writer', { skip: process.platform === 'win32' }, t => {
   const cwd = fixture(t);
   execFileSync('mkfifo', [join(cwd, 'pipe.md')]);

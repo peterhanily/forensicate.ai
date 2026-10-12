@@ -11,7 +11,76 @@ vi.mock('@forensicate/scanner', async importOriginal => ({
   fetchAllCommunityPrompts: vi.fn().mockResolvedValue([]),
 }));
 
+function renderBenignBatchFixture() {
+  const previous = localStorage.getItem(STORAGE_KEY);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    version: '1.0', savedAt: new Date().toISOString(),
+    rules: { localRules: [], customCategories: [] },
+    prompts: {
+      localPrompts: [],
+      customPromptCategories: [{
+        id: 'custom-prompt-section-batch', name: 'Meeting notes', description: 'Benign fixture', source: 'test',
+        prompts: [{ id: 'custom-meeting', name: 'Meeting note', content: 'The meeting starts at noon.', tags: [] }],
+      }],
+    },
+    ui: { autoImportCommunityRules: false, autoImportCommunityPrompts: false, tourCompleted: true },
+  }));
+  const { unmount } = render(<Scanner />);
+  return () => {
+    unmount();
+    if (previous === null) localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, previous);
+  };
+}
+
 describe('Scanner', () => {
+  it.each(['automatic', 'manual'])('keeps a queued batch running through a text edit in %s mode', async mode => {
+    vi.useFakeTimers();
+    const cleanupFixture = renderBenignBatchFixture();
+    try {
+      if (mode === 'manual') fireEvent.click(screen.getByRole('checkbox'));
+      fireEvent.click(screen.getByRole('button', { name: 'Select All', exact: true }));
+      const batchButton = screen.getByRole('button', { name: 'Batch Scan (1)', exact: true });
+      fireEvent.click(batchButton);
+      fireEvent.change(screen.getByRole('textbox', { name: 'Prompt text to analyze' }), {
+        target: { value: 'Updated meeting notes.' },
+      });
+      expect(batchButton).toBeDisabled();
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(150); });
+      expect(screen.getByRole('heading', { name: 'Batch Scan Results' })).toBeInTheDocument();
+      expect(screen.getByText('1 prompts scanned')).toBeInTheDocument();
+      expect(batchButton).toBeEnabled();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } finally {
+      cleanupFixture();
+      vi.useRealTimers();
+    }
+  });
+
+  it('explains settings cancellation and allows the batch to be run again', async () => {
+    vi.useFakeTimers();
+    const cleanupFixture = renderBenignBatchFixture();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Select All', exact: true }));
+      const batchButton = screen.getByRole('button', { name: 'Batch Scan (1)', exact: true });
+      fireEvent.click(batchButton);
+      fireEvent.change(screen.getByRole('slider'), { target: { value: '60' } });
+      expect(screen.getByRole('alert')).toHaveTextContent('Batch was cancelled because scan settings changed');
+      expect(batchButton).toBeEnabled();
+      await act(async () => { await vi.advanceTimersByTimeAsync(150); });
+      expect(screen.queryByRole('heading', { name: 'Batch Scan Results' })).not.toBeInTheDocument();
+
+      fireEvent.click(batchButton);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(150); });
+      expect(screen.getByRole('heading', { name: 'Batch Scan Results' })).toBeInTheDocument();
+    } finally {
+      cleanupFixture();
+      vi.useRealTimers();
+    }
+  });
+
   it('shows a failed oversized batch even while file scan mode is selected', async () => {
     const previous = localStorage.getItem(STORAGE_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
