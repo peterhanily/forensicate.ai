@@ -5,12 +5,13 @@ import type { DetectionRule } from '@forensicate/scanner';
 import { usePersistedConfig } from '../src/hooks/usePersistedConfig';
 import { CONFIG_VERSION, saveConfig, type PersistedConfig } from '../src/lib/storage';
 import { decodeConfig, encodeConfig } from '../src/lib/storage/urlHash';
+import { createRulePreferences, resolveRulePreferences } from '../src/lib/storage/rulePreferences';
 
 function sharedConfig(overrides: Partial<PersistedConfig> = {}): PersistedConfig {
   return {
     version: CONFIG_VERSION,
     savedAt: '2026-01-01T00:00:00.000Z',
-    rules: { localRules: [], customCategories: [] },
+    rules: createRulePreferences([], []),
     prompts: { localPrompts: [], customPromptCategories: [] },
     ...overrides,
   };
@@ -70,7 +71,9 @@ describe('shared configuration round trips', () => {
 
     const url = new URL(result.current.generateShareUrl());
     const decoded = decodeConfig(url.searchParams.get('config')!);
-    expect(decoded?.rules.localRules).toEqual([edited]);
+    expect(decoded?.rules.localRules).toEqual([]);
+    expect(decoded?.rules.builtInOverrides).toHaveLength(1);
+    expect(resolveRulePreferences(decoded!.rules).rules.find(rule => rule.id === edited.id)).toEqual(edited);
 
     unmount();
     window.history.replaceState(null, '', url);

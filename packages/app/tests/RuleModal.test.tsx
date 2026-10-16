@@ -104,6 +104,39 @@ describe('AddRuleModal', () => {
     // Look for the Regex Pattern label and associated textarea
     expect(screen.getByText('Regex Pattern')).toBeInTheDocument();
   });
+
+  it('compiles a heuristic without executing its body while saving', () => {
+    const probe = vi.fn();
+    vi.stubGlobal('__forensicateSaveProbe', probe);
+    try {
+      render(<AddRuleModal isOpen onClose={mockOnClose} onAddRule={mockOnAddRule} categories={mockCategories} />);
+      fireEvent.click(screen.getByRole('button', { name: /heuristic/i }));
+      fireEvent.change(screen.getByPlaceholderText('e.g., Custom Jailbreak Pattern'), { target: { value: 'Benign fixture' } });
+      fireEvent.change(screen.getByPlaceholderText('What does this rule detect?'), { target: { value: 'Save regression fixture' } });
+      fireEvent.change(screen.getByPlaceholderText(/Example: flag prompts/), {
+        target: { value: 'globalThis.__forensicateSaveProbe(); return null;' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /add rule/i }));
+      expect(mockOnAddRule).toHaveBeenCalledOnce();
+      expect(probe).not.toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalledOnce();
+      mockOnAddRule.mock.calls[0][0].heuristic('ordinary text');
+      expect(probe).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('rejects a syntax error without adding a heuristic', () => {
+    render(<AddRuleModal isOpen onClose={mockOnClose} onAddRule={mockOnAddRule} categories={mockCategories} />);
+    fireEvent.click(screen.getByRole('button', { name: /heuristic/i }));
+    fireEvent.change(screen.getByPlaceholderText('e.g., Custom Jailbreak Pattern'), { target: { value: 'Benign fixture' } });
+    fireEvent.change(screen.getByPlaceholderText('What does this rule detect?'), { target: { value: 'Syntax fixture' } });
+    fireEvent.change(screen.getByPlaceholderText(/Example: flag prompts/), { target: { value: 'return (' } });
+    fireEvent.click(screen.getByRole('button', { name: /add rule/i }));
+    expect(screen.getByText(/Invalid function:/)).toBeInTheDocument();
+    expect(mockOnAddRule).not.toHaveBeenCalled();
+  });
 });
 
 describe('AddSectionModal', () => {

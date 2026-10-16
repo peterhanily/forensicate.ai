@@ -1,10 +1,11 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { routeShells } from './build/routeShells.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), routeShells()],
   // Custom domain (forensicate.ai) serves from root
   base: '/',
   build: {

@@ -3,6 +3,7 @@ import type { DetectionRule, RuleCategory } from '@forensicate/scanner';
 import type { PromptCategory } from '../data/samplePrompts';
 import { samplePrompts } from '../data/samplePrompts';
 import { allRules, rehydrateHeuristics } from '@forensicate/scanner';
+import { createRulePreferences, resolveRulePreferences } from '../lib/storage/rulePreferences';
 import {
   type PersistedConfig,
   type LoadSource,
@@ -48,6 +49,7 @@ interface UsePersistedConfigReturn {
   loadSource: LoadSource;
   lastSaved: Date | null;
   error: string | null;
+  migrationNotice: string | null;
 
   // Session state from URL (for sharing)
   initialPromptText: string;
@@ -65,14 +67,14 @@ function getDefaultPrompts(): PromptCategory[] {
   return JSON.parse(JSON.stringify(samplePrompts));
 }
 
-// Merge stored rules with current defaults so newly added built-in rules
-// appear even when the user has stale localStorage data.
-function mergeWithDefaultRules(storedRules: DetectionRule[]): DetectionRule[] {
-  const storedIds = new Set(storedRules.map(r => r.id));
-  const defaults = getDefaultRules();
-  const newBuiltInRules = defaults.filter(r => !storedIds.has(r.id));
-  if (newBuiltInRules.length === 0) return storedRules;
-  return [...storedRules, ...newBuiltInRules];
+function resolveSavedRules(config: PersistedConfig) {
+  const resolved = resolveRulePreferences(config.rules);
+  return {
+    rules: resolved.rules,
+    migrationNotice: resolved.preservedLegacyEdits > 0
+      ? `${resolved.preservedLegacyEdits} saved rule definition${resolved.preservedLegacyEdits === 1 ? ' differs' : 's differ'} from known defaults. Your saved definitions have been kept; review them if you want the latest built-in definitions.`
+      : null,
+  };
 }
 
 // Read initial config without mutating browser state; React may call this twice.
@@ -90,6 +92,7 @@ function loadInitialConfig(): {
   autoImportCommunityRules: boolean;
   autoImportCommunityPrompts: boolean;
   tourCompleted: boolean;
+  migrationNotice: string | null;
 } {
   // Priority: URL > localStorage > defaults
   const urlConfig = getConfigFromUrl();
@@ -97,20 +100,15 @@ function loadInitialConfig(): {
     // For URL configs, also try to load UI prefs from localStorage
     const storedConfig = loadConfig();
 
-    // Merge URL prompts with defaults (like we do for rules)
-    // If URL config has empty localPrompts, use defaults
-    // Otherwise merge: keep defaults + add any new categories from URL
+    // Keep defaults and place shared extension prompts in custom categories.
     const defaultPrompts = getDefaultPrompts();
     const urlLocalPrompts = urlConfig.prompts.localPrompts || [];
-    const mergedPrompts = urlLocalPrompts.length === 0
-      ? defaultPrompts
-      : defaultPrompts; // Always keep default prompts, extension prompts go to customPromptCategories
 
     return {
       source: 'url',
-      rules: mergeWithDefaultRules(rehydrateHeuristics(urlConfig.rules.localRules)),
+      ...resolveSavedRules(urlConfig),
       customCategories: urlConfig.rules.customCategories,
-      prompts: mergedPrompts,
+      prompts: defaultPrompts,
       customPromptCategories: [
         ...urlConfig.prompts.customPromptCategories,
         ...urlLocalPrompts  // Move extension prompts to custom categories
@@ -130,7 +128,7 @@ function loadInitialConfig(): {
   if (storedConfig) {
     return {
       source: 'localStorage',
-      rules: mergeWithDefaultRules(rehydrateHeuristics(storedConfig.rules.localRules)),
+      ...resolveSavedRules(storedConfig),
       customCategories: storedConfig.rules.customCategories,
       prompts: storedConfig.prompts.localPrompts,
       customPromptCategories: storedConfig.prompts.customPromptCategories,
@@ -159,6 +157,7 @@ function loadInitialConfig(): {
     autoImportCommunityRules: true,
     autoImportCommunityPrompts: true,
     tourCompleted: false,
+    migrationNotice: null,
   };
 }
 
@@ -217,10 +216,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
       const config: PersistedConfig = {
         version: CONFIG_VERSION,
         savedAt: new Date().toISOString(),
-        rules: {
-          localRules,
-          customCategories,
-        },
+        rules: createRulePreferences(localRules, customCategories),
         prompts: {
           localPrompts,
           customPromptCategories,
@@ -254,28 +250,12 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
   }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold, autoImportCommunityRules, autoImportCommunityPrompts, tourCompleted]);
 
   const handleGenerateShareUrl = useCallback((promptText?: string): string => {
-    // For share URLs, only include custom/modified data to keep URLs shorter
-    // Don't include default built-in rules and sample prompts
-    const defaultRules = getDefaultRules();
-    const defaultRuleIds = new Set(defaultRules.map(r => r.id));
-
-    // Only include custom rules (not built-in, not community)
-    // Community rules have IDs starting with "community-" and will be auto-imported by recipients
-    const customRulesOnly = localRules.filter(r =>
-      !defaultRuleIds.has(r.id) && !r.id.startsWith('community-')
+    // Preference serialization already omits untouched built-ins. Community
+    // rules are fetched by recipients rather than embedded in share links.
+    const defaultRuleIds = new Set(allRules.map(r => r.id));
+    const rulesToShare = localRules.filter(r =>
+      defaultRuleIds.has(r.id) || !r.id.startsWith('community-')
     );
-
-    // Share every serializable rule edit; functions are restored by rule ID.
-    const modifiedBuiltInRules = localRules.filter(r => {
-      if (!defaultRuleIds.has(r.id)) return false; // Not built-in
-      const defaultRule = defaultRules.find(dr => dr.id === r.id);
-      if (!defaultRule) return false;
-      const fields = new Set([...Object.keys(r), ...Object.keys(defaultRule)]);
-      return [...fields].some(field => {
-        const key = field as keyof DetectionRule;
-        return JSON.stringify(r[key]) !== JSON.stringify(defaultRule[key]);
-      });
-    });
 
     // Filter out community prompts from custom categories
     // Community prompts have IDs starting with "community-" and will be auto-imported by recipients
@@ -287,10 +267,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     const config: PersistedConfig = {
       version: CONFIG_VERSION,
       savedAt: new Date().toISOString(),
-      rules: {
-        localRules: [...customRulesOnly, ...modifiedBuiltInRules],
-        customCategories,
-      },
+      rules: createRulePreferences(rulesToShare, customCategories),
       prompts: {
         localPrompts: [], // Don't include default sample prompts in share URLs
         customPromptCategories: customPromptsOnly,
@@ -340,6 +317,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     loadSource,
     lastSaved,
     error,
+    migrationNotice: loadSource === 'defaults' ? null : initialConfig.migrationNotice,
     initialPromptText,
     generateShareUrl: handleGenerateShareUrl,
     resetToDefaults,

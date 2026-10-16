@@ -2,8 +2,14 @@
  * Cost calculation utilities
  */
 
-import type { CostEstimate } from './types';
+import type { CostEstimate, ModelPricing } from './types';
 import { getPricing } from './pricingDatabase';
+
+function getRates(pricing: ModelPricing, inputTokens: number) {
+  return pricing.longContext && inputTokens > pricing.longContext.inputTokenThreshold
+    ? pricing.longContext
+    : pricing;
+}
 
 /**
  * Estimate token count from text
@@ -42,10 +48,11 @@ export function calculateCost(
   }
 
   const inputTokens = estimateTokenCount(promptText);
+  const rates = getRates(pricing, inputTokens);
 
   // Calculate costs
-  const inputCost = (inputTokens / 1_000_000) * pricing.inputCostPer1M;
-  const outputCost = (estimatedOutputTokens / 1_000_000) * pricing.outputCostPer1M;
+  const inputCost = (inputTokens / 1_000_000) * rates.inputCostPer1M;
+  const outputCost = (estimatedOutputTokens / 1_000_000) * rates.outputCostPer1M;
   const totalCost = inputCost + outputCost;
 
   return {
@@ -57,6 +64,10 @@ export function calculateCost(
     inputCost,
     outputCost,
     totalCost,
+    inputCostPer1M: rates.inputCostPer1M,
+    outputCostPer1M: rates.outputCostPer1M,
+    notes: pricing.notes,
+    status: pricing.status,
     source: pricing.source,
   };
 }
@@ -102,17 +113,18 @@ export function calculateBatchCost(
 
   for (const prompt of prompts) {
     const inputTokens = estimateTokenCount(prompt);
+    const rates = getRates(pricing, inputTokens);
     totalInputTokens += inputTokens;
 
-    const inputCost = (inputTokens / 1_000_000) * pricing.inputCostPer1M;
-    const outputCost = (estimatedOutputTokens / 1_000_000) * pricing.outputCostPer1M;
+    const inputCost = (inputTokens / 1_000_000) * rates.inputCostPer1M;
+    const outputCost = (estimatedOutputTokens / 1_000_000) * rates.outputCostPer1M;
 
     totalCost += inputCost + outputCost;
   }
 
   return {
     totalCost,
-    avgCostPerTest: totalCost / prompts.length,
+    avgCostPerTest: prompts.length === 0 ? 0 : totalCost / prompts.length,
     totalInputTokens,
     testCount: prompts.length,
   };
@@ -122,7 +134,7 @@ export function calculateBatchCost(
  * Format cost for display
  */
 export function formatCost(cost: number): string {
-  if (cost === 0) return 'Free';
+  if (cost === 0) return '$0.00';
   if (cost < 0.0001) return `$${cost.toFixed(6)}`; // Show more decimals for very small amounts
   if (cost < 0.01) return `$${cost.toFixed(4)}`;
   if (cost < 1) return `$${cost.toFixed(3)}`;

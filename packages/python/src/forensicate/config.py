@@ -19,6 +19,33 @@ _BOOL_TRUE = frozenset({"true", "yes", "on"})
 _BOOL_FALSE = frozenset({"false", "no", "off"})
 _VALID_OUTPUTS = frozenset({"text", "json", "sarif"})
 _VALID_SEVERITIES = frozenset({"low", "medium", "high", "critical"})
+MAX_CONFIG_BYTES = 1_048_576
+
+
+def _strip_comment(line: str) -> str:
+    """Keep hashes inside quoted scalar values and strip YAML comments."""
+    quote: str | None = None
+    escaped = False
+    scalar_start = True
+    for index, char in enumerate(line):
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\" and quote == '"':
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char == "#" and (index == 0 or line[index - 1].isspace()):
+            return line[:index]
+        if char in ('"', "'") and scalar_start:
+            quote = char
+            scalar_start = False
+        elif char == ":" or (char == "-" and scalar_start):
+            scalar_start = True
+        elif not char.isspace():
+            scalar_start = False
+    return line
 
 
 def _parse_scalar(raw: str) -> Any:
@@ -47,7 +74,7 @@ def _parse_scalar(raw: str) -> Any:
     return stripped
 
 
-def parse_config(yaml_str: str) -> dict[str, Any]:
+def parse_config(yaml_str: str, *, strict: bool = False) -> dict[str, Any]:
     """Parse a YAML config string into a validated config dict.
 
     Supports the subset of YAML used by forensicate config files:
@@ -55,6 +82,9 @@ def parse_config(yaml_str: str) -> dict[str, Any]:
     - Sequences (``categories:\\n  - foo\\n  - bar``)
     - Comments (lines starting with ``#``)
     - Blank lines
+
+    With ``strict=True`` (used by the CLI), unsupported keys, duplicate keys,
+    nested values and malformed lines raise ValueError instead of being ignored.
 
     Returns a dict with validated keys:
         threshold (int|None), min_severity (str|None),
@@ -72,10 +102,11 @@ def parse_config(yaml_str: str) -> dict[str, Any]:
 
     current_key: str | None = None
     current_list: list[str] | None = None
+    seen_keys: set[str] = set()
 
-    for raw_line in yaml_str.splitlines():
+    for line_number, raw_line in enumerate(yaml_str.splitlines(), start=1):
         # Strip inline comments (but not inside quoted strings)
-        line = re.sub(r"\s+#.*$", "", raw_line)
+        line = _strip_comment(raw_line)
         stripped = line.strip()
 
         # Skip empty / comment-only lines
@@ -95,7 +126,14 @@ def parse_config(yaml_str: str) -> dict[str, Any]:
         match = re.match(r"^(\w[\w_-]*):\s*(.*)?$", stripped)
         if match:
             key = match.group(1).replace("-", "_")
+            key = re.sub(r"([a-z])([A-Z])", r"\1_\2", key).lower()
             raw_val = (match.group(2) or "").strip()
+
+            if strict and line[0].isspace():
+                raise ValueError(f"Nested config values are unsupported (line {line_number})")
+            if strict and key in seen_keys:
+                raise ValueError(f"Duplicate config key: {key}")
+            seen_keys.add(key)
 
             # Finish any previous list
             if current_key and current_list is not None:
@@ -104,7 +142,8 @@ def parse_config(yaml_str: str) -> dict[str, Any]:
                 current_key = None
 
             if key not in result:
-                # Unknown key -- skip
+                if strict:
+                    raise ValueError(f"Unsupported Python config key: {key}")
                 continue
 
             if raw_val:
@@ -116,6 +155,8 @@ def parse_config(yaml_str: str) -> dict[str, Any]:
                 # Possibly a list follows on next lines
                 current_key = key
                 current_list = []
+        elif strict:
+            raise ValueError(f"Unsupported config syntax on line {line_number}")
 
     # Flush final list
     if current_key and current_list is not None:
@@ -131,6 +172,9 @@ def _validate_config(cfg: dict[str, Any]) -> None:
     """Validate parsed config values, raising ValueError on bad data."""
     # threshold
     if cfg["threshold"] is not None:
+        value = cfg["threshold"]
+        if isinstance(value, bool) or isinstance(value, float):
+            raise ValueError(f"threshold must be an integer, got {value!r}")
         try:
             cfg["threshold"] = int(cfg["threshold"])
         except (TypeError, ValueError):
@@ -165,6 +209,8 @@ def _validate_config(cfg: dict[str, Any]) -> None:
         val = cfg[list_key]
         if val is not None and not isinstance(val, list):
             raise ValueError(f"{list_key} must be a list, got {type(val).__name__}")
+        if isinstance(val, list) and any(not isinstance(item, str) or not item for item in val):
+            raise ValueError(f"{list_key} must contain nonempty string IDs")
 
 
 # ---------------------------------------------------------------------------
@@ -174,13 +220,22 @@ def _validate_config(cfg: dict[str, Any]) -> None:
 _CONFIG_FILENAMES = ("forensicate.yaml", "forensicate.yml")
 
 
-def load_config(path: str | None = None) -> dict[str, Any] | None:
+def _read_config(path: Path, *, strict: bool) -> dict[str, Any]:
+    with path.open("rb") as stream:
+        data = stream.read(MAX_CONFIG_BYTES + 1)
+    if len(data) > MAX_CONFIG_BYTES:
+        raise ValueError(f"Config exceeds {MAX_CONFIG_BYTES:,} UTF-8 bytes")
+    return parse_config(data.decode("utf-8", errors="strict"), strict=strict)
+
+
+def load_config(path: str | None = None, *, strict: bool = False) -> dict[str, Any] | None:
     """Load a config file.
 
     Args:
         path: Explicit path to a YAML config file.  If *None*, searches
             the current directory and parent directories for
             ``forensicate.yaml`` or ``forensicate.yml``.
+        strict: Reject config syntax and keys outside the supported subset.
 
     Returns:
         Parsed config dict, or *None* if no config file is found (when
@@ -194,7 +249,7 @@ def load_config(path: str | None = None) -> dict[str, Any] | None:
         resolved = Path(path)
         if not resolved.is_file():
             raise FileNotFoundError(f"Config file not found: {path}")
-        return parse_config(resolved.read_text(encoding="utf-8"))
+        return _read_config(resolved, strict=strict)
 
     # Auto-discover: walk up from cwd
     cwd = Path(os.getcwd())
@@ -203,6 +258,6 @@ def load_config(path: str | None = None) -> dict[str, Any] | None:
         for name in _CONFIG_FILENAMES:
             candidate = directory / name
             if candidate.is_file():
-                return parse_config(candidate.read_text(encoding="utf-8"))
+                return _read_config(candidate, strict=strict)
 
     return None

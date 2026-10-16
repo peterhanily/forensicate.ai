@@ -1,15 +1,48 @@
 import type { TextLayer } from '@forensicate/scanner';
 import { buildExtractionResult } from './utils';
 import type { FileExtractionResult } from '@forensicate/scanner';
-import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import type { TextItem, TextStyle } from 'pdfjs-dist/types/src/display/api';
 
-// Text item from PDF text content (subset of pdfjs-dist TextItem)
-interface PDFTextItem {
-  str: string;
-  transform: number[]; // [scaleX, skewX, skewY, scaleY, translateX, translateY]
-  width: number;
-  height: number;
-  hasEOL?: boolean;
+type PDFViewport = ReturnType<PDFPageProxy['getViewport']>;
+
+/** Estimate the text quad in the displayed crop box, including page rotation. */
+function textGeometry(item: TextItem, style: TextStyle | undefined, viewport: PDFViewport) {
+  const [a, b, c, d, x, y] = item.transform as number[];
+  if (![a, b, c, d, x, y, item.width, item.height].every(Number.isFinite)) return null;
+
+  const origin = viewport.convertToViewportPoint(x, y);
+  const xPoint = viewport.convertToViewportPoint(x + a, y + b);
+  const yPoint = viewport.convertToViewportPoint(x + c, y + d);
+  if (![...origin, ...xPoint, ...yPoint, viewport.width, viewport.height].every(Number.isFinite)) return null;
+  let baseline = [xPoint[0] - origin[0], xPoint[1] - origin[1]];
+  let up = [yPoint[0] - origin[0], yPoint[1] - origin[1]];
+  // PDF.js lays vertical text out at a further quarter turn from its text matrix.
+  if (style?.vertical) {
+    baseline = [-baseline[1], baseline[0]];
+    up = [-up[1], up[0]];
+  }
+  const fontSize = Math.hypot(...up);
+  const baselineLength = Math.hypot(...baseline);
+  if (![fontSize, baselineLength].every(Number.isFinite)) return null;
+  if (fontSize < 0.5) return { tiny: true, offPage: false };
+  if (!baselineLength) return null;
+
+  const advance = Math.abs(style?.vertical ? item.height : item.width) * viewport.scale * viewport.userUnit;
+  const end = origin.map((value, index) => value + baseline[index] * advance / baselineLength);
+  const ascent = Number.isFinite(style?.ascent) ? style!.ascent : 1;
+  const descent = Number.isFinite(style?.descent) ? style!.descent : -0.25;
+  const corners = [origin, end].flatMap(point => [ascent, descent].map(metric =>
+    point.map((value, index) => value + up[index] * metric),
+  ));
+  if (!corners.flat().every(Number.isFinite)) return null;
+  const xs = corners.map(point => point[0]);
+  const ys = corners.map(point => point[1]);
+  // Only classify a complete quad outside the page; a clipped baseline can
+  // still have visible glyphs. One viewport unit allows for font rounding.
+  const offPage = Math.max(...xs) < -1 || Math.min(...xs) > viewport.width + 1 ||
+    Math.max(...ys) < -1 || Math.min(...ys) > viewport.height + 1;
+  return { tiny: false, offPage };
 }
 
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
@@ -46,7 +79,9 @@ export async function extractFromPDF(file: File): Promise<FileExtractionResult> 
 
 async function extractDocument(pdf: PDFDocumentProxy, file: File, startTime: number): Promise<FileExtractionResult> {
   const layers: TextLayer[] = [];
-  const warnings: string[] = [];
+  const warnings: string[] = [
+    'PDF visibility is estimated from text geometry; clipping, text colour and image content are not fully inspected. No OCR is performed. These limits are not threat findings.',
+  ];
 
   // Extract metadata
   try {
@@ -81,24 +116,20 @@ async function extractDocument(pdf: PDFDocumentProxy, file: File, startTime: num
     const viewport = page.getViewport({ scale: 1.0 });
     const textContent = await page.getTextContent();
 
-    for (const item of textContent.items as PDFTextItem[]) {
-      if (!item.str.trim()) continue;
-
-      const [, , , scaleY, translateX, translateY] = item.transform;
-      const fontSize = Math.abs(scaleY);
+    let geometryIncomplete = false;
+    for (const item of textContent.items) {
+      if (!('str' in item) || !item.str.trim()) continue;
+      const geometry = textGeometry(item, textContent.styles[item.fontName], viewport);
+      if (!geometry) geometryIncomplete = true;
 
       // Detect zero/tiny font size (hidden text)
-      if (fontSize < 0.5) {
+      if (geometry?.tiny) {
         hiddenTexts.push(item.str);
         continue;
       }
 
       // Detect off-page positioning
-      const isOffPage =
-        translateX < -50 || translateX > viewport.width + 50 ||
-        translateY < -50 || translateY > viewport.height + 50;
-
-      if (isOffPage) {
+      if (geometry?.offPage) {
         offPageTexts.push(item.str);
         continue;
       }
@@ -106,6 +137,7 @@ async function extractDocument(pdf: PDFDocumentProxy, file: File, startTime: num
       // Normal visible text
       visibleTexts.push(item.str + (item.hasEOL ? '\n' : ' '));
     }
+    if (geometryIncomplete) warnings.push(`Could not assess all text geometry on page ${pageNum}; extracted text was retained for scanning`);
   }
 
   // Add visible text layer

@@ -12,7 +12,9 @@ import { buildExtractionResult } from './utils';
 export async function extractFromAudio(file: File): Promise<FileExtractionResult> {
   const startTime = performance.now();
   const layers: TextLayer[] = [];
-  const warnings: string[] = [];
+  const warnings: string[] = [
+    'Audio extraction covers metadata and embedded text only. No speech transcription or audio signal analysis is performed; this limitation is not a threat finding.',
+  ];
 
   try {
     const buffer = await file.arrayBuffer();

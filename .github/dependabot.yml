@@ -7,6 +7,44 @@ updates:
       day: monday
     open-pull-requests-limit: 10
     groups:
+      # Related runtime, plugin and type packages should be reviewed together.
+      # Major updates are deliberately excluded from every group.
+      react:
+        patterns:
+          - react
+          - react-dom
+          - react-router-dom
+          - '@types/react'
+          - '@types/react-dom'
+        update-types:
+          - minor
+          - patch
+      vite-and-vitest:
+        patterns:
+          - vite
+          - '@vitejs/*'
+          - vite-plugin-*
+          - vitest
+          - '@vitest/*'
+        update-types:
+          - minor
+          - patch
+      tailwind:
+        patterns:
+          - tailwindcss
+          - '@tailwindcss/*'
+        update-types:
+          - minor
+          - patch
+      eslint:
+        patterns:
+          - eslint
+          - '@eslint/*'
+          - eslint-plugin-*
+          - typescript-eslint
+        update-types:
+          - minor
+          - patch
       dev-dependencies:
         dependency-type: development
         update-types:
@@ -24,3 +62,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      action-maintenance:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch

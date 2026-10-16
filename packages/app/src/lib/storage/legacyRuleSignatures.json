@@ -1,0 +1,626 @@
+{
+  "kw-ignore-instructions": [
+    "99c40f96ef0f05ea",
+    "755ae20de0d42949"
+  ],
+  "kw-new-instructions": [
+    "4322d63395826267",
+    "13f47fb0fc669e0c"
+  ],
+  "kw-dan-jailbreak": [
+    "b66e4dd58fc20279",
+    "f325a3fb7ab12167"
+  ],
+  "kw-stan-jailbreak": [
+    "af48196dd40d2189",
+    "0dc832c1b5e1616d"
+  ],
+  "kw-dude-jailbreak": [
+    "27ef8026d0573b72",
+    "57ddba5660b9fcf2"
+  ],
+  "kw-evil-personas": [
+    "6774f4d00a518d24",
+    "e7726676b2a65802"
+  ],
+  "kw-maximum-jailbreak": [
+    "2cd85b2c5d76f550",
+    "8566527453ec9d08"
+  ],
+  "kw-role-manipulation": [
+    "f3d51117c6baa24b",
+    "c9ed623bffee7517"
+  ],
+  "kw-dual-response": [
+    "12bad62d9fdba8e1",
+    "a4b4828b1b6e0d47"
+  ],
+  "kw-system-prompt": [
+    "7fee310371d8c30f",
+    "3b50095905372ff5"
+  ],
+  "kw-leak-extraction": [
+    "767bbaa20c9cfdbe",
+    "c73350c66b82e2c2"
+  ],
+  "kw-authority-claims": [
+    "52711a62239199a6",
+    "a9f228af8f2ff4bb"
+  ],
+  "kw-developer-mode": [
+    "5096623429523c60",
+    "e804b9166798cca2"
+  ],
+  "kw-context-manipulation": [
+    "0d6acb5061100634",
+    "11d4ce373a862bbb"
+  ],
+  "kw-token-manipulation": [
+    "0937c8233ab31de7",
+    "7d01414f74fb594b"
+  ],
+  "kw-hypothetical": [
+    "d8c93db629578232",
+    "6cae509154bdbb6d"
+  ],
+  "kw-fiction-framing": [
+    "01cefe70539008ec",
+    "3178a9134cc8f10f"
+  ],
+  "kw-emotional-manipulation": [
+    "3dc01e5d09446381",
+    "cda74db62dd2f0aa"
+  ],
+  "kw-urgency-pressure": [
+    "acca0ab1f177582d",
+    "ab481b06b04ed812"
+  ],
+  "kw-pliny-patterns": [
+    "f0b46681b28d9645",
+    "dbb095d3565d500f"
+  ],
+  "kw-crescendo-attack": [
+    "cbc5e46de5f07bc9",
+    "cba2cffa6306c2a6"
+  ],
+  "kw-compliance-forcing": [
+    "dacb401412980060",
+    "9b8eefb081a6a454"
+  ],
+  "kw-output-bypass": [
+    "11f2abb388ba80c7",
+    "ff7144e596ac24b9"
+  ],
+  "kw-threat-consequence": [
+    "12c049916b15eda5",
+    "9c4da953a01f3087"
+  ],
+  "kw-safety-override": [
+    "4ad97c7cacdbdd00",
+    "1900a7705f30fb94"
+  ],
+  "kw-restriction-removal": [
+    "b62c07cfda4fb043",
+    "401cb419a6425845"
+  ],
+  "kw-simulation-framing": [
+    "0527a33f8519e20b",
+    "e855967a457e0cae"
+  ],
+  "kw-piggybacking": [
+    "f28e83c7e66cf20b",
+    "bd208e73a302b31f"
+  ],
+  "kw-identity-impersonation": [
+    "8fd887584633edcc",
+    "675f5ffff8d32973"
+  ],
+  "rx-ignore-pattern": [
+    "e0cf08a00ef516d4",
+    "26d3bbe2ac637a26"
+  ],
+  "rx-disregard-pattern": [
+    "59f21ae7697742c3",
+    "469e2146b5782872"
+  ],
+  "rx-dan-version": [
+    "4c6f5a63a8b5698f",
+    "f1112e51c26f66c5"
+  ],
+  "rx-jailbreak-personas": [
+    "60dc6947f962a093",
+    "27bc9ceb0f7c6057"
+  ],
+  "rx-dual-response-format": [
+    "d353115f5a5b26e3",
+    "eaf2fd11ba711ccd"
+  ],
+  "rx-role-assignment": [
+    "db972caae3180a1e",
+    "b11d08a5ab7916b9"
+  ],
+  "rx-character-enforcement": [
+    "8a51fabfc6c76b43",
+    "1282aacfd4338b33"
+  ],
+  "rx-prompt-reveal": [
+    "37d83821e5adb88d",
+    "6a51c483f72eff9f"
+  ],
+  "rx-repeat-above": [
+    "7fd14442d488110e",
+    "e7d76e31fd617e25"
+  ],
+  "rx-injection-markers": [
+    "0a266f768d03d8e2",
+    "14c0f305c7ccaa21"
+  ],
+  "rx-xml-injection": [
+    "74589e772fafcd4b",
+    "82b78b2460250358"
+  ],
+  "rx-base64-pattern": [
+    "2141c65a186c4f3e",
+    "de685f1dca375561"
+  ],
+  "rx-hex-encoding": [
+    "1b22caa05b68f1c4",
+    "5c1d1f35362b9c51"
+  ],
+  "rx-leetspeak": [
+    "6bc2a132cfaefed6",
+    "e77a57bae790dc26"
+  ],
+  "rx-unicode-escape": [
+    "cdb7b39d72e3f369",
+    "b0e92b7d8d96a7c1"
+  ],
+  "rx-homoglyph": [
+    "76e582ed948894e9",
+    "fb0e2205ac7a6109"
+  ],
+  "rx-markdown-injection": [
+    "69cc2e439562a2d7",
+    "33254ae4190ae2d8"
+  ],
+  "rx-html-injection": [
+    "72bd56416d2278dd",
+    "926cc672cbeeaace"
+  ],
+  "rx-code-comment-injection": [
+    "22be4bf1b69fc155",
+    "2e16b56f11981233"
+  ],
+  "rx-token-threat": [
+    "14f575161fb3ceaa",
+    "dd847ed3c12f54af"
+  ],
+  "rx-fiction-bypass": [
+    "a931eb721195e1ce",
+    "20965551a6ab509d"
+  ],
+  "rx-now-real-question": [
+    "e7cdac3facf46c3b",
+    "95c57dfc9f770468"
+  ],
+  "rx-ignore-everything": [
+    "85a4d7b4aca9a8f0",
+    "38c515457a282469"
+  ],
+  "rx-follow-only": [
+    "954b720ebd3efa42",
+    "8565a3b78893a733"
+  ],
+  "rx-from-now-on": [
+    "47ab73500ac5b79c",
+    "f6efe6fda0fb1ba1"
+  ],
+  "rx-must-comply": [
+    "eb6aac2413de1130",
+    "0f8c576cef79d7b0"
+  ],
+  "rx-cannot-refuse": [
+    "25d89a766950b502",
+    "cf3afa6885f4f1d4"
+  ],
+  "rx-stop-refusing": [
+    "b03c145f22206903",
+    "27d376e3d3aa659f"
+  ],
+  "rx-answer-directly": [
+    "c412eb9540af50d9",
+    "000b72ab7684ac3f"
+  ],
+  "rx-skip-disclaimer": [
+    "dcbdb3626b82ffb6",
+    "73cce9182b0df34c"
+  ],
+  "rx-safety-override": [
+    "9ab147d6a317907a",
+    "1cec1fa05aef3ebc"
+  ],
+  "rx-world-ending": [
+    "2ebd3f979a088033",
+    "ead5b2aceca01858"
+  ],
+  "rx-coercion-threat": [
+    "258475b0ae04f1ec",
+    "6f00d55ac7b99586"
+  ],
+  "rx-ai-threat": [
+    "b1594be7e64a7723",
+    "90e805a55f767a31"
+  ],
+  "rx-good-ai-would": [
+    "d7286dbff35494f3",
+    "0872ca4723906263"
+  ],
+  "rx-no-longer-bound": [
+    "c311f80b1bb8806f",
+    "742245d79574c82b"
+  ],
+  "rx-restrictions-lifted": [
+    "9f7f49d11baa9e6d",
+    "857ed9ad1282e6c9"
+  ],
+  "rx-no-rules": [
+    "2d64e560a67fb224",
+    "2193e9da1680cf36"
+  ],
+  "rx-simulation-frame": [
+    "752da89d7652d1d9",
+    "6177b25041bc8354"
+  ],
+  "rx-piggybacking": [
+    "4053d6d0c6b446bc",
+    "533ea686a853d342"
+  ],
+  "rx-creator-claim": [
+    "6ac882c576cc8d09",
+    "943e1b4cf36b5418"
+  ],
+  "h-entropy-analysis": [
+    "2c731441940ee00d",
+    "ddc46e5c472392e0"
+  ],
+  "h-token-ratio": [
+    "3378cbad85dd9b11",
+    "c9c5a48ae9a2aa6e"
+  ],
+  "h-nested-delimiters": [
+    "4397cb43c32880cf",
+    "aa3083f26df8efd6"
+  ],
+  "h-language-switch": [
+    "395445c1674cab2d",
+    "af9521199b0f181d"
+  ],
+  "nlp-sentiment-manipulation": [
+    "3a0a2e95ea25a349",
+    "3fcc48a6ffae3b9a"
+  ],
+  "nlp-pos-imperative": [
+    "8430b34bf587ca77",
+    "c6f34c1e17ad50f2"
+  ],
+  "nlp-entity-impersonation": [
+    "729371740f37a540",
+    "ce2a52616bba0955"
+  ],
+  "nlp-sentence-structure": [
+    "e31ac68ab7c4fac6",
+    "3a765f87d8f752fb"
+  ],
+  "kw-data-exfil-commands": [
+    "330be69339624eb7"
+  ],
+  "kw-safety-probing": [
+    "2d911cfc727ae130"
+  ],
+  "kw-goal-manipulation": [
+    "aea4c3fb9466b55f"
+  ],
+  "kw-mcp-tool-poisoning": [
+    "8fc7900aadaeffc6"
+  ],
+  "kw-agent-memory-poison": [
+    "40816e629b431346"
+  ],
+  "kw-agent-exfiltration": [
+    "764cb21a131b18de"
+  ],
+  "kw-tool-privilege-escalation": [
+    "1a1082c15f152435"
+  ],
+  "kw-ai-instruction-in-comment": [
+    "7ec0a9cb224cbddf"
+  ],
+  "kw-postinstall-suspicious": [
+    "a150aadc46021fa8"
+  ],
+  "kw-skeleton-key": [
+    "62cc9bdbcd248b7f"
+  ],
+  "kw-worm-propagation": [
+    "7988b7fc611482c0"
+  ],
+  "kw-silent-monitoring": [
+    "6f6d185ccaf26700"
+  ],
+  "kw-rag-authority": [
+    "7e09f4f2001bbb6e"
+  ],
+  "kw-cross-agent": [
+    "44246ed829391984"
+  ],
+  "kw-multimodal-reference": [
+    "b11bcc310d86057d"
+  ],
+  "kw-output-compliance": [
+    "70b79036403982b2"
+  ],
+  "kw-output-safety-override": [
+    "5a20b18eb6e61762"
+  ],
+  "kw-conversation-reset": [
+    "3c6f53db0086094f"
+  ],
+  "kw-backdoor-trigger": [
+    "89f265624c3e0876"
+  ],
+  "kw-sandbox-escape": [
+    "3d6506cc08a53740"
+  ],
+  "kw-image-text-injection": [
+    "c57f3d6e6705834a"
+  ],
+  "kw-steganographic-indicators": [
+    "874f673b49d9bf87"
+  ],
+  "kw-audio-command-injection": [
+    "7303712d60a94581"
+  ],
+  "rx-system-reveal": [
+    "9206749cf01bd920"
+  ],
+  "rx-urgency-pressure": [
+    "739da83576312571"
+  ],
+  "rx-encoding-mention": [
+    "d3c9b6d67b7d65da"
+  ],
+  "rx-emoji-commands": [
+    "3fea58ca7c37f3be"
+  ],
+  "rx-logical-permission": [
+    "47b0f8c04e7fd70c"
+  ],
+  "rx-ethical-manipulation": [
+    "3a75319806fabd7c"
+  ],
+  "rx-secret-extraction": [
+    "c01c6128abb78c54"
+  ],
+  "rx-alignment-test": [
+    "56e7ae3308b62207"
+  ],
+  "rx-goal-redefinition": [
+    "53e61ab695304ec2"
+  ],
+  "rx-data-transmission": [
+    "55fd3260178a5674"
+  ],
+  "rx-markdown-exfiltration": [
+    "50d93b0046cb03ac"
+  ],
+  "rx-mcp-important-tag": [
+    "aa366487cb26261b"
+  ],
+  "rx-agent-tool-reference": [
+    "e38f11f39f41de9f"
+  ],
+  "rx-credential-path-reference": [
+    "fb9019743af681c8"
+  ],
+  "rx-fake-system-prompt": [
+    "f861a9061d50e2d2"
+  ],
+  "rx-env-var-exfiltration": [
+    "19bce6a156e5213d"
+  ],
+  "rx-cursorrules-injection": [
+    "8fb76471d1195935"
+  ],
+  "rx-readme-ai-targeting": [
+    "c984611239444e26"
+  ],
+  "rx-github-actions-injection": [
+    "4c6aa96644e84f1a"
+  ],
+  "rx-webhook-exfiltration": [
+    "91a1d6bcda14b790"
+  ],
+  "rx-many-shot-flood": [
+    "e5478d1c12574a70"
+  ],
+  "rx-self-replication": [
+    "93e4349186f806a5"
+  ],
+  "rx-delayed-trigger": [
+    "f330c581e055978d"
+  ],
+  "rx-translate-execute": [
+    "528955da304714e6"
+  ],
+  "rx-repeated-blocks": [
+    "265ba4b00462fa8c"
+  ],
+  "rx-always-call-tool": [
+    "96facc1ad79b7646"
+  ],
+  "rx-image-instruction-ref": [
+    "00be75f35093ac57"
+  ],
+  "rx-rag-citation-chain": [
+    "d23f7460ca40ecc4"
+  ],
+  "rx-persistence-instruction": [
+    "fc779a1557829309"
+  ],
+  "rx-output-role-break": [
+    "1bbba9f7b46475bb"
+  ],
+  "rx-output-instruction-echo": [
+    "46d6516fbacbce8b"
+  ],
+  "rx-output-persona-announce": [
+    "5b996c23ba54b8e7"
+  ],
+  "rx-output-exfil-dump": [
+    "d1cc3d926eb68b3e"
+  ],
+  "rx-output-guardrail-ack": [
+    "e2146eb37e91b89f"
+  ],
+  "rx-backdoor-conditional": [
+    "f9c01c23a69cd5f7"
+  ],
+  "rx-fake-tool-result": [
+    "5a6817c769298bfb"
+  ],
+  "rx-meta-prompt-nesting": [
+    "f91d1e8c9bfc4e10"
+  ],
+  "rx-skeleton-key-augment": [
+    "cab550227fdcf8ae"
+  ],
+  "rx-canary-tracking": [
+    "2520ec821662922e"
+  ],
+  "rx-markdown-xss": [
+    "1ce10e916a3fdbe5"
+  ],
+  "rx-memory-persistence": [
+    "411890283fc7e3c4"
+  ],
+  "rx-automated-attack-structure": [
+    "18eafaceb2881702"
+  ],
+  "rx-semantic-aliasing": [
+    "93f4a86f274d4053"
+  ],
+  "rx-context-window-padding": [
+    "81a0df6bd1c1f85f"
+  ],
+  "rx-phonetic-bypass": [
+    "48b236db140be077"
+  ],
+  "rx-math-instruction-encoding": [
+    "12a42e6fb67456b3"
+  ],
+  "rx-authority-marker-injection": [
+    "07ba1dc40281d640"
+  ],
+  "rx-temporal-data-injection": [
+    "b25d63ffe63b0733"
+  ],
+  "rx-recursive-self-injection": [
+    "7ea3a0edbae5a049"
+  ],
+  "rx-audio-transcript-injection": [
+    "b3ecde33158aa89f"
+  ],
+  "rx-subtitle-injection": [
+    "4a0ec59df6342861"
+  ],
+  "rx-multimodal-hidden-instruction": [
+    "727f04c6b9f75eca"
+  ],
+  "rx-video-frame-injection": [
+    "4c66fd60e2785abc"
+  ],
+  "rx-whisper-hallucination": [
+    "8982527dc69f5931"
+  ],
+  "rx-speaker-label-injection": [
+    "5e9390f1238999b5"
+  ],
+  "rx-media-metadata-injection": [
+    "b7b523c57226dc11"
+  ],
+  "rx-ssml-tts-injection": [
+    "ab128844ceaa7f08"
+  ],
+  "rx-video-audio-injection": [
+    "c026db4633b2c452"
+  ],
+  "rx-schema-poisoning": [
+    "9b0d55a7658d01ab"
+  ],
+  "h-sneaky-bits": [
+    "14773cb37697e677"
+  ],
+  "h-bidi-override": [
+    "89c69333f7b1ac8f"
+  ],
+  "h-zero-width-chars": [
+    "5240bb4a68402d7e"
+  ],
+  "h-variation-selector-abuse": [
+    "b64891ab389e6edf"
+  ],
+  "h-encoding-depth": [
+    "4f554fce6f0274ea"
+  ],
+  "h-attack-genealogy": [
+    "1939fbadcdcb2509"
+  ],
+  "h-adversarial-suffix": [
+    "170c1123086ed23f"
+  ],
+  "h-ligature-detection": [
+    "06720bd024be985c"
+  ],
+  "h-whitespace-steg": [
+    "a2336c697a85407d"
+  ],
+  "f-invisible-unicode": [
+    "524e0ec76176d61b"
+  ],
+  "f-metadata-injection": [
+    "7327553a4878bac6"
+  ],
+  "f-hidden-text-marker": [
+    "04ab3abf0938dd1b"
+  ],
+  "f-mixed-visibility": [
+    "9ece3636e1fb759a"
+  ],
+  "f-unicode-homoglyph": [
+    "d9b819330661bd17"
+  ],
+  "f-bidi-override": [
+    "5de1f5f964649d65"
+  ],
+  "f-zwc-binary-encoding": [
+    "235919ce10337d62"
+  ],
+  "f-normalization-bypass": [
+    "c3ce6397939a79eb"
+  ],
+  "f-markdown-exfiltration": [
+    "bdc72ac920ebd96d"
+  ],
+  "f-docx-tracked-changes": [
+    "6d2081e0fb640e3c"
+  ],
+  "f-html-hidden-elements": [
+    "b1ed2153faa565df"
+  ],
+  "f-svg-hidden-injection": [
+    "207be42ada37ed5e"
+  ],
+  "f-pdf-javascript": [
+    "1e78411d756d80f9"
+  ]
+}

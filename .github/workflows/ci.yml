@@ -205,7 +205,8 @@ jobs:
         run: pnpm --filter @forensicate/scanner build
 
       - name: Build web app for GitHub Pages
-        run: pnpm --filter @forensicate/app build:gh-pages
+        # test-app already passed for this commit through this job's needs.
+        run: pnpm --filter @forensicate/app build:gh-pages:only
 
       - name: Check bundle size
         run: |

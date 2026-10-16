@@ -194,9 +194,86 @@ pending hosted CI/deployment verification and real-browser limitation above
 remain unchanged. Continue publication from this follow-up commit, preserving
 the previously recorded release authorization.
 
+## CI maintenance — 16 October 2026
+
+- The app now exposes `build:only` and `build:gh-pages:only` for callers that
+  already ran its tests. Normal `build` and `build:gh-pages` still run tests
+  first. CI uses `build:gh-pages:only` after its existing required checks, so
+  the app suite runs once without weakening the artifact's test, lint,
+  security or typecheck gates.
+- Dependabot groups minor/patch updates for React and its types, Vite/Vitest,
+  Tailwind, and ESLint before the remaining development/production groups.
+  Action minor/patch updates are grouped too. Major upgrades remain separate
+  PRs, and no dependency is ignored.
+- Local checks parsed both workflow files and the Dependabot YAML, verified
+  the CI dependency graph and artifact identifiers against the previous
+  revision, and checked family assignment and build-script shell syntax.
+  The deployment workflow is unchanged; hosted execution remains unverified.
+- VSIX distribution is still blocked: `vsce` is not installed, and neither
+  the workspace lockfile nor the installed workspace/global packages contain
+  `@vscode/vsce`. No dependency or lockfile entry was fabricated. In an
+  environment with registry access, add and lock a supported packaging-tool
+  version, build/package the extension, then install that VSIX in an
+  Extension Host and verify activation, selection scanning and diagnostics
+  before calling it distribution-ready.
+
+## Modernization implementation — 16 October 2026
+
+The approved local follow-up now includes:
+
+- Version 2 saved settings: built-in definitions come from the current scanner,
+  with user edits stored separately. Known legacy snapshots migrate while
+  preserving enabled/weight preferences; ambiguous edits are retained with a
+  notice. Future-version settings cannot be overwritten by autosave. Legacy
+  share links remain supported. See [the migration contract](saved-rule-migration.md).
+- Pricing: 14 entries have individually sourced verification dates, and 10
+  non-deprecated remote models appear in the default comparison. GPT-5.2 Pro's
+  rate, the per-million rate columns, and Gemini long-context calculations are
+  corrected. Unverified historical selections stay explicitly dated; unsupported
+  model recommendations are removed. This is a selected catalog, not a claim
+  that every provider/model is current.
+- Python CLI: parsed category/rule/severity/output settings now take effect,
+  explicit flags override config, and unsupported settings fail clearly.
+  Configuration and UTF-8 input reads are bounded. The separate 87-rule engine
+  remains source-only, without a TypeScript-parity claim.
+- PDF extraction uses transformed text geometry with crop/rotation coverage,
+  including actual benign PDF fixtures parsed by PDF.js. PDF/media limitations
+  appear as warnings rather than being inserted into text sent to the scanner.
+- Ten known routes now have HTML entry files in the static build, with matching
+  canonical URLs and valid root-relative assets. Unknown routes render a
+  not-found page. Hosted HTTP behavior still needs deployment verification.
+- Saving custom JavaScript rules compiles syntax without executing the body.
+  Scanning remains synchronous: [worker isolation](scan-worker-migration.md)
+  is documented remaining work, not a completed timeout guarantee.
+
+Validation: **397 app tests passed**, including real PDF parsing, Vite route-shell
+generation, and persisted-settings save/reload cases. App ESLint passed. The
+full **209 Python tests passed on Python 3.14**, using the installed pytest
+package via `PYTHONPATH` with third-party plugin autoload disabled; no package
+download or environment installation was needed. Changed pricing/share helpers
+were checked again after bundle-size cleanup. Web/standalone build evidence and
+artifact hashes are recorded in the current release manifest and wiki handoff.
+Unchanged-package totals above remain historical, not a new all-package run.
+
+The final web JavaScript total is **2,096,086 bytes**, leaving **1,066 bytes**
+under the unchanged 2,097,152-byte budget (PDF worker excluded as before). An
+initial build exceeded the limit by 367 bytes; deduplicating historical pricing
+notes and removing redundant share-link processing recovered space. The final
+29 affected pricing/share tests and ESLint passed. The offline HTML is
+**3,924,559 bytes**, SHA-256
+`34713de4c23b951e1a484c285cc8999e6616cefab07bc40df3d9c18c3bc09f24`.
+The three repository offline copies match; all eleven HTML entry files resolve
+their assets, and the site now contains 58 files. Fresh browser interaction and
+hosted status checks remain unavailable.
+
+No GitHub issue or PR was changed, closed, or merged. Authenticated API access
+still fails, and public browsing did not establish a complete current inventory.
+The PR dispositions below are based on the earlier recorded inventory; they
+must be reconciled with current remote state before applying them.
+
 ## Remaining work in priority order
 
-Updated after the 12 October continuation. The original 10 October validation
+Updated after the 16 October implementation. The original 10 October validation
 and historical PR inventory are retained below.
 
 | Priority | Finding | Recommended next step |
@@ -204,19 +281,20 @@ and historical PR inventory are retained below.
 | P1 | [API](../packages/api/src/index.ts) still returns 501 for batch/rules/usage. Daily/monthly quotas and tenant feature fields are declared but not enforced. | Treat as unfinished source integration. Implement accounting/entitlements or remove those contractual promises before onboarding users. |
 | P1 | GitHub `main` had no branch protection or rulesets at the 10 October inspection. PRs #28/#33/#37 merged despite failed checks. | Require reviewed PRs and required checks. The local deployment workflow now consumes a validated artifact, but still needs hosted qualification after publication. Account settings have not been changed. |
 | P2 | [Worker config](../packages/api/wrangler.toml) retains placeholder KV IDs, 2025 compatibility date, and legacy Durable Object migration. | Audit actual account resources/migration history, choose deployment environments, then plan a tested runtime migration. Dry-run bundling does not establish production readiness. |
-| P2 | [Stored rule merging](../packages/app/src/hooks/usePersistedConfig.ts) adds new rule IDs but preserves all persisted old definitions. Returning users may retain outdated built-in patterns. | Version defaults and store user overrides separately; migrate without discarding intentional edits. |
-| P2 | [Pricing database](../packages/app/src/lib/pricing/pricingDatabase.ts) was last marked updated 15 March 2026, 209 days before this review. Labels such as latest/best value are also manually maintained. | Reverify every displayed model/rate against provider sources. The reminder is repaired; rates were not relabeled as current. |
-| P2 | Python is a separate reduced engine with no demonstrated parity to the maintained TypeScript rules. [Python CLI](../packages/python/src/forensicate/cli.py) applies threshold but not all parsed rule/output filters. | Keep source-only status, document supported parity, add CLI integration tests before release. |
+| P2 | Ambiguous legacy rule edits are intentionally retained during migration. | Review any migration notice; do not reset intentional edits merely to obtain fresh defaults. Version 2 now tracks overrides separately. |
+| P2 | Historical pricing outside the verified default selection remains unverified. | Check additional models against provider sources before expanding the comparison; retain per-model dates and refresh verified rates as they age. |
+| P2 | Python remains a separate reduced engine with no demonstrated parity to the maintained TypeScript rules. CLI settings and input errors are now covered by integration tests. | Keep source-only status and define/test intended parity before publishing a package. |
 | P2 | [VSCode packaging](../packages/vscode/package.json) invokes undeclared `vsce`. Only bundle, typecheck and mocked behavioral tests are verified. | Add explicit packaging tooling and an Extension Host/VSIX smoke test before distribution. |
-| P2 | Regex/custom JavaScript rules still run synchronously; the extension's Promise.race cannot interrupt synchronous scanning. | Isolate custom work in a worker/process with enforceable cancellation and realistic input limits; don't describe timers as CPU protection. |
-| P2 | Live deep links such as `/scanner` initially return HTTP 404 and then recover through the GitHub Pages redirect. Unknown paths have no dedicated app fallback. | Add hosting rewrites or prerender route shells and a real not-found page; verify SEO/status behavior. |
-| P2 | Rotated/cropped PDF text can be misclassified by simplistic transform/font-size logic. Metadata-only images, audio, and video are not equivalent to OCR/transcription. | Add representative benign document fixtures and distinguish extraction limitations from threat findings. |
+| P2 | Regex/custom JavaScript rules still run synchronously; the extension's Promise.race cannot interrupt synchronous scanning. Saving a custom rule no longer executes its body. | Implement and qualify the [worker migration](scan-worker-migration.md), including offline mode and explicit failure results. |
+| P2 | Route-shell and not-found fixes are built locally but are not deployed. | Verify hosted status codes, trailing-slash behavior, query/hash retention, and canonical URLs after publication. |
+| P2 | PDF geometry fixes have fixture coverage, but clipping/colour visibility is approximate. Metadata-only images/audio/video are not OCR/transcription. | Keep extraction warnings visible and verify representative documents in the real hosted/offline browser. |
 | P3 | Shared links intentionally omit community data and do not preserve every sample-prompt edit or custom heuristic function body. | Define a versioned, documented sharing contract and add remaining round-trip cases. |
 | P3 | Compliance/forensics pages contain static framework mappings and strong reporting claims without specialist acceptance tests. | Review the mapping accuracy and copy independently before treating output as compliance evidence. |
 
 ## PR decisions
 
-All six open PRs had green recorded checks, but those checks predate the stronger coverage here.
+The six PRs open in the earlier inventory had green recorded checks, but those
+checks predate the stronger coverage here. Their current status is unverified.
 
 | Open PR | Assessment |
 | --- | --- |

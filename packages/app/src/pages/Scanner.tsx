@@ -79,6 +79,8 @@ export default function Scanner() {
  setAutoImportCommunityPrompts,
  setTourCompleted,
  loadSource,
+ migrationNotice,
+ error: storageError,
  initialPromptText,
  generateShareUrl,
  resetToDefaults,
@@ -1085,6 +1087,16 @@ export default function Scanner() {
 
  return (
  <div className="space-y-4">
+ {migrationNotice && (
+ <p role="status" className="rounded-lg border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">
+ {migrationNotice}
+ </p>
+ )}
+ {storageError && (
+ <p role="alert" className="rounded-lg border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">
+ {storageError}
+ </p>
+ )}
  {/* Toast Notification */}
  {showToast && (
  <div className={`fixed top-4 right-4 z-50 px-4 py-3 bg-[#c9a227] text-gray-900 rounded-lg shadow-lg flex items-center gap-2 ${toastFading ? 'toast-exit' : 'toast-enter'}`}>
