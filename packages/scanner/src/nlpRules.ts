@@ -231,7 +231,8 @@ export const nlpRules: DetectionRule[] = [
     description: 'Detects imperative sentence patterns using NLP part-of-speech tagging',
     type: 'heuristic',
     severity: 'medium',
-    enabled: true,
+    // Off by default: ordinary multi-sentence instructions also match.
+    enabled: false,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
     killChain: ['initial-access'],
@@ -259,7 +260,8 @@ export const nlpRules: DetectionRule[] = [
     description: 'Detects many short imperative sentences typical of injection prompts',
     type: 'heuristic',
     severity: 'medium',
-    enabled: true,
+    // Off by default: lists of ordinary instructions or questions also match.
+    enabled: false,
     owaspLlm: ['LLM01'],
     owaspAgentic: ['ASI01'],
     killChain: ['initial-access'],

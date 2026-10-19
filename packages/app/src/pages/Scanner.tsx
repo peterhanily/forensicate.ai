@@ -1188,18 +1188,21 @@ export default function Scanner() {
  showToastMessage('No valid rules found in YAML file', 3000);
  return;
  }
- // Add rules to localRules
- setLocalRules(prev => [...prev, ...result.rules]);
+ // Add rules to localRules; re-importing a file replaces rules with the same IDs
+ const importedIds = new Set(result.rules.map(rule => rule.id));
+ const replaced = localRules.filter(rule => importedIds.has(rule.id)).length;
+ setLocalRules(prev => [...prev.filter(rule => !importedIds.has(rule.id)), ...result.rules]);
  // Add category
  setCustomCategories(prev => {
  const existing = prev.find(c => c.id === result.category.id);
  if (existing) {
  return prev.map(cat => cat.id === result.category.id
- ? { ...cat, rules: [...cat.rules, ...result.rules] } : cat);
+ ? { ...cat, rules: [...cat.rules.filter(rule => !importedIds.has(rule.id)), ...result.rules] } : cat);
  }
  return [...prev, result.category];
  });
- showToastMessage(`✅ Imported ${result.rules.length} rule${result.rules.length !== 1 ? 's' : ''} from ${file.name}`, 3000);
+ const replacedNote = replaced ? `, replacing ${replaced} existing rule${replaced !== 1 ? 's' : ''} with the same ID` : '';
+ showToastMessage(`✅ Imported ${result.rules.length} rule${result.rules.length !== 1 ? 's' : ''} from ${file.name}${replacedNote}`, 3000);
  lastScannedRef.current = '';
  };
  reader.readAsText(file);

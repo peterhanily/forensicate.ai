@@ -67,6 +67,11 @@ function getDefaultPrompts(): PromptCategory[] {
   return JSON.parse(JSON.stringify(samplePrompts));
 }
 
+// Ignore shared or saved thresholds the 0-99 slider cannot produce.
+function validThreshold(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 99 ? value : undefined;
+}
+
 function resolveSavedRules(config: PersistedConfig) {
   const resolved = resolveRulePreferences(config.rules);
   return {
@@ -117,7 +122,8 @@ function loadInitialConfig(): {
       savedAt: new Date(urlConfig.savedAt),
       expandedRuleCategory: storedConfig?.ui?.expandedRuleCategory ?? null,
       expandedPromptCategory: storedConfig?.ui?.expandedPromptCategory ?? null,
-      confidenceThreshold: urlConfig.ui?.confidenceThreshold ?? storedConfig?.ui?.confidenceThreshold ?? 50,
+      confidenceThreshold: validThreshold(urlConfig.ui?.confidenceThreshold)
+        ?? validThreshold(storedConfig?.ui?.confidenceThreshold) ?? 50,
       autoImportCommunityRules: storedConfig?.ui?.autoImportCommunityRules ?? true,
       autoImportCommunityPrompts: storedConfig?.ui?.autoImportCommunityPrompts ?? true,
       tourCompleted: storedConfig?.ui?.tourCompleted ?? false,
@@ -136,7 +142,7 @@ function loadInitialConfig(): {
       savedAt: new Date(storedConfig.savedAt),
       expandedRuleCategory: storedConfig.ui?.expandedRuleCategory ?? null,
       expandedPromptCategory: storedConfig.ui?.expandedPromptCategory ?? null,
-      confidenceThreshold: storedConfig.ui?.confidenceThreshold ?? 50,
+      confidenceThreshold: validThreshold(storedConfig.ui?.confidenceThreshold) ?? 50,
       autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
       autoImportCommunityPrompts: storedConfig.ui?.autoImportCommunityPrompts ?? true,
       tourCompleted: storedConfig.ui?.tourCompleted ?? false,

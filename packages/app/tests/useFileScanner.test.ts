@@ -82,3 +82,20 @@ describe('file selection lifecycle', () => {
     expect(result.current.fileScanResult?.fileInfo.filename).toBe('second.txt');
   });
 });
+
+describe('file threats', () => {
+  it('reports zero-size PDF text as hidden but leaves document scripts to the scan rules', async () => {
+    const layers: FileExtractionResult['layers'] = [
+      { type: 'visible', content: 'Quarterly form', location: '1 page(s)' },
+      { type: 'hidden', content: 'function total() { return 1; }', location: 'PDF JavaScript' },
+      { type: 'hidden', content: 'tiny words', location: 'Zero/tiny font size text' },
+    ];
+    vi.mocked(extractTextFromFile).mockResolvedValueOnce({
+      ...extraction('form.pdf'), fileType: 'pdf', mimeType: 'application/pdf', layers,
+      allText: layers.map(layer => layer.content).join('\n'),
+    });
+    const { result } = renderHook(() => useFileScanner());
+    await act(async () => { await result.current.handleFileSelected(new File([], 'form.pdf')); });
+    expect(result.current.fileScanResult?.fileThreats.map(threat => threat.location)).toEqual(['Zero/tiny font size text']);
+  });
+});

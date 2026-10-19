@@ -162,9 +162,9 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 
 - **NLP Analysis (4 rules)**: Natural language processing detection
   - Sentiment Manipulation: AFINN-165 word-level sentiment scoring for coercive tone
-  - POS Imperative Detection: compromise.js POS tagging to find imperative sentences
+  - POS Imperative Detection: compromise.js POS tagging to find imperative sentences (off by default; ordinary instructions also match)
   - Entity Impersonation: NER + keyword matching for authority impersonation attempts
-  - Sentence Structure Anomaly: Detects short imperative sentence clustering
+  - Sentence Structure Anomaly: Detects short imperative sentence clustering (off by default for the same reason)
 
 ### Rule Management
 

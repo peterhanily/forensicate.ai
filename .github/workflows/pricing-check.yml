@@ -19,12 +19,17 @@ jobs:
       - name: Check pricing age
         id: check
         run: |
-          LAST_UPDATED=$(grep -oP "PRICING_LAST_UPDATED = '\K[^']+" packages/app/src/lib/pricing/pricingDatabase.ts)
-          LAST_EPOCH=$(date -d "$LAST_UPDATED" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_UPDATED" +%s)
+          # Freshness comes from each verified entry; PRICING_LAST_UPDATED dates unverified historical data.
+          OLDEST_VERIFIED=$(grep -oP "verifiedAt: '\K[^']+" packages/app/src/lib/pricing/pricingDatabase.ts | sort | head -n 1)
+          if [ -z "$OLDEST_VERIFIED" ]; then
+            echo "::error::No verifiedAt dates found in the pricing database"
+            exit 1
+          fi
+          LAST_EPOCH=$(date -d "$OLDEST_VERIFIED" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$OLDEST_VERIFIED" +%s)
           NOW_EPOCH=$(date +%s)
           AGE_DAYS=$(( (NOW_EPOCH - LAST_EPOCH) / 86400 ))
           echo "age_days=$AGE_DAYS" >> $GITHUB_OUTPUT
-          echo "Pricing data is ${AGE_DAYS} days old (last updated: ${LAST_UPDATED})"
+          echo "Oldest verified pricing is ${AGE_DAYS} days old (verified: ${OLDEST_VERIFIED})"
           if [ "$AGE_DAYS" -gt 30 ]; then
             echo "stale=true" >> $GITHUB_OUTPUT
           else
@@ -47,7 +52,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: 'Pricing data is stale (>30 days old)',
-                body: `The LLM pricing database in \`packages/app/src/lib/pricing/pricingDatabase.ts\` is **${{ steps.check.outputs.age_days }} days old**.\n\nPlease update the pricing data from official provider websites and update \`PRICING_LAST_UPDATED\`.`,
+                body: `The oldest verified price in \`packages/app/src/lib/pricing/pricingDatabase.ts\` was checked **${{ steps.check.outputs.age_days }} days ago**.\n\nPlease re-check the verified entries against official provider pricing pages and update each entry's \`source.verifiedAt\`. Do not change \`PRICING_LAST_UPDATED\`; it dates the unverified historical fallback data.`,
                 labels: ['pricing-stale', 'maintenance']
               });
             }

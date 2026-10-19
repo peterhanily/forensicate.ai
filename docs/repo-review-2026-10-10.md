@@ -1,6 +1,6 @@
 # Forensicate repository review
 
-Reviewed 10 October 2026. Baseline: main at `ecd1c5a`, last merged 10 June 2026. The 12 October release preparation and publication status are recorded below. Nothing has been pushed, merged, published, or deployed by this review or continuation.
+Reviewed 10 October 2026. Baseline: main at `ecd1c5a`, last merged 10 June 2026. The 12 October release preparation and publication status are recorded below. Nothing was pushed or deployed before 19 October, when a session with GitHub access pushed the release branch for PR #62; its pre-deploy review and publication are recorded below.
 
 The browser app is functional, but green CI overstated coverage: some app tests exercised an obsolete scanner, the dependency audit suppressed failures, and API/browser/editor integrations had untested defects. This refresh removes unpublished package claims, updates dependencies, consolidates the scanner, and fixes verified runtime problems. The hosted API and release controls still need work before making stronger production claims. Input completeness and the local deployment gate received the follow-up fixes recorded below on 12 October.
 
@@ -20,7 +20,7 @@ The browser app is functional, but green CI overstated coverage: some app tests 
 | Runtime setup | Old Node/pnpm docs, missing workspace build prerequisites, scalar build-script allowlist, API test watch mode | Node 24.13+ within v24 and pnpm 10.29.1; consistent scripts, frozen installs, explicit build-script allowlist, nonwatch tests. |
 | API build command | `build:api` actually deployed | It now performs a dry-run bundle build; deployment has a separate explicit command. |
 | Scanner correctness | Custom regex iteration could fail to advance; empty keywords were unsafe; YAML comments/lists could change parsed rules | Defensive iteration and parsing fixes with benign regression fixtures. |
-| NLP | Two heuristics interpreted compromise tag output incorrectly and were effectively inactive | Uses the supported tag-query API with unconditional regression assertions. Scores can change because these checks now work. |
+| NLP | Two heuristics interpreted compromise tag output incorrectly and were effectively inactive | Uses the supported tag-query API with unconditional regression assertions. On 19 October both became opt-in, because once working they flagged ordinary instructions. |
 | API HTTP behavior | Empty preflight allowlist, inconsistent origin matching/headers, ignored configured text limit, unbounded JSON parsing, ineffective timer | Explicit browser-origin config, bounded body reads, honored text caps, consistent response headers, and honest synchronous execution semantics. |
 | API lifecycle/auth | Usage writes could be cancelled; invalid expiry/tenant metadata and malformed limiter results were not rejected consistently | Uses `waitUntil`, validates those conditions, forwards retry metadata, and exposes threshold result as `isPositive`. |
 | API development | Generated test tokens did not satisfy the authentication format | Generator now produces accepted secure tokens; examples and local KV instructions corrected. |
@@ -271,15 +271,104 @@ still fails, and public browsing did not establish a complete current inventory.
 The PR dispositions below are based on the earlier recorded inventory; they
 must be reconciled with current remote state before applying them.
 
+## Pre-deploy review — 19 October 2026
+
+This session had GitHub access, so the earlier publication blocker (no network
+in the previous session's sandbox) no longer applied. `origin/main` was still
+`ecd1c5a`. The branch was pushed and draft PR #62 opened. All ten hosted CI
+jobs passed on `8b6a31d`, and the hosted web artifact matched the local build.
+An isolated headless Chrome session then loaded settings that a rebuild of the
+live site had saved. The new build migrated them correctly, and it served every
+route, old and new share links, oversized input, a PDF scan and the offline
+file without errors.
+
+An adversarial review then checked eight areas: deploy pipeline, saved
+settings, UI runtime, extractors and pricing, scanner engine, the live Action,
+other integrations, and security. It kept 33 findings (22 confirmed, 11
+plausible) and rejected 4. These were fixed before publication:
+
+- **Saved settings could be wiped.** The new version 2 checks rejected records
+  that the app's own autosave wrote, such as duplicate IDs from a re-imported
+  YAML file or out-of-range values from a hand-edited JSON import. The next
+  visit then silently replaced every setting with defaults. Saving now writes
+  only data the loader accepts: one rule per ID, with invalid values and
+  malformed custom rules dropped. A YAML re-import replaces rules with the same
+  ID and says so. A supported-version record that still fails validation is
+  kept, and autosave cannot overwrite it until reset.
+- **Extension links were rejected.** The published extension's hand-off links
+  (`version: '1'`) were refused. They load again, including base64 payloads
+  whose `+` signs query parsing turns into spaces.
+- **Legacy recognition was incomplete.** The table now covers every rule
+  definition the deployed app shipped: 141 more definitions across 122 IDs,
+  from commits `6e4ac85` to `5962e5b`. Untouched settings saved from February
+  to March 2026 would otherwise have shown up to 109 "edits" and kept stale
+  definitions permanently. Identifiers are now 32 bits each, which keeps the JS
+  bundle within the unchanged budget.
+- **NLP false positives.** Once their tag check worked, `nlp-pos-imperative`
+  and `nlp-sentence-structure` flagged ordinary instructions as injection: 16
+  of 20 benign prompts flipped, with no change on the attack corpora. Both are
+  now off by default, and old enabled flags for them are ignored.
+- **Share links over the server limit.** GitHub Pages returns 414 for request
+  targets over about 8 KB. New links carry the configuration in the URL
+  fragment instead. Thresholds outside 0–99 are ignored in links and saved
+  settings.
+- **PDF scripts mislabeled.** Document-level PDF JavaScript is no longer
+  reported as zero/tiny-font hidden text. Suspicious calls in it are still
+  flagged by `f-pdf-javascript`.
+- **Smaller fixes:**
+  - The pricing check measures per-entry `verifiedAt` dates.
+  - `/.well-known/security.txt` is now included in the published artifact
+    (both upload actions skip dotfiles by default).
+  - The sitemap and structured data use the trailing-slash canonical URLs.
+  - The Action's setup step no longer caches the calling repository's
+    dependencies.
+
+Deferred, with reasons, to the remaining-work table below:
+
+- **GitHub Action.** It is already non-functional on `main`: it installs an
+  unpublished npm package. Its remaining defects need their own change before
+  the action is promoted:
+  - whole-file scans flag most ordinary files
+  - symlinks abort all-mode scans
+  - the composite replaces the caller's pnpm and PATH
+  - two config keys are ignored
+  - raw file names go into PR comments
+  - `.cursorrules` and `.env` files are never selected
+- **Pre-existing web app issues:**
+  - opening a share link replaces the recipient's saved rules and prompts
+  - PDF.js drops off-page and format-character glyphs before extraction
+  - YAML quoted escapes are not decoded
+  - older builds misread version 2 records, which matters for a rollback or a
+    tab left open across the deploy
+- **Unpublished packages:**
+  - the Python CLI rejects configs that start with a BOM
+  - a CLI config symlink and the CLI's reported oversize length
+  - two extension badge edge cases
+
+Validation after the fixes: a local replica of every CI job passed on Node
+24.13.0 and pnpm 10.29.1. Counts were scanner 409 plus 27 CLI, app 419, API
+109, browser extension 42, Action 22, VSCode 14, and Python 209 on both 3.10
+and 3.14. Builds, lint, typecheck, audit and rule counts also passed. Web
+JavaScript totals **2,096,187 bytes**, 965 under the 2,097,152-byte budget.
+Publication results follow in the next section once recorded.
+
 ## Remaining work in priority order
 
-Updated after the 16 October implementation. The original 10 October validation
-and historical PR inventory are retained below.
+Updated after the 16 October implementation and the 19 October pre-deploy
+review. The original 10 October validation and historical PR inventory are
+retained below.
 
 | Priority | Finding | Recommended next step |
 | --- | --- | --- |
 | P1 | [API](../packages/api/src/index.ts) still returns 501 for batch/rules/usage. Daily/monthly quotas and tenant feature fields are declared but not enforced. | Treat as unfinished source integration. Implement accounting/entitlements or remove those contractual promises before onboarding users. |
 | P1 | GitHub `main` had no branch protection or rulesets at the 10 October inspection. PRs #28/#33/#37 merged despite failed checks. | Require reviewed PRs and required checks. The local deployment workflow now consumes a validated artifact, but still needs hosted qualification after publication. Account settings have not been changed. |
+| P1 | Opening any share link replaces the recipient's saved custom rules, sections and prompt sections without confirmation. Extension hand-off links, which carry only text, do the same. This predates the release. | Keep URL state in memory until the user adopts it, or merge it, and treat text-only hand-offs as session state. Back up the previous record first. |
+| P1 | The GitHub Action scans whole files with every default rule at threshold 50. Structural heuristics such as `h-nested-delimiters` flagged 92–98% of a benign README/source corpus. | Before promoting the action, use a whole-file rule profile or calibrate those heuristics on a benign corpus. Also review the `fail-on-finding` and `comment-on-pr` defaults. |
+| P2 | Action follow-ups from the 19 October review:<br>- discovered symlinks abort all-mode scans<br>- the composite's pnpm setup replaces the caller's pnpm, PATH and store<br>- `extensions` and `max-file-size-kb` are ignored<br>- raw file names reach PR comments<br>- `.cursorrules` and `.env` files are never selected | Fix them in one action change, each with a regression test. Run the composite against a scratch consumer repository. |
+| P2 | Older builds read version 2 records as version 1 and reset built-in preferences: after a rollback, or in a tab left open across a deploy. | Fix forward rather than roll back. Otherwise write version 2 under a new key and keep the version 1 record for one release. |
+| P2 | PDF.js removes glyphs outside the crop box and `\p{Cf}` characters before text extraction, so those payloads are never scanned. | Add an operator-list pass for the off-page and hidden layers, with real-PDF fixtures. |
+| P3 | The YAML import keeps escape sequences inside quoted scalars, so a double-quoted regex such as `"\\s"` never matches. | Decode YAML escapes in `unquote` (rule files and config), with a test for the example pack. |
+| P3 | Unpublished packages:<br>- the Python CLI exits 2 on BOM-prefixed configs<br>- the TypeScript CLI rejects symlinked configs and reports a partial length when oversized<br>- two extension badge/result edge cases | Fix them before publishing those packages. |
 | P2 | [Worker config](../packages/api/wrangler.toml) retains placeholder KV IDs, 2025 compatibility date, and legacy Durable Object migration. | Audit actual account resources/migration history, choose deployment environments, then plan a tested runtime migration. Dry-run bundling does not establish production readiness. |
 | P2 | Ambiguous legacy rule edits are intentionally retained during migration. | Review any migration notice; do not reset intentional edits merely to obtain fresh defaults. Version 2 now tracks overrides separately. |
 | P2 | Historical pricing outside the verified default selection remains unverified. | Check additional models against provider sources before expanding the comparison; retain per-model dates and refresh verified rates as they age. |

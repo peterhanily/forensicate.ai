@@ -64,6 +64,63 @@ describe('saved-rule migration through the app hook', () => {
     hook.unmount();
   });
 
+  it.each([
+    ['re-imported YAML rules that share an ID', (legacy: PersistedConfig) => {
+      const yamlRule = { id: 'yaml-plugin', name: 'Imported', description: 'From YAML', type: 'keyword' as const, severity: 'high' as const, enabled: true, keywords: ['zebra canary'] };
+      legacy.rules.localRules = [...allRules, yamlRule, { ...yamlRule, keywords: ['newer canary'] }];
+    }],
+    ['a built-in value the editor cannot produce', (legacy: PersistedConfig) => {
+      legacy.rules.localRules = allRules.map((rule, index) => index === 0 ? { ...rule, weight: 150 }
+        : index === 1 ? { ...rule, enabled: 'false' as unknown as boolean } : rule);
+    }],
+  ])('keeps every setting across reloads after %s', async (_label, mutate) => {
+    const legacy = storedConfig();
+    mutate(legacy);
+    legacy.prompts.customPromptCategories = [{ id: 'custom-prompts', name: 'Personal', description: 'Notes', prompts: [] }];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+
+    for (let visit = 0; visit < 3; visit++) {
+      const hook = renderHook(() => usePersistedConfig());
+      expect(hook.result.current.loadSource).toBe('localStorage');
+      expect(hook.result.current.customPromptCategories).toEqual(legacy.prompts.customPromptCategories);
+      expect(hook.result.current.tourCompleted).toBe(true);
+      await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+      expect(hook.result.current.error).toBeNull();
+      hook.unmount();
+    }
+    const saved: PersistedConfig = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    expect(saved.rules.localRules.filter(rule => rule.id === 'yaml-plugin').length).toBeLessThanOrEqual(1);
+  });
+
+  it('keeps saved settings it cannot read until an explicit reset', async () => {
+    const unreadable = createRulePreferences([], []);
+    unreadable.localRules = [{ ...allRules[0], id: 'custom-a', isCustom: true }, { ...allRules[0], id: 'custom-a', isCustom: true }];
+    const stored = JSON.stringify({ ...storedConfig(), version: CONFIG_VERSION, rules: unreadable });
+    localStorage.setItem(STORAGE_KEY, stored);
+    const hook = renderHook(() => usePersistedConfig());
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(stored);
+    expect(hook.result.current.error).toContain('could not be read');
+    act(() => hook.result.current.resetToDefaults());
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).version).toBe(CONFIG_VERSION);
+    expect(hook.result.current.error).toBeNull();
+    hook.unmount();
+  });
+
+  it('turns off imperative checks that a version 1 snapshot saved as enabled before they could run', () => {
+    const legacy = storedConfig();
+    legacy.rules.localRules = allRules.map(rule => ({ ...rule, enabled: true }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    const hook = renderHook(() => usePersistedConfig());
+    const enabled = new Map(hook.result.current.localRules.map(rule => [rule.id, rule.enabled]));
+    expect(enabled.get('nlp-pos-imperative')).toBe(false);
+    expect(enabled.get('nlp-sentence-structure')).toBe(false);
+    expect(enabled.get('nlp-entity-impersonation')).toBe(true);
+    expect(hook.result.current.migrationNotice).toBeNull();
+    hook.unmount();
+  });
+
   it('leaves future-version settings untouched until an explicit reset', async () => {
     const future = JSON.stringify({ ...storedConfig(), version: '99.0', futureData: ['preserve'] });
     localStorage.setItem(STORAGE_KEY, future);

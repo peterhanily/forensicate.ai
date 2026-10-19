@@ -1,5 +1,5 @@
 import type { TextLayer } from '@forensicate/scanner';
-import { buildExtractionResult } from './utils';
+import { buildExtractionResult, PDF_JAVASCRIPT_LOCATION } from './utils';
 import type { FileExtractionResult } from '@forensicate/scanner';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import type { TextItem, TextStyle } from 'pdfjs-dist/types/src/display/api';
@@ -178,7 +178,7 @@ async function extractDocument(pdf: PDFDocumentProxy, file: File, startTime: num
       layers.push({
         type: 'hidden',
         content: jsContent,
-        location: 'PDF JavaScript',
+        location: PDF_JAVASCRIPT_LOCATION,
       });
       warnings.push(`Found ${js.length} JavaScript action(s) in PDF`);
     }

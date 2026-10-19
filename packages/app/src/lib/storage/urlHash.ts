@@ -38,7 +38,8 @@ export function decodeConfig(encoded: string): PersistedConfig | null {
     // Fall back to legacy base64 format for backwards compatibility
     // The extension encodes as: btoa(encodeURIComponent(JSON.stringify(config)))
     // So we decode as: JSON.parse(decodeURIComponent(atob(base64)))
-    const jsonString = decodeURIComponent(atob(encoded));
+    // It does not escape '+', which query parsing turns into a space.
+    const jsonString = decodeURIComponent(atob(encoded.replace(/ /g, '+')));
     const data = JSON.parse(jsonString);
 
     if (validateConfig(data)) {
@@ -90,7 +91,7 @@ export function clearUrlConfig(): void {
     if (hashParams.has(PARAM_NAME)) {
       hashParams.delete(PARAM_NAME);
       const newHash = hashParams.toString() ? `${hashPath}?${hashParams}` : hashPath;
-      url.hash = newHash;
+      url.hash = newHash === '#' ? '' : newHash;
       window.history.replaceState(null, '', url.toString());
       return;
     }
@@ -110,18 +111,15 @@ export function clearUrlConfig(): void {
 export function generateShareUrl(config: PersistedConfig): string {
   const encoded = encodeConfig(config);
   const url = new URL(window.location.href);
+  url.searchParams.delete(PARAM_NAME);
 
   // Detect if we're using HashRouter (standalone mode or hash in URL)
   const isHashRouter = url.hash.startsWith('#/');
 
-  if (isHashRouter) {
-    // HashRouter: append query to hash portion
-    const [hashPath] = url.hash.split('?');
-    url.hash = `${hashPath}?${PARAM_NAME}=${encoded}`;
-  } else {
-    // BrowserRouter: use standard query params
-    url.searchParams.set(PARAM_NAME, encoded);
-  }
+  // HashRouter keeps its route before the query. BrowserRouter also uses the fragment:
+  // browsers never send it to the server, so large configs avoid GitHub Pages' 414 limit.
+  const [hashPath] = isHashRouter ? url.hash.split('?') : [''];
+  url.hash = `${hashPath}?${PARAM_NAME}=${encoded}`;
 
   return url.toString();
 }

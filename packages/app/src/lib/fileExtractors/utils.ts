@@ -105,6 +105,9 @@ export function detectZeroWidthChars(text: string): {
   return { cleanText, hiddenChars, hasHidden: hiddenChars.length > 0 };
 }
 
+/** Location of the PDF layer holding document-level JavaScript actions */
+export const PDF_JAVASCRIPT_LOCATION = 'PDF JavaScript';
+
 /** Build a standard FileExtractionResult from extracted layers */
 export function buildExtractionResult(
   file: File,

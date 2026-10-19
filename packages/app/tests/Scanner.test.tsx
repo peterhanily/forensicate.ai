@@ -290,4 +290,38 @@ describe('Scanner', () => {
 
     expect(screen.getByText('Threshold:')).toBeInTheDocument();
   });
+
+  it('replaces rules from a re-imported YAML file and keeps saved settings across reloads', async () => {
+    const previous = localStorage.getItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: '1.0', savedAt: new Date().toISOString(),
+      rules: { localRules: [], customCategories: [] },
+      prompts: {
+        localPrompts: [],
+        customPromptCategories: [{ id: 'custom-prompt-section-yaml', name: 'Saved review prompts', description: 'Benign fixture', source: 'test', prompts: [] }],
+      },
+      ui: { autoImportCommunityRules: false, autoImportCommunityPrompts: false, tourCompleted: true },
+    }));
+    const yaml = new File(['name: Zebra Rule\ntype: keyword\nseverity: high\nkeywords:\n  - "zebra canary"\n'], 'zebra.yaml');
+    const settle = (ms: number) => act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); });
+    try {
+      const first = render(<Scanner />);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        fireEvent.change(screen.getByLabelText('Import YAML rule file'), { target: { files: [yaml] } });
+        await settle(100);
+      }
+      expect(screen.getByText(/replacing 1 existing rule with the same ID/)).toBeInTheDocument();
+      await settle(600);
+      first.unmount();
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+      expect(saved.rules.localRules.map((rule: { id: string }) => rule.id)).toEqual(['yaml-plugin']);
+
+      const second = render(<Scanner />);
+      expect(screen.getAllByText('Saved review prompts').length).toBeGreaterThan(0);
+      second.unmount();
+    } finally {
+      if (previous === null) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, previous);
+    }
+  });
 });

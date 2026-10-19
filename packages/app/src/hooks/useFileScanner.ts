@@ -9,6 +9,7 @@ import type {
 } from '@forensicate/scanner';
 import { scanPrompt } from '@forensicate/scanner';
 import { extractTextFromFile } from '../lib/fileExtractors';
+import { PDF_JAVASCRIPT_LOCATION } from '../lib/fileExtractors/utils';
 
 export type ScanMode = 'text_input' | 'file_scan';
 
@@ -31,7 +32,8 @@ function detectFileThreats(extraction: FileExtractionResult): FileThreat[] {
   const threats: FileThreat[] = [];
 
   for (const layer of extraction.layers) {
-    if (layer.type === 'hidden') {
+    // Document-level scripts are common in PDF forms; scan rules check their text for risky calls.
+    if (layer.type === 'hidden' && layer.location !== PDF_JAVASCRIPT_LOCATION) {
       threats.push({
         type: 'hidden-text',
         severity: 'critical' as RuleSeverity,

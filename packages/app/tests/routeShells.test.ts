@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { build } from 'vite';
@@ -28,4 +28,14 @@ it('builds root-relative entry shells for every known route without redirects', 
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+it('lists the home page, every route shell, and the offline file in the sitemap', async () => {
+  const sitemap = await readFile(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
+  const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]);
+  expect(locations.sort()).toEqual([
+    'https://forensicate.ai/',
+    'https://forensicate.ai/forensicate-standalone.html',
+    ...Object.values(routePaths).map(route => `https://forensicate.ai/${route}/`),
+  ].sort());
 });

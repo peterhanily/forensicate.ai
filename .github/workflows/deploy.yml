@@ -51,6 +51,7 @@ jobs:
         with:
           name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/web-app
+          include-hidden-files: true
 
       - name: Verify CI still passed for the current main commit
         id: verified

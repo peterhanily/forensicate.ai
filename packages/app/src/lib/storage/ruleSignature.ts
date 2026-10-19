@@ -10,6 +10,12 @@ export function ruleSignature(rule: DetectionRule): string {
   return fingerprint(JSON.stringify(fields));
 }
 
+// The bundled legacy table keeps 32 bits per definition. A chance match (about one in
+// four billion per edited rule) would refresh that rule to the current default.
+export function legacyRuleIdentifier(rule: DetectionRule): string {
+  return ruleSignature(rule).slice(0, 8);
+}
+
 export function fingerprint(value: string): string {
   let first = 0x811c9dc5;
   let second = 0x9e3779b9;

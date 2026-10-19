@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { allRules, type DetectionRule } from '@forensicate/scanner';
 import { createRulePreferences, resolveRulePreferences } from '../src/lib/storage/rulePreferences';
-import { ruleSignature } from '../src/lib/storage/ruleSignature';
+import { legacyRuleIdentifier } from '../src/lib/storage/ruleSignature';
 import legacySignatures from '../src/lib/storage/legacyRuleSignatures.json';
 import { CONFIG_VERSION, STORAGE_KEY, saveConfig, validateConfig, type PersistedConfig } from '../src/lib/storage';
+// Untouched built-in definitions as version 1 snapshots saved them in earlier deployed releases.
+import earlierReleases from './fixtures/legacyRuleDefinitions.json';
 
 const original: DetectionRule = {
   id: 'fixture-rule', name: 'Fixture rule', description: 'Review fixture',
@@ -12,7 +14,7 @@ const original: DetectionRule = {
 const updated: DetectionRule = { ...original, keywords: ['updated fixture'], description: 'Updated description' };
 const custom: DetectionRule = { ...original, id: 'custom-fixture', isCustom: true };
 const legacy = (rules: DetectionRule[]) => ({ localRules: rules, customCategories: [] });
-const known = { [original.id]: [ruleSignature(original)] };
+const known = { [original.id]: [legacyRuleIdentifier(original)] };
 const config = (rules: PersistedConfig['rules']): PersistedConfig => ({
   version: CONFIG_VERSION, savedAt: '2026-10-16T00:00:00Z', rules,
   prompts: { localPrompts: [], customPromptCategories: [] },
@@ -79,8 +81,51 @@ describe('versioned rule preferences', () => {
 
   it('recognizes every snapshot from the pre-migration maintained scanner', () => {
     for (const rule of allRules) {
-      expect((legacySignatures as Record<string, string[]>)[rule.id]).toContain(ruleSignature(rule));
+      expect((legacySignatures as Record<string, string[]>)[rule.id]).toContain(legacyRuleIdentifier(rule));
     }
+  });
+
+  it('recognizes untouched definitions saved by every earlier deployed release', () => {
+    const saved = (earlierReleases as Array<{ release: string; rule: DetectionRule }>).map(entry => entry.rule);
+    const result = resolveRulePreferences(legacy(saved.map(rule => ({ ...rule, enabled: false }))));
+    expect(result.preservedLegacyEdits).toBe(0);
+    for (const rule of saved) {
+      const current = allRules.find(candidate => candidate.id === rule.id)!;
+      expect(result.rules.find(candidate => candidate.id === rule.id)).toEqual({ ...JSON.parse(JSON.stringify(current)), enabled: false });
+    }
+  });
+
+  it('saves one rule per ID, keeping the latest copy', () => {
+    const imported = { ...custom, id: 'yaml-plugin' };
+    const newer = { ...imported, keywords: ['newer fixture'] };
+    const preferences = createRulePreferences([imported, original, newer, { ...original, enabled: false }], [], [original]);
+    expect(preferences.localRules).toEqual([newer]);
+    expect(preferences.builtInOverrides?.map(override => override.values)).toEqual([{ enabled: false }]);
+    expect(validateConfig(config(preferences))).toBe(true);
+  });
+
+  it('drops values the loader would reject rather than every saved setting', () => {
+    const malformed = { ...original, weight: 150, enabled: 'false', description: null, keywords: ['kept edit'] } as unknown as DetectionRule;
+    const unnamed = { ...custom, id: 'custom-unnamed', name: undefined } as unknown as DetectionRule;
+    const preferences = createRulePreferences([malformed, unnamed, custom], [], [original]);
+    expect(preferences.builtInOverrides?.[0].values).toEqual({ keywords: ['kept edit'] });
+    expect(preferences.builtInOverrides?.[0].fallback).toEqual({ ...original, keywords: ['kept edit'] });
+    expect(preferences.localRules).toEqual([custom]);
+    expect(validateConfig(config(preferences))).toBe(true);
+  });
+
+  it('accepts version 1 hand-off configs that the browser extension writes as "1"', () => {
+    expect(validateConfig({ ...config(legacy([])), version: '1' })).toBe(true);
+  });
+
+  it('does not overwrite saved settings that fail validation', () => {
+    const preferences = createRulePreferences([custom], [], [original]);
+    preferences.localRules.push(custom);
+    const unreadable = JSON.stringify(config(preferences));
+    localStorage.setItem(STORAGE_KEY, unreadable);
+    expect(saveConfig(config(createRulePreferences([], []))).success).toBe(false);
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(unreadable);
+    localStorage.removeItem(STORAGE_KEY);
   });
 
   it('restores executable built-in heuristics instead of storing functions', () => {

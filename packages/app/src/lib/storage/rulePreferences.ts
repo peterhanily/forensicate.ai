@@ -1,7 +1,7 @@
 import { allRules, rehydrateHeuristics, type DetectionRule } from '@forensicate/scanner';
 import type { BuiltInRuleOverride, PersistedConfig } from './types';
 import legacySignatures from './legacyRuleSignatures.json';
-import { fingerprint, ruleSignature } from './ruleSignature';
+import { fingerprint, legacyRuleIdentifier, ruleSignature } from './ruleSignature';
 
 type StoredRules = PersistedConfig['rules'];
 type RuleField = Exclude<keyof DetectionRule, 'id' | 'heuristic'>;
@@ -15,9 +15,36 @@ const optionalFields = new Set<RuleField>([
   'keywords', 'pattern', 'flags', 'weight', 'owaspLlm', 'owaspAgentic',
   'killChain', 'mitreAtlas', 'euAiActRisk', 'isCustom',
 ]);
+const ruleTypes = ['keyword', 'regex', 'heuristic', 'encoding', 'structural'];
+const ruleSeverities = ['low', 'medium', 'high', 'critical'];
+// These checks could never match before version 2 (a tag lookup bug) and are now off by
+// default, so an enabled flag in a version 1 snapshot records no working choice.
+const neverRanBeforeVersion2 = new Set(['nlp-pos-imperative', 'nlp-sentence-structure']);
 
 function clone(rule: DetectionRule): DetectionRule {
   return JSON.parse(JSON.stringify(rule));
+}
+
+/** Fields the loader requires of every saved rule. */
+export function isStorableRule(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const rule = value as Record<string, unknown>;
+  return typeof rule.id === 'string' && typeof rule.name === 'string'
+    && typeof rule.type === 'string' && ruleTypes.includes(rule.type)
+    && typeof rule.severity === 'string' && ruleSeverities.includes(rule.severity);
+}
+
+function isValidOverrideValue(field: string, entry: unknown): boolean {
+  if (!ruleFields.includes(field as RuleField)) return false;
+  if (['enabled', 'isCustom'].includes(field)) return typeof entry === 'boolean';
+  if (field === 'weight') return typeof entry === 'number' && Number.isFinite(entry) && entry >= 1 && entry <= 100;
+  if (['keywords', 'owaspLlm', 'owaspAgentic', 'killChain', 'mitreAtlas'].includes(field)) {
+    return Array.isArray(entry) && entry.every(item => typeof item === 'string');
+  }
+  if (typeof entry !== 'string') return false;
+  if (field === 'type') return ruleTypes.includes(entry);
+  if (field === 'severity') return ruleSeverities.includes(entry);
+  return true;
 }
 
 /** Store only deliberate changes to built-ins; untouched definitions come from code. */
@@ -29,10 +56,13 @@ export function createRulePreferences(
   const byId = new Map(defaults.map(rule => [rule.id, rule]));
   const builtInOverrides: BuiltInRuleOverride[] = [];
   const localRules: DetectionRule[] = [];
-  for (const rule of rules) {
+  // Save only what the loader accepts, or a single invalid entry would discard every
+  // setting. A later rule with the same ID (such as a re-imported file) replaces an earlier one.
+  const latestById = new Map(rules.map(rule => [rule.id, rule]));
+  for (const rule of latestById.values()) {
     const original = byId.get(rule.id);
     if (!original) {
-      localRules.push(clone(rule));
+      if (isStorableRule(rule)) localRules.push(clone(rule));
       continue;
     }
     const values: BuiltInRuleOverride['values'] = {};
@@ -41,13 +71,15 @@ export function createRulePreferences(
       if (JSON.stringify(rule[field]) === JSON.stringify(original[field])) continue;
       if (rule[field] === undefined) {
         if (optionalFields.has(field)) unset.push(field);
-      } else {
+      } else if (isValidOverrideValue(field, rule[field])) {
         Object.assign(values, { [field]: rule[field] });
       }
     }
     if (Object.keys(values).length || unset.length) {
-      // Retain an edited rule if a future release removes its built-in ID.
-      builtInOverrides.push({ id: rule.id, values, unset, fallback: clone(rule) });
+      // Retain the edited rule if a future release removes its built-in ID.
+      const fallback = clone({ ...original, ...values });
+      for (const field of unset) delete fallback[field];
+      builtInOverrides.push({ id: rule.id, values, unset, fallback });
     }
   }
   return {
@@ -93,9 +125,9 @@ export function resolveRulePreferences(
   const migrated = stored.localRules.map(rule => {
     const current = byId.get(rule.id);
     if (!current) return clone(rule);
-    const signature = ruleSignature(rule);
-    if (signature === ruleSignature(current) || knownLegacy[rule.id]?.includes(signature)) {
-      const migratedRule = { ...clone(current), enabled: typeof rule.enabled === 'boolean' ? rule.enabled : current.enabled };
+    if (ruleSignature(rule) === ruleSignature(current) || knownLegacy[rule.id]?.includes(legacyRuleIdentifier(rule))) {
+      const keepEnabled = typeof rule.enabled === 'boolean' && !neverRanBeforeVersion2.has(rule.id);
+      const migratedRule = { ...clone(current), enabled: keepEnabled ? rule.enabled : current.enabled };
       if (rule.weight !== undefined) migratedRule.weight = rule.weight;
       return migratedRule;
     }
@@ -118,17 +150,5 @@ export function validateRuleOverride(value: unknown): value is BuiltInRuleOverri
   if (override.unset.some(field => !optionalFields.has(field))) return false;
   if (override.unset.some(field => Object.hasOwn(override.values, field))) return false;
   if (!override.fallback || override.fallback.id !== override.id) return false;
-  for (const [field, entry] of Object.entries(override.values)) {
-    if (!ruleFields.includes(field as RuleField)) return false;
-    if (['enabled', 'isCustom'].includes(field)) {
-      if (typeof entry !== 'boolean') return false;
-    } else if (field === 'weight') {
-      if (typeof entry !== 'number' || !Number.isFinite(entry) || entry < 1 || entry > 100) return false;
-    } else if (['keywords', 'owaspLlm', 'owaspAgentic', 'killChain', 'mitreAtlas'].includes(field)) {
-      if (!Array.isArray(entry) || entry.some(item => typeof item !== 'string')) return false;
-    } else if (typeof entry !== 'string') return false;
-    if (field === 'type' && !['keyword', 'regex', 'heuristic', 'encoding', 'structural'].includes(entry as string)) return false;
-    if (field === 'severity' && !['low', 'medium', 'high', 'critical'].includes(entry as string)) return false;
-  }
-  return true;
+  return Object.entries(override.values).every(([field, entry]) => isValidOverrideValue(field, entry));
 }
