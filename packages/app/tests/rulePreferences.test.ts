@@ -106,6 +106,20 @@ describe('versioned rule preferences', () => {
     expect(validateConfig(config(preferences))).toBe(true);
   });
 
+  it('points sections at the new ID when a reused custom-rule ID is saved under a new one', () => {
+    const zebra = { ...custom, id: 'yaml-plugin', name: 'Zebra' };
+    const yak = { ...custom, id: 'yaml-plugin', name: 'Yak', keywords: ['yak fixture'] };
+    const sections = [
+      { id: 'yaml-zebra', name: 'Zebra', description: 'Fixture', rules: [zebra], isCustom: true },
+      { id: 'yaml-yak', name: 'Yak', description: 'Fixture', rules: [{ ...yak, enabled: false }], isCustom: true },
+    ];
+    const preferences = createRulePreferences([zebra, yak], sections, [original]);
+    expect(preferences.localRules.map(rule => `${rule.id}:${rule.name}`)).toEqual(['yaml-plugin:Zebra', 'yaml-plugin-2:Yak']);
+    expect(preferences.customCategories.map(section => section.rules.map(rule => rule.id))).toEqual([['yaml-plugin'], ['yaml-plugin-2']]);
+    const reloaded = resolveRulePreferences(JSON.parse(JSON.stringify(preferences)), [original]);
+    expect(createRulePreferences(reloaded.rules, preferences.customCategories, [original])).toEqual(preferences);
+  });
+
   it('drops values the loader would reject rather than every saved setting', () => {
     const malformed = { ...original, weight: 150, enabled: 'false', description: null, keywords: ['kept edit'] } as unknown as DetectionRule;
     const unnamed = { ...custom, id: 'custom-unnamed', name: undefined } as unknown as DetectionRule;

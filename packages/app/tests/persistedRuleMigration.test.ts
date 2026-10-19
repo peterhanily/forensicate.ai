@@ -95,6 +95,28 @@ describe('saved-rule migration through the app hook', () => {
     expect(saved.rules.localRules.map(rule => rule.id).filter(id => id.startsWith('yaml-'))).toEqual(savedYamlIds);
   });
 
+  it('keeps two id-less YAML files from the live site in their own sections across reloads', async () => {
+    const zebra = { ...yamlRule };
+    const yak = { ...yamlRule, name: 'Other file', keywords: ['yak canary'] };
+    const legacy = storedConfig();
+    legacy.rules.localRules = [...allRules, zebra, yak];
+    legacy.rules.customCategories = [
+      { id: 'yaml-zebra', name: 'Imported', description: 'From YAML', rules: [zebra], isCustom: true },
+      { id: 'yaml-yak', name: 'Other file', description: 'From YAML', rules: [yak], isCustom: true },
+    ];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    for (let visit = 0; visit < 3; visit++) {
+      const hook = renderHook(() => usePersistedConfig());
+      if (visit > 0) {
+        expect(hook.result.current.localRules.filter(rule => rule.id.startsWith('yaml-')).map(rule => `${rule.id}:${rule.name}`))
+          .toEqual(['yaml-plugin:Imported', 'yaml-plugin-2:Other file']);
+        expect(hook.result.current.customCategories.map(section => section.rules.map(rule => rule.id))).toEqual([['yaml-plugin'], ['yaml-plugin-2']]);
+      }
+      await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+      hook.unmount();
+    }
+  });
+
   it('keeps saved settings it cannot read until an explicit reset', async () => {
     const unreadable = createRulePreferences([], []);
     unreadable.localRules = [{ ...allRules[0], id: 'custom-a', isCustom: true }, { ...allRules[0], id: 'custom-a', isCustom: true }];

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MAX_SCAN_LENGTH } from '@forensicate/scanner';
+import { MAX_SCAN_LENGTH, type DetectionRule, type RuleCategory } from '@forensicate/scanner';
 import Scanner from '../src/pages/Scanner';
 import { STORAGE_KEY } from '../src/lib/storage/storage';
 
@@ -310,7 +310,7 @@ describe('Scanner', () => {
         fireEvent.change(screen.getByLabelText('Import YAML rule file'), { target: { files: [yaml] } });
         await settle(100);
       }
-      expect(screen.getByText(/replacing 1 existing rule with the same ID/)).toBeInTheDocument();
+      expect(screen.getByText(/replacing 1 rule from its earlier import/)).toBeInTheDocument();
       await settle(600);
       first.unmount();
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
@@ -319,6 +319,69 @@ describe('Scanner', () => {
       const second = render(<Scanner />);
       expect(screen.getAllByText('Saved review prompts').length).toBeGreaterThan(0);
       second.unmount();
+    } finally {
+      if (previous === null) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, previous);
+    }
+  });
+
+  async function importYamlFiles(files: File[]) {
+    const settle = (ms: number) => act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); });
+    for (const file of files) {
+      fireEvent.change(screen.getByLabelText('Import YAML rule file'), { target: { files: [file] } });
+      await settle(100);
+    }
+    await settle(600);
+  }
+  const yamlRule = (name: string, keyword: string) => `name: ${name}\ntype: keyword\nseverity: high\nkeywords:\n  - "${keyword}"\n`;
+  const yamlPack = (rule: string, keyword: string) =>
+    `name: Team Pack\nrules:\n  - name: ${rule}\n    type: keyword\n    severity: high\n    keywords:\n      - "${keyword}"\n`;
+  const savedYaml = () => {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    return {
+      rules: saved.rules.localRules.filter((rule: DetectionRule) => rule.id.startsWith('yaml-')).map((rule: DetectionRule) => `${rule.id}:${rule.name}:${rule.keywords?.join(',')}`),
+      sections: saved.rules.customCategories.filter((category: RuleCategory) => category.id.startsWith('yaml-')).map((category: RuleCategory) => `${category.id}=${category.rules.map(rule => rule.id).join(',')}`),
+    };
+  };
+
+  it('replaces the right section when the second of two id-less YAML files is re-imported', async () => {
+    const previous = localStorage.getItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
+    try {
+      const view = render(<Scanner />);
+      await importYamlFiles([
+        new File([yamlRule('Zebra Rule', 'zebra canary')], 'zebra.yaml'),
+        new File([yamlRule('Yak Rule', 'yak canary')], 'yak.yaml'),
+        new File([yamlRule('Yak Rule', 'yak canary v2')], 'yak.yaml'),
+      ]);
+      expect(screen.getByText(/from yak\.yaml, replacing 1 rule from its earlier import/)).toBeInTheDocument();
+      view.unmount();
+      expect(savedYaml()).toEqual({
+        rules: ['yaml-plugin:Zebra Rule:zebra canary', 'yaml-plugin-2:Yak Rule:yak canary v2'],
+        sections: ['yaml-zebra=yaml-plugin', 'yaml-yak=yaml-plugin-2'],
+      });
+    } finally {
+      if (previous === null) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, previous);
+    }
+  });
+
+  it('keeps same-named packs from different files in their own sections and lists their rules', async () => {
+    const previous = localStorage.getItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
+    try {
+      const view = render(<Scanner />);
+      await importYamlFiles([
+        new File([yamlPack('Alpha rule', 'alpha canary')], 'team-a.yaml'),
+        new File([yamlPack('Beta rule', 'beta canary')], 'team-b.yaml'),
+      ]);
+      expect(screen.queryByText(/replacing/)).not.toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /Team Pack.*1\/1 enabled/ })).toHaveLength(2);
+      view.unmount();
+      expect(savedYaml()).toEqual({
+        rules: ['yaml-plugin-pack-0:Alpha rule:alpha canary', 'yaml-plugin-pack-0-2:Beta rule:beta canary'],
+        sections: ['yaml-team-pack=yaml-plugin-pack-0', 'yaml-team-pack-2=yaml-plugin-pack-0-2'],
+      });
     } finally {
       if (previous === null) localStorage.removeItem(STORAGE_KEY);
       else localStorage.setItem(STORAGE_KEY, previous);

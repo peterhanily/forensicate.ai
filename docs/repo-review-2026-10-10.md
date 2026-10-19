@@ -293,11 +293,12 @@ plausible) and rejected 4. These were fixed before publication:
   visit then silently replaced every setting with defaults. Saving now writes
   only data the loader accepts:
   - each ID once: identical copies collapse, and a different custom rule that
-    reuses an ID is saved under a new ID
+    reuses an ID is saved under a new ID, and its section entries follow
   - invalid values and malformed custom rules are dropped
 
-  A YAML re-import replaces the rules in that file's section and says so. A
-  supported-version record that still fails validation is kept, and autosave
+  A YAML re-import replaces that file's whole section and says so; other
+  files keep their rules and sections, and imported YAML rules are now listed
+  in their section. A supported-version record that still fails validation is kept, and autosave
   cannot overwrite it until reset.
 - **Extension links were rejected.** The published extension's hand-off links
   (`version: '1'`) were refused. They load again, including base64 payloads
@@ -327,9 +328,7 @@ plausible) and rejected 4. These were fixed before publication:
   saved settings.
 - **PDF scripts mislabeled.** Document-level PDF JavaScript is no longer
   reported as zero/tiny-font hidden text. Suspicious calls in it are still
-  flagged by `f-pdf-javascript`, which now also covers Acrobat's email,
-  network and open-URL APIs (`mailDoc`, `SOAP`, `Net.HTTP`, `getURL` and
-  similar).
+  flagged by `f-pdf-javascript`.
 - **Smaller fixes:**
   - The pricing check measures per-entry `verifiedAt` dates.
   - `/.well-known/security.txt` is now included in the published artifact
@@ -359,7 +358,6 @@ Deferred, with reasons, to the remaining-work table below:
   - opening a share link from the app replaces the recipient's saved rules and
     prompts
   - PDF.js drops off-page and format-character glyphs before extraction
-  - YAML-imported rules never appear in the rules panel
   - YAML quoted escapes are not decoded
   - older builds misread version 2 records, which matters for a rollback or a
     tab left open across the deploy
@@ -368,11 +366,26 @@ Deferred, with reasons, to the remaining-work table below:
   - a CLI config symlink and the CLI's reported oversize length
   - two extension badge edge cases
 
-Validation after the fixes: a local replica of every CI job passed on Node
-24.13.0 and pnpm 10.29.1. Counts were scanner 409 plus 27 CLI, app 419, API
-109, browser extension 42, Action 22, VSCode 14, and Python 209 on both 3.10
-and 3.14. Builds, lint, typecheck, audit and rule counts also passed. Web
-JavaScript totals **2,096,187 bytes**, 965 under the 2,097,152-byte budget.
+Validation of the final release head:
+- every CI job passed, locally on Node 24.13.0 and pnpm 10.29.1 and in hosted
+  CI
+- tests: scanner 409 plus 27 CLI, app 431, API 109, browser extension 42,
+  Action 22, VSCode 14, and Python 209 on both 3.10 and 3.14
+- builds, lint, typecheck, audit and rule counts also passed
+- web JavaScript totals **2,092,486 bytes**, 4,666 under the 2,097,152-byte
+  budget
+- the offline HTML is 3,921,857 bytes, SHA-256
+  `2271848b3f0c0d4ed40e37ad8c1673b0704affc4d06227552c453da4cf04f767`, and
+  the repository copy matches the deployment build
+
+A second adversarial review of the follow-up commits found five more
+problems, fixed before merging:
+- a re-import duplicating renamed YAML rules
+- section entries left pointing at the old ID after a rename
+- an import that could reuse an ID it had just assigned
+- same-named packs replacing each other
+- broad new PDF-script patterns that flagged ordinary .NET and Java text,
+  which were reverted
 Publication results will be added after deployment.
 
 ## Remaining work in priority order
@@ -391,7 +404,6 @@ retained below.
 | P2 | Older builds read version 2 records as version 1 and reset built-in preferences: after a rollback, or in a tab left open across a deploy. | Fix forward rather than roll back. Otherwise write version 2 under a new key and keep the version 1 record for one release. |
 | P2 | PDF.js removes glyphs outside the crop box and `\p{Cf}` characters before text extraction, so those payloads are never scanned. | Add an operator-list pass for the off-page and hidden layers, with real-PDF fixtures. |
 | P2 | Importing a JSON export made on the old site turns the two opt-in NLP checks back on. Imports bypass the version 1 migration, and old and new exports both say `1.0`. | Mark new exports (for example with `defaultsVersion`), then migrate unmarked replace-mode imports like saved settings, and apply only the opt-in rule in merge mode. |
-| P2 | YAML-imported rules are scanned but never listed: custom sections show only `custom-` rule IDs, so they cannot be seen, edited or disabled in the rules panel. | List a custom section's rules by membership, not ID prefix, and add a UI test that imports a file and toggles its rule. |
 | P2 | [Worker config](../packages/api/wrangler.toml) retains placeholder KV IDs, 2025 compatibility date, and legacy Durable Object migration. | Audit actual account resources/migration history, choose deployment environments, then plan a tested runtime migration. Dry-run bundling does not establish production readiness. |
 | P2 | Ambiguous legacy rule edits are intentionally retained during migration. | Review any migration notice; do not reset intentional edits merely to obtain fresh defaults. Version 2 now tracks overrides separately. |
 | P2 | Historical pricing outside the verified default selection remains unverified. | Check additional models against provider sources before expanding the comparison; retain per-model dates and refresh verified rates as they age. |
@@ -401,7 +413,7 @@ retained below.
 | P2 | Route-shell and not-found fixes are built locally but are not deployed. | Verify hosted status codes, trailing-slash behavior, query/hash retention, and canonical URLs after publication. |
 | P2 | PDF geometry fixes have fixture coverage, but clipping/colour visibility is approximate. Metadata-only images/audio/video are not OCR/transcription. | Keep extraction warnings visible and verify representative documents in the real hosted/offline browser. |
 | P3 | The YAML import keeps escape sequences inside quoted scalars, so a double-quoted regex such as `"\\s"` never matches. | Decode YAML escapes in `unquote` (rule files and config), with a test for the example pack. |
-| P3 | Smaller web app follow-ups:<br>- crafted links with non-string fields crash the scanner until the fragment is removed<br>- SVG `<script>` content is still described as zero/tiny-font text<br>- the entropy heuristic flags files that are almost entirely code, such as a PDF holding only a form script<br>- the extension's query-string hand-offs still get 414 for very long text<br>- the two opt-in NLP checks cannot be enabled outside the web app, so `--categories nlp-analysis` runs 2 of 4 rules<br>- every page's `og:image`, `twitter:image` and structured-data screenshot point to files that are not shipped | Validate shared field types, and describe hidden layers by their location. Calibrate structural heuristics together with the Action's profile. Move extension hand-offs to the fragment in the next extension release. |
+| P3 | Smaller web app follow-ups:<br>- crafted links with non-string fields crash the scanner until the fragment is removed<br>- SVG `<script>` content is still described as zero/tiny-font text<br>- the entropy heuristic flags files that are almost entirely code, such as a PDF holding only a form script<br>- the extension's query-string hand-offs still get 414 for very long text<br>- the two opt-in NLP checks cannot be enabled outside the web app, so `--categories nlp-analysis` runs 2 of 4 rules<br>- every page's `og:image`, `twitter:image` and structured-data screenshot point to files that are not shipped<br>- `f-pdf-javascript` misses Acrobat email, network and open-URL calls (`mailDoc`, `SOAP`, `Net.HTTP`); broad patterns for them flag ordinary .NET and Java text<br>- in the offline file, the Mutation Engine and Scanner hand-offs assume BrowserRouter<br>- values a JSON import accepts but the loader rejects (out-of-range weights, unnamed custom rules) are dropped at the next save without a notice | Validate shared field types, and describe hidden layers by their location. Calibrate structural heuristics together with the Action's profile. Apply Acrobat-only patterns to the extracted PDF script layer. Read hand-off text from the router location. Move extension hand-offs to the fragment in the next extension release. |
 | P3 | Unpublished packages:<br>- the Python CLI exits 2 on BOM-prefixed configs<br>- the TypeScript CLI rejects symlinked configs and reports a partial length when oversized<br>- two extension badge/result edge cases | Fix them before publishing those packages. |
 | P3 | Shared links intentionally omit community data and do not preserve every sample-prompt edit or custom heuristic function body. | Define a versioned, documented sharing contract and add remaining round-trip cases. |
 | P3 | Compliance/forensics pages contain static framework mappings and strong reporting claims without specialist acceptance tests. | Review the mapping accuracy and copy independently before treating output as compliance evidence. |

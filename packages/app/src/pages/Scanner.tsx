@@ -480,9 +480,11 @@ export default function Scanner() {
  ).filter(Boolean),
  }));
 
+ // A custom section lists its non-built-in rules, including those imported from YAML files
+ const builtInIds = new Set(ruleCategories.flatMap(cat => cat.rules.map(rule => rule.id)));
  const customCats = customCategories.map(cat => ({
  ...cat,
- rules: localRules.filter(r => r.id.startsWith('custom-') &&
+ rules: localRules.filter(r => !builtInIds.has(r.id) &&
  cat.rules.some(cr => cr.id === r.id)),
  }));
 
@@ -1195,31 +1197,29 @@ export default function Scanner() {
  showToastMessage('No valid rules found in YAML file', 3000);
  return;
  }
- // Re-importing a file replaces the rules already in its section. A rule from another file
- // with the same ID (files without ids share one) is kept, and the new rule gets a new ID.
- const sameFileIds = new Set(customCategories.find(c => c.id === result.category.id)?.rules.map(rule => rule.id));
- const existingIds = new Set(localRules.map(rule => rule.id));
- const takenIds = new Set(existingIds);
- const imported = result.rules.map(rule => {
- if (!takenIds.has(rule.id) || sameFileIds.has(rule.id)) return rule;
+ // Re-importing a file replaces its whole section. Rules and sections from other files that
+ // reuse an ID (files without ids share one) are kept, and the new ones get new IDs.
+ const uniqueId = (id: string, taken: Set<string>) => {
+ if (!taken.has(id)) return id;
  let copy = 2;
- while (takenIds.has(`${rule.id}-${copy}`)) copy++;
- takenIds.add(`${rule.id}-${copy}`);
- return { ...rule, id: `${rule.id}-${copy}` };
+ while (taken.has(`${id}-${copy}`)) copy++;
+ return `${id}-${copy}`;
+ };
+ const existing = customCategories.find(c => c.id === result.category.id);
+ const sameFile = !!existing && (!existing.source || existing.source === result.category.source);
+ const replacedIds = new Set(sameFile ? existing.rules.map(rule => rule.id) : []);
+ const takenIds = new Set(localRules.map(rule => rule.id).filter(id => !replacedIds.has(id)));
+ const imported = result.rules.map(rule => {
+ const id = uniqueId(rule.id, takenIds);
+ takenIds.add(id);
+ return id === rule.id ? rule : { ...rule, id };
  });
- const replacedIds = new Set(imported.map(rule => rule.id).filter(id => sameFileIds.has(id) && existingIds.has(id)));
+ const category = { ...result.category, rules: imported,
+ id: sameFile ? result.category.id : uniqueId(result.category.id, new Set(customCategories.map(c => c.id))) };
  setLocalRules(prev => [...prev.filter(rule => !replacedIds.has(rule.id)), ...imported]);
- // Add category
- setCustomCategories(prev => {
- const existing = prev.find(c => c.id === result.category.id);
- if (existing) {
- return prev.map(cat => cat.id === result.category.id
- ? { ...cat, rules: [...cat.rules.filter(rule => !replacedIds.has(rule.id)), ...imported] } : cat);
- }
- return [...prev, { ...result.category, rules: imported }];
- });
- const replaced = replacedIds.size;
- const replacedNote = replaced ? `, replacing ${replaced} existing rule${replaced !== 1 ? 's' : ''} with the same ID` : '';
+ setCustomCategories(prev => sameFile ? prev.map(cat => cat.id === category.id ? category : cat) : [...prev, category]);
+ const replaced = localRules.filter(rule => replacedIds.has(rule.id)).length;
+ const replacedNote = replaced ? `, replacing ${replaced} rule${replaced !== 1 ? 's' : ''} from its earlier import` : '';
  showToastMessage(`✅ Imported ${result.rules.length} rule${result.rules.length !== 1 ? 's' : ''} from ${file.name}${replacedNote}`, 3000);
  lastScannedRef.current = '';
  };

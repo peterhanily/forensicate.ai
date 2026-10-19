@@ -65,6 +65,7 @@ export function createRulePreferences(
   const latestBuiltIns = new Map<string, DetectionRule>();
   const savedIds = new Set<string>();
   const savedDefinitions = new Set<string>();
+  const renamedBySignature = new Map<string, string>();
   const takenIds = new Set([...byId.keys(), ...rules.map(rule => rule.id)]);
   for (const rule of rules) {
     if (byId.has(rule.id)) {
@@ -79,11 +80,20 @@ export function createRulePreferences(
       let copy = 2;
       while (takenIds.has(`${rule.id}-${copy}`)) copy++;
       id = `${rule.id}-${copy}`;
+      renamedBySignature.set(ruleSignature(rule), id);
     }
     savedIds.add(id);
     takenIds.add(id);
     localRules.push({ ...clone(rule), id });
   }
+  // Sections hold copies of their rules; point them at the IDs the rules were saved under.
+  const savedCategories = renamedBySignature.size === 0 ? customCategories : customCategories.map(category => ({
+    ...category,
+    rules: category.rules.map(entry => {
+      const id = entry && typeof entry === 'object' ? renamedBySignature.get(ruleSignature(entry)) : undefined;
+      return id ? { ...entry, id } : entry;
+    }),
+  }));
   for (const rule of latestBuiltIns.values()) {
     const original = byId.get(rule.id)!;
     const values: BuiltInRuleOverride['values'] = {};
@@ -107,7 +117,7 @@ export function createRulePreferences(
     defaultsVersion: fingerprint(defaults.map(ruleSignature).join(':')),
     builtInOverrides,
     localRules,
-    customCategories,
+    customCategories: savedCategories,
   };
 }
 

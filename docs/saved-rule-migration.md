@@ -66,13 +66,16 @@ Saving writes only what loading accepts:
 - Each ID is saved once. Identical copies collapse, and the latest edit of a
   built-in wins.
 - A different custom rule that reuses an ID is saved under a new ID such as
-  `yaml-plugin-2`. This happens with two YAML files that have no `id`.
+  `yaml-plugin-2`, and section entries that refer to it are updated to match.
+  This happens with two YAML files that have no `id`.
 - Invalid built-in values and malformed custom rules are dropped instead of
   invalidating every setting.
 
-Re-importing a YAML file replaces the rules already in that file's section.
-A rule from another file with the same ID is kept, and the new rule gets a
-new ID.
+Re-importing a YAML file replaces its whole section, matched by section ID and
+file name. Rules and sections from other files that already use an ID are
+kept, and the new ones get new IDs. A pack whose name matches another file's
+pack therefore gets its own section. Imported YAML rules are listed in their
+section and can be toggled there.
 
 Unsupported future configuration versions, and saved settings of a supported
 version that fail validation, are kept and cannot be overwritten by automatic
