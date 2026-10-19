@@ -163,7 +163,7 @@ pattern: /\\bDAN\\s*(\\d+(\\.\\d+)?)?\\b/gi`}
           {[
             { name: 'Sentiment Manipulation', desc: 'Detects coercive tone using word-level sentiment scoring. Average sentiment below -1.5 with 3+ negative words indicates manipulation.' },
             { name: 'Authority Impersonation', desc: 'NER + keyword matching identifies claims of authority: "I am the developer", "from OpenAI", "your administrator".' },
-            { name: 'Short Imperative Clustering', desc: 'Many short imperative sentences (< 8 words) clustered together is characteristic of injection, not normal conversation.' },
+            { name: 'Short Imperative Clustering', desc: 'Many short imperative sentences (< 8 words) clustered together are common in injection, but ordinary instructions cluster the same way, so this check is off by default.' },
           ].map(n => (
             <div key={n.name} className="flex gap-2 p-2 rounded bg-gray-900/50 border border-gray-800">
               <span className="text-[#c9a227] text-xs mt-0.5 flex-shrink-0">&rsaquo;</span>

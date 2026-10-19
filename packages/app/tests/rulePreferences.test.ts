@@ -116,6 +116,14 @@ describe('versioned rule preferences', () => {
     expect(validateConfig(config(preferences))).toBe(true);
   });
 
+  it('keeps the two never-run imperative checks off even in an edited version 1 copy', () => {
+    const current = allRules.find(rule => rule.id === 'nlp-pos-imperative')!;
+    const edited = { ...JSON.parse(JSON.stringify(current)), description: 'My own notes', enabled: true };
+    const result = resolveRulePreferences(legacy([edited]));
+    expect(result.preservedLegacyEdits).toBe(1);
+    expect(result.rules.find(rule => rule.id === current.id)).toMatchObject({ description: 'My own notes', enabled: false });
+  });
+
   it('accepts version 1 hand-off configs that the browser extension writes as "1"', () => {
     expect(validateConfig({ ...config(legacy([])), version: '1' })).toBe(true);
   });

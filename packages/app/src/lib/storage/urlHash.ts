@@ -113,8 +113,8 @@ export function generateShareUrl(config: PersistedConfig): string {
   const url = new URL(window.location.href);
   url.searchParams.delete(PARAM_NAME);
 
-  // Detect if we're using HashRouter (standalone mode or hash in URL)
-  const isHashRouter = url.hash.startsWith('#/');
+  // Detect if we're using HashRouter (standalone mode, as in App.tsx, or a hash route)
+  const isHashRouter = url.protocol === 'file:' || import.meta.env.BASE_URL === './' || url.hash.startsWith('#/');
 
   // HashRouter keeps its route before the query. BrowserRouter also uses the fragment:
   // browsers never send it to the server, so large configs avoid GitHub Pages' 414 limit.

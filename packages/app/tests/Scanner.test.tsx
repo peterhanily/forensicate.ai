@@ -325,6 +325,18 @@ describe('Scanner', () => {
     }
   });
 
+  it('uses the ?text= hand-off once and removes it from the address bar', () => {
+    window.history.replaceState(null, '', '/scanner?text=Hand-off%20fixture&view=review');
+    try {
+      const view = render(<Scanner />);
+      expect((screen.getByRole('textbox', { name: 'Prompt text to analyze' }) as HTMLTextAreaElement).value).toBe('Hand-off fixture');
+      expect(window.location.search).toBe('?view=review');
+      view.unmount();
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('keeps rules from two different YAML files that have no ids', async () => {
     const previous = localStorage.getItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_KEY);

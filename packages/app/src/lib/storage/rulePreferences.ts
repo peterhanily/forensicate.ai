@@ -155,7 +155,7 @@ export function resolveRulePreferences(
     // An old snapshot cannot prove whether a difference was an intentional edit.
     // Preserve the whole definition, then save its differences as explicit overrides.
     preservedLegacyEdits++;
-    return clone(rule);
+    return neverRanBeforeVersion2.has(rule.id) ? { ...clone(rule), enabled: current.enabled } : clone(rule);
   });
   return {
     rules: rehydrateHeuristics([...migrated, ...defaults.filter(rule => !storedIds.has(rule.id)).map(clone)]),

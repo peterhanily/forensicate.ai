@@ -4,9 +4,6 @@ Contact: https://github.com/peterhanily/forensicate.ai/security/advisories/new
 # Our OpenPGP key (if available)
 # Encryption: [URL to PGP key]
 
-# Our security policy
-Policy: https://github.com/peterhanily/forensicate.ai/security/policy
-
 # Preferred languages
 Preferred-Languages: en
 

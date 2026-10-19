@@ -117,6 +117,13 @@ export default function Scanner() {
    } catch { /* ignore in test/SSR */ }
    return initialPromptText || '';
  });
+ // The ?text= hand-off is used once; leaving it would override shared prompts and enlarge share links
+ useEffect(() => {
+ const url = new URL(window.location.href);
+ if (!url.searchParams.has('text')) return;
+ url.searchParams.delete('text');
+ window.history.replaceState(window.history.state, '', url.toString());
+ }, []);
  const [lastScanResult, setScanResult] = useState<ScanResult | null>(null);
  const [scanFailure, setScanFailure] = useState<string | null>(null);
  const inputSizeError = promptText.length > MAX_SCAN_LENGTH

@@ -109,7 +109,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - **🔗 Source Attribution**: Each provider links to official pricing page with verification date
 - **⚠️ Accuracy Disclaimers**: Clear warnings about estimation limitations and data freshness
 - **🖥️ Terminal-Style UI**: Dark theme with monospace fonts and color-coded data grid
-- **📅 Staleness Detection**: Warns when pricing data is >60 days old
+- **📅 Staleness Detection**: Marks a rate stale 30 days after its verification date
 
 **What It Shows:**
 - Input/output token breakdown
@@ -122,7 +122,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - Costs are ORDER-OF-MAGNITUDE estimates only, not for budgeting
 - Token estimation uses 4 char/token (±25% variance typical)
 - Output tokens assumed at 100 (actual varies 10-10,000+)
-- Pricing manually verified Feb 2026 - may become outdated
+- Each verified rate shows its own verification date; unverified historical rates are labelled and left out of the default comparison
 - Enterprise/volume/regional pricing NOT reflected
 
 ### Detection Rules (182 Rules in 24 Categories)

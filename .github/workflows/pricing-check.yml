@@ -52,7 +52,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: 'Pricing data is stale (>30 days old)',
-                body: `The oldest verified price in \`packages/app/src/lib/pricing/pricingDatabase.ts\` was checked **${{ steps.check.outputs.age_days }} days ago**.\n\nPlease re-check the verified entries against official provider pricing pages and update each entry's \`source.verifiedAt\`. Do not change \`PRICING_LAST_UPDATED\`; it dates the unverified historical fallback data.`,
+                body: `The oldest verified price in \`packages/app/src/lib/pricing/pricingDatabase.ts\` was checked **${{ steps.check.outputs.age_days }} days ago**.\n\nPlease re-check the verified entries against official provider pricing pages and update each entry's \`source.verifiedAt\` (and the app tests that pin those dates). Do not change \`PRICING_LAST_UPDATED\`; it dates the unverified historical fallback data.`,
                 labels: ['pricing-stale', 'maintenance']
               });
             }

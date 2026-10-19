@@ -18,8 +18,10 @@ const Compliance = lazy(() => import('./pages/Compliance'));
 const BlogDetection = lazy(() => import('./pages/BlogDetection'));
 const UltrasonicAnalyzer = lazy(() => import('./pages/UltrasonicAnalyzer'));
 
-// Detect standalone mode: file:// protocol means we're running as a downloaded HTML file
-const isStandalone = typeof window !== 'undefined' && window.location.protocol === 'file:';
+// Detect standalone mode: a downloaded HTML file (file://), or the single-file build
+// (relative base) opened from a web server, where BrowserRouter cannot match the path
+const isStandalone = typeof window !== 'undefined'
+  && (window.location.protocol === 'file:' || import.meta.env.BASE_URL === './');
 
 // Get base path from Vite config for proper routing on GitHub Pages
 const basename = import.meta.env.BASE_URL;

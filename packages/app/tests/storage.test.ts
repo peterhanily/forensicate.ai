@@ -337,6 +337,15 @@ describe('urlHash.ts', () => {
       expect(url.hash).toMatch(/^#\?config=/);
     });
 
+    it('keeps the standalone file\'s hash route even without a leading slash', () => {
+      window.location.hash = '#scanner';
+      window.location.href = 'file:///Users/me/forensicate-standalone.html#scanner';
+
+      const url = generateShareUrl(sampleConfig);
+
+      expect(url).toMatch(/^file:\/\/\/Users\/me\/forensicate-standalone\.html#scanner\?config=/);
+    });
+
     it('includes session promptText when provided', () => {
       window.location.href = 'http://localhost:3000/scanner';
 

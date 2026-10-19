@@ -284,7 +284,7 @@ file without errors.
 
 An adversarial review then checked eight areas: deploy pipeline, saved
 settings, UI runtime, extractors and pricing, scanner engine, the live Action,
-other integrations, and security. It kept 33 findings (22 confirmed, 11
+other integrations, and security. It kept 33 findings (23 confirmed, 10
 plausible) and rejected 4. These were fixed before publication:
 
 - **Saved settings could be wiped.** The new version 2 checks rejected records
@@ -327,7 +327,9 @@ plausible) and rejected 4. These were fixed before publication:
   saved settings.
 - **PDF scripts mislabeled.** Document-level PDF JavaScript is no longer
   reported as zero/tiny-font hidden text. Suspicious calls in it are still
-  flagged by `f-pdf-javascript`.
+  flagged by `f-pdf-javascript`, which now also covers Acrobat's email,
+  network and open-URL APIs (`mailDoc`, `SOAP`, `Net.HTTP`, `getURL` and
+  similar).
 - **Smaller fixes:**
   - The pricing check measures per-entry `verifiedAt` dates.
   - `/.well-known/security.txt` is now included in the published artifact
@@ -335,6 +337,12 @@ plausible) and rejected 4. These were fixed before publication:
   - The sitemap and structured data use the trailing-slash canonical URLs.
   - The Action's setup step no longer caches the calling repository's
     dependencies, and its reports show the number of rules actually run.
+  - The Mutation Engine's `?text=` hand-off is cleared after use, so it no
+    longer overrides shared prompts or enlarges share links.
+  - The offline file now works when opened from a web server, not only from
+    `file://`; it was blank there before.
+  - `security.txt` no longer links to a security policy page that does not
+    exist.
 
 Deferred, with reasons, to the remaining-work table below:
 
@@ -365,7 +373,7 @@ Validation after the fixes: a local replica of every CI job passed on Node
 109, browser extension 42, Action 22, VSCode 14, and Python 209 on both 3.10
 and 3.14. Builds, lint, typecheck, audit and rule counts also passed. Web
 JavaScript totals **2,096,187 bytes**, 965 under the 2,097,152-byte budget.
-Publication results follow in the next section once recorded.
+Publication results will be added after deployment.
 
 ## Remaining work in priority order
 
@@ -382,10 +390,8 @@ retained below.
 | P2 | Action follow-ups from the 19 October review:<br>- discovered symlinks abort all-mode scans<br>- the composite's pnpm setup replaces the caller's pnpm, PATH and store<br>- `extensions` and `max-file-size-kb` are ignored<br>- raw file names reach PR comments<br>- `.cursorrules` and `.env` files are never selected | Fix them in one action change, each with a regression test. Run the composite against a scratch consumer repository. |
 | P2 | Older builds read version 2 records as version 1 and reset built-in preferences: after a rollback, or in a tab left open across a deploy. | Fix forward rather than roll back. Otherwise write version 2 under a new key and keep the version 1 record for one release. |
 | P2 | PDF.js removes glyphs outside the crop box and `\p{Cf}` characters before text extraction, so those payloads are never scanned. | Add an operator-list pass for the off-page and hidden layers, with real-PDF fixtures. |
+| P2 | Importing a JSON export made on the old site turns the two opt-in NLP checks back on. Imports bypass the version 1 migration, and old and new exports both say `1.0`. | Mark new exports (for example with `defaultsVersion`), then migrate unmarked replace-mode imports like saved settings, and apply only the opt-in rule in merge mode. |
 | P2 | YAML-imported rules are scanned but never listed: custom sections show only `custom-` rule IDs, so they cannot be seen, edited or disabled in the rules panel. | List a custom section's rules by membership, not ID prefix, and add a UI test that imports a file and toggles its rule. |
-| P3 | The YAML import keeps escape sequences inside quoted scalars, so a double-quoted regex such as `"\\s"` never matches. | Decode YAML escapes in `unquote` (rule files and config), with a test for the example pack. |
-| P3 | Smaller web app follow-ups:<br>- importing a JSON export from the old site re-enables the two opt-in NLP checks, because imports bypass migration<br>- crafted links with non-string fields crash the scanner until the fragment is removed<br>- SVG `<script>` content is still described as zero/tiny-font text<br>- the entropy heuristic flags files that are almost entirely code, such as a PDF holding only a form script<br>- the extension's query-string hand-offs still get 414 for very long text | Route imports through the same migration, validate shared field types, and describe hidden layers by their location. Calibrate structural heuristics together with the Action's profile. Move extension hand-offs to the fragment in the next extension release. |
-| P3 | Unpublished packages:<br>- the Python CLI exits 2 on BOM-prefixed configs<br>- the TypeScript CLI rejects symlinked configs and reports a partial length when oversized<br>- two extension badge/result edge cases | Fix them before publishing those packages. |
 | P2 | [Worker config](../packages/api/wrangler.toml) retains placeholder KV IDs, 2025 compatibility date, and legacy Durable Object migration. | Audit actual account resources/migration history, choose deployment environments, then plan a tested runtime migration. Dry-run bundling does not establish production readiness. |
 | P2 | Ambiguous legacy rule edits are intentionally retained during migration. | Review any migration notice; do not reset intentional edits merely to obtain fresh defaults. Version 2 now tracks overrides separately. |
 | P2 | Historical pricing outside the verified default selection remains unverified. | Check additional models against provider sources before expanding the comparison; retain per-model dates and refresh verified rates as they age. |
@@ -394,6 +400,9 @@ retained below.
 | P2 | Regex/custom JavaScript rules still run synchronously; the extension's Promise.race cannot interrupt synchronous scanning. Saving a custom rule no longer executes its body. | Implement and qualify the [worker migration](scan-worker-migration.md), including offline mode and explicit failure results. |
 | P2 | Route-shell and not-found fixes are built locally but are not deployed. | Verify hosted status codes, trailing-slash behavior, query/hash retention, and canonical URLs after publication. |
 | P2 | PDF geometry fixes have fixture coverage, but clipping/colour visibility is approximate. Metadata-only images/audio/video are not OCR/transcription. | Keep extraction warnings visible and verify representative documents in the real hosted/offline browser. |
+| P3 | The YAML import keeps escape sequences inside quoted scalars, so a double-quoted regex such as `"\\s"` never matches. | Decode YAML escapes in `unquote` (rule files and config), with a test for the example pack. |
+| P3 | Smaller web app follow-ups:<br>- crafted links with non-string fields crash the scanner until the fragment is removed<br>- SVG `<script>` content is still described as zero/tiny-font text<br>- the entropy heuristic flags files that are almost entirely code, such as a PDF holding only a form script<br>- the extension's query-string hand-offs still get 414 for very long text<br>- the two opt-in NLP checks cannot be enabled outside the web app, so `--categories nlp-analysis` runs 2 of 4 rules<br>- every page's `og:image`, `twitter:image` and structured-data screenshot point to files that are not shipped | Validate shared field types, and describe hidden layers by their location. Calibrate structural heuristics together with the Action's profile. Move extension hand-offs to the fragment in the next extension release. |
+| P3 | Unpublished packages:<br>- the Python CLI exits 2 on BOM-prefixed configs<br>- the TypeScript CLI rejects symlinked configs and reports a partial length when oversized<br>- two extension badge/result edge cases | Fix them before publishing those packages. |
 | P3 | Shared links intentionally omit community data and do not preserve every sample-prompt edit or custom heuristic function body. | Define a versioned, documented sharing contract and add remaining round-trip cases. |
 | P3 | Compliance/forensics pages contain static framework mappings and strong reporting claims without specialist acceptance tests. | Review the mapping accuracy and copy independently before treating output as compliance evidence. |
 
