@@ -13,7 +13,7 @@
 import { scanPrompt, getEnabledRules } from '@forensicate/scanner';
 
 // Constants
-const MAX_TEXT_LENGTH = 100000; // 100KB max
+const MAX_TEXT_LENGTH = 100000; // UTF-16 code units
 const SCAN_TIMEOUT_MS = 5000; // 5 second timeout
 const MAX_HISTORY_ITEMS = 50;
 const MAX_LIBRARY_ITEMS = 1000;
@@ -25,6 +25,54 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Window management for result reuse
 let resultWindowId = null;
+
+// Each tab owns its overlay; the detail-page result is shared across all tabs.
+let nextRequestId = 0;
+let latestRequest;
+const tabRequests = new Map();
+const tabPublications = new Map();
+let resultStorageUpdates = Promise.resolve();
+
+function beginRequest(tabId) {
+  const request = { id: ++nextRequestId, tabId };
+  latestRequest = request;
+  bindRequestToTab(request, tabId);
+  return request;
+}
+
+function bindRequestToTab(request, tabId) {
+  request.tabId = tabId;
+  if ((tabRequests.get(tabId)?.id ?? 0) < request.id) tabRequests.set(tabId, request);
+}
+
+function isCurrentRequest(request) {
+  return tabRequests.get(request.tabId) === request;
+}
+
+function updateCurrentResult(request, update) {
+  const operation = resultStorageUpdates.then(() => {
+    if (latestRequest === request && isCurrentRequest(request)) return update();
+  });
+  // Serialize set/remove calls as well as checking freshness: an in-flight write
+  // cannot be cancelled, so a newer request must finish its update afterward.
+  resultStorageUpdates = operation.catch(() => {});
+  return operation;
+}
+
+function publishRequest(request, publish) {
+  const tabId = request.tabId;
+  const operation = (tabPublications.get(tabId) ?? Promise.resolve()).then(() => {
+    if (isCurrentRequest(request)) return publish();
+  });
+  const settled = operation.catch(() => {});
+  tabPublications.set(tabId, settled);
+  settled.then(() => {
+    if (tabPublications.get(tabId) === settled) tabPublications.delete(tabId);
+  });
+  return operation;
+}
+
+chrome.tabs.onRemoved.addListener(tabId => tabRequests.delete(tabId));
 
 // Create context menu (runs on install and startup)
 function createContextMenu() {
@@ -56,21 +104,24 @@ createContextMenu();
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'scan-selection' && info.selectionText) {
-    scanAndShowResult(info.selectionText, tab.url);
+    return scanAndShowResult(info.selectionText, tab?.url, beginRequest(tab?.id));
   }
 });
 
 // Handle keyboard shortcut
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'scan-selection') {
+    const request = beginRequest();
     try {
       // Get selected text from active tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      if (!tab || !tab.id) {
-        showError('No active tab found');
+      if (tab?.id == null) {
+        await showError('No active tab found', request);
         return;
       }
+      bindRequestToTab(request, tab.id);
+      if (!isCurrentRequest(request)) return;
 
       // Execute script to get selected text
       const results = await chrome.scripting.executeScript({
@@ -79,14 +130,15 @@ chrome.commands.onCommand.addListener(async (command) => {
       });
 
       const selectedText = results[0]?.result;
+      if (!isCurrentRequest(request)) return;
       if (selectedText) {
-        scanAndShowResult(selectedText, tab.url);
+        await scanAndShowResult(selectedText, tab.url, request);
       } else {
-        showError('No text selected. Please select some text and try again.');
+        await showError('No text selected. Please select some text and try again.', request);
       }
     } catch (error) {
       console.error('Keyboard shortcut error:', error);
-      showError('Failed to scan selection. Make sure you have text selected.');
+      await showError('Failed to scan selection. Make sure you have text selected.', request);
     }
   }
 });
@@ -116,27 +168,32 @@ export async function scanWithTimeout(text, rules, timeoutMs) {
 }
 
 // Main scanning function with safeguards
-async function scanAndShowResult(text, sourceUrl) {
+async function scanAndShowResult(text, sourceUrl, request) {
   try {
+    if (request.tabId == null) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      bindRequestToTab(request, tab?.id);
+    }
+    if (!isCurrentRequest(request)) return;
     // Input validation
     if (!text || typeof text !== 'string') {
-      showError('Invalid input: text must be a string');
+      await showError('Invalid input: text must be a string', request);
+      return;
+    }
+
+    // Length check
+    if (text.length > MAX_TEXT_LENGTH) {
+      await showError(
+        `Text too long: ${text.length.toLocaleString('en-US')} UTF-16 code units.\n` +
+        `Maximum allowed: ${MAX_TEXT_LENGTH.toLocaleString('en-US')} UTF-16 code units.\n\n` +
+        'Please select a smaller portion of text.', request,
+      );
       return;
     }
 
     const trimmedText = text.trim();
     if (trimmedText.length === 0) {
-      showError('No text to scan. Please select some text.');
-      return;
-    }
-
-    // Length check
-    if (trimmedText.length > MAX_TEXT_LENGTH) {
-      showError(
-        `Text too long: ${trimmedText.length.toLocaleString()} characters.\n` +
-        `Maximum allowed: ${MAX_TEXT_LENGTH.toLocaleString()} characters.\n\n` +
-        `Please select a smaller portion of text.`
-      );
+      await showError('No text to scan. Please select some text.', request);
       return;
     }
 
@@ -187,18 +244,18 @@ async function scanAndShowResult(text, sourceUrl) {
 
     // Store result temporarily for detail page (compressed)
     // fullScanResult expires after 10 minutes to limit sensitive data retention
-    await chrome.storage.local.set({
+    await updateCurrentResult(request, () => chrome.storage.local.set({
       lastScanResult: resultData,
       fullScanResult: fullScanResult,
       lastScanTimestamp: Date.now(),
       fullScanResultExpiry: Date.now() + 10 * 60 * 1000
-    });
+    }));
 
     // Check storage quota before proceeding
     await checkStorageQuota();
 
     // Show result as bubble overlay on the page
-    await showBubbleOverlay(trimmedText, resultData, fullScanResult);
+    await showBubbleOverlay(resultData, fullScanResult, request);
 
   } catch (error) {
     console.error('Scan error:', error);
@@ -214,7 +271,7 @@ async function scanAndShowResult(text, sourceUrl) {
       errorMessage += 'Please try again.';
     }
 
-    showError(errorMessage);
+    await showError(errorMessage, request);
   }
 }
 
@@ -282,52 +339,35 @@ async function cleanupOldData() {
   }
 }
 
-// Show bubble overlay on current page
-async function showBubbleOverlay(text, resultData, fullScanResult) {
+async function sendOverlayMessage(message, request) {
+  const { tabId } = request;
+  if (!isCurrentRequest(request)) return;
+  if (tabId == null) throw new Error('No active tab found');
+
   try {
-    // Get current active tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+  } catch {
+    if (!isCurrentRequest(request)) return;
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+  }
+  if (!isCurrentRequest(request)) return;
+  await chrome.tabs.sendMessage(tabId, message);
+}
 
-    if (!tab || !tab.id) {
-      console.error('No active tab found');
-      return;
-    }
-
-    // Check if content script is already loaded by trying to send a test message
-    let contentScriptLoaded = false;
-    try {
-      await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
-      contentScriptLoaded = true;
-    } catch (e) {
-      // Content script not loaded yet
-      contentScriptLoaded = false;
-    }
-
-    // Inject content script only if not already loaded
-    if (!contentScriptLoaded) {
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js']
-        });
-        // Small delay to ensure content script is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (injectError) {
-        console.error('Content script injection failed:', injectError.message);
-        showError('Unable to display result overlay. Please refresh the page and try again.');
-        return;
-      }
-    }
-
-    // Send message to content script to show bubble
-    await chrome.tabs.sendMessage(tab.id, {
-      type: 'SHOW_SCAN_RESULT',
-      result: resultData,
-      fullResult: fullScanResult
+// Show bubble overlay on the tab where the scan was requested.
+async function showBubbleOverlay(resultData, fullScanResult, request) {
+  try {
+    await publishRequest(request, async () => {
+      await sendOverlayMessage({
+        type: 'SHOW_SCAN_RESULT',
+        result: resultData,
+        fullResult: fullScanResult
+      }, request);
+      if (isCurrentRequest(request)) await updateScanBadge('', request.tabId);
     });
   } catch (error) {
     console.error('Failed to show bubble overlay:', error);
-    showError('Unable to display result overlay. Please refresh the page and try again.');
+    await showError('Unable to display result overlay. Please refresh the page and try again.', request);
   }
 }
 
@@ -365,9 +405,35 @@ async function showResultWindow() {
   });
 }
 
-// Show error (log to console - notifications removed for privacy)
-function showError(message) {
+async function updateScanBadge(message, tabId) {
+  const target = tabId == null ? {} : { tabId };
+  await Promise.allSettled([
+    chrome.action.setBadgeText({ ...target, text: message ? '!' : '' }),
+    chrome.action.setTitle({ ...target, title: message ? `Forensicate.ai: Not scanned. ${message}` : 'Forensicate.ai - Prompt Security Scanner' }),
+  ]);
+}
+
+// Replace any earlier result with a visible failure, without notification permissions.
+async function showError(message, request) {
+  if (!isCurrentRequest(request)) return;
   console.error('[Forensicate.ai]', message);
+  try {
+    await updateCurrentResult(request, () => chrome.storage.local.remove([
+      'lastScanResult', 'fullScanResult', 'lastScanTimestamp', 'fullScanResultExpiry',
+    ]));
+  } catch (error) {
+    console.error('Failed to clear previous scan result:', error);
+  }
+
+  try {
+    await publishRequest(request, async () => {
+      // The badge and tooltip remain available on pages that prohibit script injection.
+      await updateScanBadge(message, request.tabId);
+      await sendOverlayMessage({ type: 'SHOW_SCAN_ERROR', message }, request);
+    });
+  } catch (error) {
+    console.error('Failed to display scan error overlay:', error);
+  }
 }
 
 // Message handler (for future use)
@@ -379,13 +445,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: false, error: 'Invalid input: text must be a string' });
           return;
         }
+        if (message.text.length > MAX_TEXT_LENGTH) {
+          sendResponse({ success: false, error: `Text not scanned: exceeds the ${MAX_TEXT_LENGTH.toLocaleString('en-US')} UTF-16 code unit limit` });
+          return;
+        }
         const text = message.text.trim();
         if (text.length === 0) {
           sendResponse({ success: false, error: 'Text is empty' });
-          return;
-        }
-        if (text.length > MAX_TEXT_LENGTH) {
-          sendResponse({ success: false, error: `Text too long (max ${MAX_TEXT_LENGTH} characters)` });
           return;
         }
         const rules = getCachedRules();

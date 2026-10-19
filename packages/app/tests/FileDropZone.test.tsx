@@ -13,7 +13,7 @@ describe('FileDropZone', () => {
     render(<FileDropZone onFileSelected={mockOnFileSelected} isProcessing={false} />);
 
     expect(screen.getByText(/drop a file here or click to browse/i)).toBeInTheDocument();
-    expect(screen.getByText(/PDF, DOCX, TXT, CSV, HTML, SVG, EML, Images, JSON, XML/i)).toBeInTheDocument();
+    expect(screen.getByText(/PDF, DOCX, TXT, CSV, HTML, SVG, EML, Images, Audio, Video, JSON, XML/i)).toBeInTheDocument();
   });
 
   it('renders the file_input header', () => {
@@ -115,5 +115,15 @@ describe('FileDropZone', () => {
     fireEvent.change(input, { target: { files: [imgFile] } });
 
     expect(mockOnFileSelected).toHaveBeenCalledWith(imgFile);
+  });
+
+  it('clears the parent scan result when the selected file is cleared', () => {
+    const onClear = vi.fn();
+    render(<FileDropZone onFileSelected={mockOnFileSelected} onClear={onClear} isProcessing={false} />);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['Hello'], 'notes.txt', { type: 'text/plain' })] } });
+    fireEvent.click(screen.getByText('clear'));
+    expect(onClear).toHaveBeenCalledOnce();
+    expect(screen.queryByText('notes.txt')).not.toBeInTheDocument();
   });
 });

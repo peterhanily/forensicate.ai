@@ -157,21 +157,9 @@ export function AddRuleModal({
  }
 
  try {
- // Dynamic function creation needed for user-defined heuristics
+ // Compile syntax only. Executing user code here can freeze the editor before
+ // any scan starts; elapsed-time checks cannot interrupt synchronous code.
  const fn = new Function('text', heuristicBody.trim()) as (text: string) => import('@forensicate/scanner').HeuristicResult | null;
- // Validate and time the test execution
- const startTime = performance.now();
- try {
-  fn('');
- } catch (testErr) {
-  throw new Error(`Heuristic function threw an error: ${testErr instanceof Error ? testErr.message : String(testErr)}`);
- }
- const elapsed = performance.now() - startTime;
- if (elapsed > 500) {
-  if (!confirm(`Warning: heuristic function took ${elapsed.toFixed(0)}ms to execute on an empty string. This may cause UI freezes. Continue anyway?`)) {
-   return;
-  }
- }
 
  const rule: DetectionRule = {
  id: `custom-hr-${Date.now()}`,
@@ -412,6 +400,7 @@ export function AddRuleModal({
  <p className="text-xs text-gray-500 mb-2">
  Write JavaScript that receives <code className="text-cyan-400">text</code> (string) and returns
  {' '}<code className="text-cyan-400">{'{ matched: true, details: "...", confidence: 0-100 }'}</code> or <code className="text-cyan-400">null</code>.
+ {' '}Saving checks syntax only. The function runs when you scan; slow code can freeze the page.
  </p>
  <textarea
  value={heuristicBody}

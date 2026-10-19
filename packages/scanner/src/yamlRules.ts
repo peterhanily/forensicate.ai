@@ -28,6 +28,7 @@
 //       keywords: [override, ignore]
 
 import type { DetectionRule, RuleCategory, RuleSeverity, RuleType, KillChainStage, MitreAtlasCategory, EuAiActRisk } from './types.js';
+import { stripYamlComment } from './yamlComments.js';
 
 export interface YamlRuleFile {
   /** Parsed rules ready for use */
@@ -47,7 +48,7 @@ export function parseYamlRuleFile(yaml: string, filename?: string): YamlRuleFile
   const lines = yaml.split('\n');
 
   // Detect if this is a rule pack (has top-level "rules:" key with nested items)
-  const isRulePack = lines.some(l => /^rules:\s*$/.test(l.trim()));
+  const isRulePack = lines.some(l => /^rules:\s*$/.test(stripYamlComment(l).trim()));
 
   if (isRulePack) {
     return parseRulePack(lines, filename, warnings);
@@ -96,7 +97,7 @@ function parseRulePack(lines: string[], filename: string | undefined, warnings: 
   let currentBlock: string[] | null = null;
 
   for (const rawLine of lines) {
-    const line = rawLine.replace(/#.*$/, ''); // strip comments
+    const line = stripYamlComment(rawLine);
 
     if (/^rules:\s*$/.test(line.trim())) {
       inRules = true;
@@ -112,7 +113,7 @@ function parseRulePack(lines: string[], filename: string | undefined, warnings: 
     }
 
     // Inside rules section
-    if (/^\s+-\s+\w/.test(line)) {
+    if (/^\s+-\s+\w[\w-]*:(?:\s|$)/.test(line)) {
       // New rule item (starts with "  - key:")
       if (currentBlock) ruleBlocks.push(currentBlock);
       // Convert "  - key: value" → "key: value"
@@ -160,7 +161,7 @@ function parseSimpleYaml(lines: string[]): Record<string, unknown> {
   let currentList: string[] | null = null;
 
   for (const rawLine of lines) {
-    const line = rawLine.replace(/#.*$/, '').trimEnd();
+    const line = stripYamlComment(rawLine).trimEnd();
     if (line.trim() === '') continue;
 
     // List item

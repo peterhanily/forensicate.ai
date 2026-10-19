@@ -41,7 +41,7 @@
 # TECHNOLOGY COLOPHON
 
     Frontend -- React 19, TypeScript
-    Build Tool -- Vite 7
+    Build Tool -- Vite 8
     Styling -- Tailwind CSS 4
     Routing -- React Router DOM 7
     NLP -- compromise.js, AFINN-165
@@ -58,8 +58,6 @@
     - Confidence scoring and threshold control
     - Batch scanning and test battery
     - File scanning (PDF, DOCX, CSV, HTML, SVG, EML, images)
-    - npm package (@forensicate/scanner)
-    - Python package (forensicate on PyPI)
     - GitHub Action for CI/CD scanning
     - Chrome & Firefox browser extensions
     - VS Code extension
@@ -71,8 +69,8 @@
 
 # DISTRIBUTION
 
-    npm -- @forensicate/scanner
-    PyPI -- forensicate
+    Web App -- https://forensicate.ai
+    Standalone HTML -- Available from the web app's Download menu
     GitHub Action -- peterhanily/forensicate.ai/packages/github-action
     Chrome Web Store -- Forensicate.ai Prompt Security Scanner
     VS Code Marketplace -- forensicate-vscode (planned)

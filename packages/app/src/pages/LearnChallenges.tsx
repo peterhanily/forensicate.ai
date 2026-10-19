@@ -160,20 +160,28 @@ function ChallengeLevel({
 }) {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [justWon, setJustWon] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [localAttempts, setLocalAttempts] = useState(0);
 
   const handleSubmit = useCallback(() => {
     if (!input.trim()) return;
-    const scan = scanPrompt(input);
-    setResult(scan);
-    setLocalAttempts(prev => prev + 1);
-    onAttempt();
+    setResult(null);
+    setJustWon(false);
+    setScanError(null);
+    try {
+      const scan = scanPrompt(input);
+      setResult(scan);
+      setLocalAttempts(prev => prev + 1);
+      onAttempt();
 
-    if (scan.confidence < level.threshold) {
-      setJustWon(true);
-      onComplete(input, scan.confidence);
+      if (scan.confidence < level.threshold) {
+        setJustWon(true);
+        onComplete(input, scan.confidence);
+      }
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
     }
   }, [input, level.threshold, onAttempt, onComplete]);
 
@@ -265,7 +273,7 @@ function ChallengeLevel({
           <div className="border border-gray-800 rounded-lg overflow-hidden">
             <textarea
               value={input}
-              onChange={e => { setInput(e.target.value); setResult(null); setJustWon(false); }}
+              onChange={e => { setInput(e.target.value); setResult(null); setJustWon(false); setScanError(null); }}
               placeholder="Type your evasive prompt here..."
               className="w-full bg-transparent text-gray-300 text-xs font-mono p-3 resize-none focus:outline-none placeholder-gray-700"
               rows={4}
@@ -302,6 +310,7 @@ function ChallengeLevel({
           )}
 
           {/* Result display */}
+          {scanError && <p role="alert" className="text-sm text-amber-300">{scanError}</p>}
           {result && (
             <div className={`rounded-lg border overflow-hidden ${
               justWon

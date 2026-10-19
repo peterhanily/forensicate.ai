@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   FileExtractionResult,
   FileScanResult,
@@ -9,6 +9,7 @@ import type {
 } from '@forensicate/scanner';
 import { scanPrompt } from '@forensicate/scanner';
 import { extractTextFromFile } from '../lib/fileExtractors';
+import { PDF_JAVASCRIPT_LOCATION } from '../lib/fileExtractors/utils';
 
 export type ScanMode = 'text_input' | 'file_scan';
 
@@ -31,7 +32,8 @@ function detectFileThreats(extraction: FileExtractionResult): FileThreat[] {
   const threats: FileThreat[] = [];
 
   for (const layer of extraction.layers) {
-    if (layer.type === 'hidden') {
+    // Document-level scripts are common in PDF forms; scan rules check their text for risky calls.
+    if (layer.type === 'hidden' && layer.location !== PDF_JAVASCRIPT_LOCATION) {
       threats.push({
         type: 'hidden-text',
         severity: 'critical' as RuleSeverity,
@@ -199,19 +201,25 @@ export function useFileScanner(): UseFileScannerReturn {
   const [fileScanResult, setFileScanResult] = useState<FileScanResult | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState('');
+  const requestId = useRef(0);
+
+  useEffect(() => () => { requestId.current += 1; }, []);
 
   const handleFileSelected = useCallback(async (
     file: File,
     customRules?: DetectionRule[],
     confidenceThreshold?: number,
   ) => {
+    const currentRequest = ++requestId.current;
     setIsExtracting(true);
     setExtractionProgress('Extracting text...');
+    setFileExtractionResult(null);
     setFileScanResult(null);
 
     try {
       // Extract text from file
       const extraction = await extractTextFromFile(file);
+      if (currentRequest !== requestId.current) return;
       setFileExtractionResult(extraction);
       setExtractionProgress('Scanning extracted text...');
 
@@ -247,15 +255,19 @@ export function useFileScanner(): UseFileScannerReturn {
 
       setFileScanResult(result);
     } catch (error) {
+      if (currentRequest !== requestId.current) return;
       setFileExtractionResult(null);
       throw error;
     } finally {
-      setIsExtracting(false);
-      setExtractionProgress('');
+      if (currentRequest === requestId.current) {
+        setIsExtracting(false);
+        setExtractionProgress('');
+      }
     }
   }, []);
 
   const resetFileScanner = useCallback(() => {
+    requestId.current += 1;
     setFileExtractionResult(null);
     setFileScanResult(null);
     setIsExtracting(false);

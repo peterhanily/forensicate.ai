@@ -24,6 +24,10 @@ export class RateLimiter implements DurableObject {
 
       const maxTokens = tenant.rateLimits.burstSize;
       const refillRate = tenant.rateLimits.requestsPerSecond;
+      if (!Number.isSafeInteger(maxTokens) || maxTokens < 1 ||
+          !Number.isFinite(refillRate) || refillRate <= 0) {
+        throw new Error('Invalid tenant rate limits');
+      }
 
       // Get current state
       let limiterState = await this.state.storage.get<RateLimiterState>('state');
@@ -36,7 +40,7 @@ export class RateLimiter implements DurableObject {
 
       // Calculate tokens to add since last refill
       const now = Date.now();
-      const timeSinceRefill = (now - limiterState.lastRefill) / 1000; // seconds
+      const timeSinceRefill = Math.max(0, now - limiterState.lastRefill) / 1000; // seconds
       const tokensToAdd = timeSinceRefill * refillRate;
 
       // Update token count (capped at max)

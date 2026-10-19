@@ -7,12 +7,15 @@ import { buildExtractionResult } from './utils';
 
 /**
  * Extract text layers from a video file.
- * Parses MP4 atoms (moov/udta/meta), WebM/MKV EBML metadata, and embedded subtitle tracks.
+ * Reads MP4 metadata and searches limited byte ranges for WebM/MKV metadata
+ * and plain-text subtitles. Does not decode subtitle tracks, frames or speech.
  */
 export async function extractFromVideo(file: File): Promise<FileExtractionResult> {
   const startTime = performance.now();
   const layers: TextLayer[] = [];
-  const warnings: string[] = [];
+  const warnings: string[] = [
+    'Video extraction covers metadata and some embedded text/subtitles only. No speech transcription, frame analysis or OCR is performed. Encoded subtitle tracks may be missed; these limits are not threat findings.',
+  ];
 
   try {
     const buffer = await file.arrayBuffer();
@@ -42,7 +45,7 @@ export async function extractFromVideo(file: File): Promise<FileExtractionResult
       layers.push({
         type: 'subtitle',
         content: subtitleContent,
-        location: 'Embedded subtitle track',
+        location: 'Embedded subtitle text (partial discovery)',
       });
     }
 

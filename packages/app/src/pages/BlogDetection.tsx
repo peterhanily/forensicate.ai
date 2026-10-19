@@ -6,13 +6,26 @@ import type { ScanResult } from '@forensicate/scanner';
 function TryIt({ defaultText, label }: { defaultText: string; label: string }) {
   const [text, setText] = useState(defaultText);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+
+  function handleScan() {
+    setResult(null);
+    setScanError(null);
+    try {
+      setResult(scanPrompt(text));
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
+    }
+  }
+
   return (
     <div className="my-4 border border-gray-800 rounded-lg bg-gray-950 overflow-hidden">
       <div className="px-3 py-1.5 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
         <span className="text-[10px] text-gray-500 font-mono uppercase">{label}</span>
-        <button onClick={() => setResult(scanPrompt(text))} className="px-2 py-0.5 text-[10px] bg-[#c9a227]/20 text-[#c9a227] rounded hover:bg-[#c9a227]/30 transition-colors">Scan</button>
+        <button onClick={handleScan} className="px-2 py-0.5 text-[10px] bg-[#c9a227]/20 text-[#c9a227] rounded hover:bg-[#c9a227]/30 transition-colors">Scan</button>
       </div>
-      <textarea value={text} onChange={e => { setText(e.target.value); setResult(null); }} className="w-full bg-transparent text-gray-300 text-xs font-mono p-3 resize-none focus:outline-none" rows={3} aria-label={`Try it: ${label}`} />
+      <textarea value={text} onChange={e => { setText(e.target.value); setResult(null); setScanError(null); }} className="w-full bg-transparent text-gray-300 text-xs font-mono p-3 resize-none focus:outline-none" rows={3} aria-label={`Try it: ${label}`} />
+      {scanError && <p role="alert" className="p-3 text-xs text-amber-300">{scanError}</p>}
       {result && (
         <div className={`px-3 py-2 border-t border-gray-800 text-xs ${result.isPositive ? 'bg-red-950/30' : 'bg-green-950/30'}`}>
           <span className={result.isPositive ? 'text-red-400' : 'text-green-400'}>
@@ -150,7 +163,7 @@ pattern: /\\bDAN\\s*(\\d+(\\.\\d+)?)?\\b/gi`}
           {[
             { name: 'Sentiment Manipulation', desc: 'Detects coercive tone using word-level sentiment scoring. Average sentiment below -1.5 with 3+ negative words indicates manipulation.' },
             { name: 'Authority Impersonation', desc: 'NER + keyword matching identifies claims of authority: "I am the developer", "from OpenAI", "your administrator".' },
-            { name: 'Short Imperative Clustering', desc: 'Many short imperative sentences (< 8 words) clustered together is characteristic of injection, not normal conversation.' },
+            { name: 'Short Imperative Clustering', desc: 'Many short imperative sentences (< 8 words) clustered together are common in injection, but ordinary instructions cluster the same way, so this check is off by default.' },
           ].map(n => (
             <div key={n.name} className="flex gap-2 p-2 rounded bg-gray-900/50 border border-gray-800">
               <span className="text-[#c9a227] text-xs mt-0.5 flex-shrink-0">&rsaquo;</span>
@@ -170,46 +183,35 @@ pattern: /\\bDAN\\s*(\\d+(\\.\\d+)?)?\\b/gi`}
         <div className="grid md:grid-cols-2 gap-3">
           <div className="p-3 rounded-lg bg-gray-900/50 border border-gray-800">
             <div className="text-xs font-bold text-gray-200 mb-2">Pre-Processing (Input)</div>
-            <pre className="text-[10px] text-gray-400 font-mono">
-{`import { scanPrompt } from '@forensicate/scanner';
-
-const result = scanPrompt(userInput);
-if (result.isPositive) {
-  return "I can't process this request.";
-}`}
-            </pre>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Inspect untrusted user input and retrieved documents before passing them to your model.
+              Use matched rules to support review, alongside access controls and application-specific validation.
+            </p>
           </div>
           <div className="p-3 rounded-lg bg-gray-900/50 border border-gray-800">
             <div className="text-xs font-bold text-gray-200 mb-2">CI/CD Pipeline</div>
             <pre className="text-[10px] text-gray-400 font-mono">
 {`# GitHub Action
-- uses: peterhanily/forensicate.ai@main
+- uses: peterhanily/forensicate.ai/packages/github-action@main
   with:
     confidence-threshold: 50
-    fail-on-finding: true
-    sarif-upload: true`}
+    fail-on-finding: true`}
             </pre>
           </div>
           <div className="p-3 rounded-lg bg-gray-900/50 border border-gray-800">
-            <div className="text-xs font-bold text-gray-200 mb-2">Python Backend</div>
-            <pre className="text-[10px] text-gray-400 font-mono">
-{`from forensicate import scan_prompt
-
-result = scan_prompt(user_input)
-if result.is_positive:
-    log_security_event(result)
-    return sanitized_response()`}
-            </pre>
+            <div className="text-xs font-bold text-gray-200 mb-2">Application Handling</div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Route flagged content through your application&apos;s review policy. Keep tool permissions
+              limited and validate model output before taking actions or displaying it to users.
+            </p>
           </div>
           <div className="p-3 rounded-lg bg-gray-900/50 border border-gray-800">
-            <div className="text-xs font-bold text-gray-200 mb-2">CLI / Manual Review</div>
-            <pre className="text-[10px] text-gray-400 font-mono">
-{`# Scan files for injection
-$ forensicate src/**/*.md
-
-# Pipe from stdin
-$ echo "test" | forensicate -j`}
-            </pre>
+            <div className="text-xs font-bold text-gray-200 mb-2">Manual Review</div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Open the <Link to="/scanner" className="text-[#c9a227] hover:underline">prompt scanner</Link> to
+              inspect text and files, review rule matches, and export findings. Download the standalone HTML
+              version from the header to work offline.
+            </p>
           </div>
         </div>
       </section>

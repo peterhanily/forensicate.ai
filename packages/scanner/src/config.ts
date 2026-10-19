@@ -9,6 +9,7 @@
 //   - quoted strings
 
 import type { RuleSeverity } from './types.js';
+import { stripYamlComment } from './yamlComments.js';
 
 export interface ForensicateConfig {
   /** Minimum confidence threshold (0-99) */
@@ -46,15 +47,10 @@ export function parseConfigYaml(yaml: string): ForensicateConfig {
   let currentList: string[] | null = null;
 
   for (const rawLine of lines) {
-    const line = rawLine.replace(/#.*$/, '').trimEnd(); // Remove comments
+    const line = stripYamlComment(rawLine).trimEnd();
 
     // Skip empty lines
     if (line.trim() === '') {
-      if (currentKey && currentList) {
-        config[currentKey] = currentList;
-        currentKey = null;
-        currentList = null;
-      }
       continue;
     }
 

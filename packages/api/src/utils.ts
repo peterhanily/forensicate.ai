@@ -1,6 +1,7 @@
 // Utility functions
 
 import type { ErrorResponse, ScanRequest, BatchScanRequest } from './types';
+import { isOriginAllowed } from './origins';
 
 /**
  * Create standardized error response
@@ -35,7 +36,7 @@ export function validateScanRequest(body: unknown): {
   valid: boolean;
   error?: string;
 } {
-  if (!body || typeof body !== 'object') {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { valid: false, error: 'Request body must be an object' };
   }
 
@@ -50,7 +51,7 @@ export function validateScanRequest(body: unknown): {
   }
 
   if (req.confidenceThreshold !== undefined) {
-    if (typeof req.confidenceThreshold !== 'number') {
+    if (typeof req.confidenceThreshold !== 'number' || !Number.isFinite(req.confidenceThreshold)) {
       return { valid: false, error: 'confidenceThreshold must be a number' };
     }
     if (req.confidenceThreshold < 0 || req.confidenceThreshold > 100) {
@@ -68,7 +69,7 @@ export function validateScanRequest(body: unknown): {
       return { valid: false, error: 'metadata must be a plain object' };
     }
     const metadataStr = JSON.stringify(req.metadata);
-    if (metadataStr.length > 4096) {
+    if (new TextEncoder().encode(metadataStr).byteLength > 4096) {
       return { valid: false, error: 'metadata exceeds maximum size (4KB)' };
     }
     if (Object.keys(req.metadata).length > 20) {
@@ -86,7 +87,7 @@ export function validateBatchScanRequest(body: unknown): {
   valid: boolean;
   error?: string;
 } {
-  if (!body || typeof body !== 'object') {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { valid: false, error: 'Request body must be an object' };
   }
 
@@ -118,7 +119,7 @@ export function validateBatchScanRequest(body: unknown): {
   }
 
   if (req.confidenceThreshold !== undefined) {
-    if (typeof req.confidenceThreshold !== 'number') {
+    if (typeof req.confidenceThreshold !== 'number' || !Number.isFinite(req.confidenceThreshold)) {
       return { valid: false, error: 'confidenceThreshold must be a number' };
     }
     if (req.confidenceThreshold < 0 || req.confidenceThreshold > 100) {
@@ -149,13 +150,7 @@ export function getCORSHeaders(request: Request, allowedOrigins: string[] = []):
   }
 
   // Check if origin is allowed
-  const isAllowed = allowedOrigins.some(allowed => {
-    if (allowed.startsWith('*.')) {
-      const baseDomain = allowed.slice(2);
-      return origin.endsWith(`.${baseDomain}`) || origin === `https://${baseDomain}`;
-    }
-    return origin === allowed || origin === `https://${allowed}`;
-  });
+  const isAllowed = isOriginAllowed(origin, allowedOrigins);
 
   if (isAllowed) {
     return {
@@ -163,12 +158,46 @@ export function getCORSHeaders(request: Request, allowedOrigins: string[] = []):
       'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400'
+      'Access-Control-Max-Age': '86400',
+      'Access-Control-Expose-Headers': 'X-API-Version, X-Rate-Limit-Remaining, X-Processing-Time-Ms, Retry-After',
+      'Vary': 'Origin'
     };
   }
 
   // Origin not allowed
   return {};
+}
+
+export class RequestBodyTooLargeError extends Error {}
+
+/** Read JSON while bounding bytes received, including requests without Content-Length. */
+export async function readBoundedJson(request: Request, maxBytes: number): Promise<unknown> {
+  const contentLength = Number(request.headers.get('Content-Length'));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new RequestBodyTooLargeError('Request body exceeds maximum size');
+  }
+  if (!request.body) throw new SyntaxError('Missing request body');
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let body = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        throw new RequestBodyTooLargeError('Request body exceeds maximum size');
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return JSON.parse(body);
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 /**

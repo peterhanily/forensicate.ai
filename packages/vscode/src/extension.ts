@@ -1,14 +1,17 @@
 import * as vscode from 'vscode';
-import { scanPrompt, getEnabledRules } from '@forensicate/scanner';
+import { scanPrompt, getEnabledRules, MAX_SCAN_LENGTH, ScanInputTooLargeError } from '@forensicate/scanner';
 import type { ScanResult, RuleMatch, DetectionRule } from '@forensicate/scanner';
 
 let diagnosticCollection: vscode.DiagnosticCollection;
 let cachedRules: DetectionRule[] | null = null;
 let statusBarItem: vscode.StatusBarItem;
 let diagnosticsEnabled = true;
-let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// Keep background editor work bounded; manual scans use the engine's larger limit.
+const MAX_AUTOMATIC_SCAN_LENGTH = 100_000;
 
 export function activate(context: vscode.ExtensionContext) {
+  diagnosticsEnabled = getConfig().get('enableDiagnostics', true);
   diagnosticCollection = vscode.languages.createDiagnosticCollection('forensicate');
   context.subscriptions.push(diagnosticCollection);
 
@@ -18,9 +21,6 @@ export function activate(context: vscode.ExtensionContext) {
   updateStatusBar();
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
-
-  // Load config
-  diagnosticsEnabled = getConfig().get('enableDiagnostics', true);
 
   // Commands
   context.subscriptions.push(
@@ -59,6 +59,9 @@ export function activate(context: vscode.ExtensionContext) {
   // Clear diagnostics when closing files
   context.subscriptions.push(
     vscode.workspace.onDidCloseTextDocument(doc => {
+      const key = doc.uri.toString();
+      clearTimeout(debounceTimers.get(key));
+      debounceTimers.delete(key);
       diagnosticCollection.delete(doc.uri);
     }),
   );
@@ -70,7 +73,13 @@ export function activate(context: vscode.ExtensionContext) {
         diagnosticsEnabled = getConfig().get('enableDiagnostics', true);
         updateStatusBar();
         if (!diagnosticsEnabled) {
+          for (const timer of debounceTimers.values()) clearTimeout(timer);
+          debounceTimers.clear();
           diagnosticCollection.clear();
+        } else {
+          for (const editor of vscode.window.visibleTextEditors) {
+            if (matchesFilePattern(editor.document)) scanDocument(editor.document);
+          }
         }
       }
     }),
@@ -89,7 +98,8 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   diagnosticCollection?.dispose();
   statusBarItem?.dispose();
-  if (debounceTimer) clearTimeout(debounceTimer);
+  for (const timer of debounceTimers.values()) clearTimeout(timer);
+  debounceTimers.clear();
 }
 
 function getConfig() {
@@ -104,6 +114,7 @@ function getRules(): DetectionRule[] {
 }
 
 function updateStatusBar() {
+  statusBarItem.backgroundColor = undefined;
   statusBarItem.text = diagnosticsEnabled
     ? '$(shield) Forensicate'
     : '$(shield) Forensicate (off)';
@@ -126,46 +137,84 @@ function matchesFilePattern(document: vscode.TextDocument): boolean {
 function globToRegex(glob: string): RegExp {
   const escaped = glob
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*\//g, '{{GLOBSTAR_DIR}}')
     .replace(/\*\*/g, '{{GLOBSTAR}}')
     .replace(/\*/g, '[^/]*')
-    .replace(/\?/g, '.')
+    .replace(/\?/g, '[^/]')
+    .replace(/\{\{GLOBSTAR_DIR\}\}/g, '(?:.*/)?')
     .replace(/\{\{GLOBSTAR\}\}/g, '.*');
   return new RegExp(`^${escaped}$`);
 }
 
 function debouncedScanDocument(document: vscode.TextDocument) {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => scanDocument(document), 500);
+  const key = document.uri.toString();
+  clearTimeout(debounceTimers.get(key));
+  debounceTimers.set(key, setTimeout(() => {
+    debounceTimers.delete(key);
+    if (diagnosticsEnabled && !document.isClosed) scanDocument(document);
+  }, 500));
 }
 
 function scanDocument(document: vscode.TextDocument) {
   const text = document.getText();
+  if (text.length > MAX_AUTOMATIC_SCAN_LENGTH) {
+    const nextStep = text.length <= MAX_SCAN_LENGTH
+      ? 'Run Forensicate: Scan Current File to scan the entire file.'
+      : `Select text within the ${MAX_SCAN_LENGTH.toLocaleString('en-US')} UTF-16 code unit manual scan limit.`;
+    markDocumentUnscanned(document,
+      `File not scanned automatically: exceeds the ${MAX_AUTOMATIC_SCAN_LENGTH.toLocaleString('en-US')} UTF-16 code unit editor limit. ${nextStep}`);
+    return;
+  }
   if (!text.trim()) {
     diagnosticCollection.delete(document.uri);
+    updateStatusBar();
     return;
   }
 
-  // Limit scan to 100KB
-  const scanText = text.length > 100000 ? text.substring(0, 100000) : text;
   const threshold = getConfig().get('confidenceThreshold', 50);
-  const rules = getRules();
 
   try {
-    const result = scanPrompt(scanText, rules, threshold);
+    const result = scanPrompt(text, getRules(), threshold);
     const diagnostics = resultToDiagnostics(result, document);
     diagnosticCollection.set(document.uri, diagnostics);
-
-    // Update status bar with result
-    if (result.isPositive) {
-      statusBarItem.text = `$(warning) Forensicate: ${result.confidence}%`;
-      statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-    } else {
-      statusBarItem.text = '$(shield) Forensicate';
-      statusBarItem.backgroundColor = undefined;
-    }
+    updateResultStatus(result);
   } catch (error) {
     console.error('Forensicate scan error:', error);
+    markDocumentUnscanned(document, scanFailureMessage(error, 'File'));
   }
+}
+
+function updateResultStatus(result: ScanResult, scope = 'File') {
+  updateStatusBar();
+  if (result.isPositive) {
+    statusBarItem.text = `$(warning) Forensicate: ${result.confidence}%`;
+    statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+  } else if (scope === 'Selection') {
+    statusBarItem.text = '$(shield) Forensicate: Selection scanned';
+  }
+  statusBarItem.tooltip = `Forensicate.ai: ${scope} scan completed. Click to toggle real-time diagnostics.`;
+}
+
+function updateUnscannedStatus(message: string) {
+  statusBarItem.text = '$(warning) Forensicate: Not scanned';
+  statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+  statusBarItem.tooltip = message;
+}
+
+function markDocumentUnscanned(document: vscode.TextDocument, message: string) {
+  const diagnostic = new vscode.Diagnostic(
+    new vscode.Range(0, 0, 0, 1), message, vscode.DiagnosticSeverity.Warning,
+  );
+  diagnostic.source = 'Forensicate.ai';
+  diagnostic.code = 'scan-not-completed';
+  diagnosticCollection.set(document.uri, [diagnostic]);
+  updateUnscannedStatus(message);
+}
+
+function scanFailureMessage(error: unknown, scope: string): string {
+  return error instanceof ScanInputTooLargeError
+    ? `${scope} not scanned. ${error.message}`
+    : `${scope} not scanned because scanning failed. Please try again.`;
 }
 
 function resultToDiagnostics(result: ScanResult, document: vscode.TextDocument): vscode.Diagnostic[] {
@@ -247,15 +296,21 @@ async function scanSelection() {
   const selection = editor.selection;
   const text = editor.document.getText(selection);
 
-  if (!text.trim()) {
+  if (text.length <= MAX_SCAN_LENGTH && !text.trim()) {
     vscode.window.showInformationMessage('No text selected. Please select text to scan.');
     return;
   }
 
-  const rules = getRules();
-  const result = scanPrompt(text, rules, 0);
-
-  showResultPanel(result, text);
+  try {
+    const result = scanPrompt(text, getRules(), getConfig().get('confidenceThreshold', 50));
+    updateResultStatus(result, 'Selection');
+    showResultPanel(result, text);
+  } catch (error) {
+    console.error('Forensicate selection scan error:', error);
+    const message = scanFailureMessage(error, 'Selection');
+    updateUnscannedStatus(message);
+    vscode.window.showErrorMessage(message);
+  }
 }
 
 async function scanCurrentFile() {
@@ -266,17 +321,29 @@ async function scanCurrentFile() {
   }
 
   const text = editor.document.getText();
-  if (!text.trim()) {
+  if (text.length <= MAX_SCAN_LENGTH && !text.trim()) {
+    diagnosticCollection.delete(editor.document.uri);
+    updateStatusBar();
     vscode.window.showInformationMessage('File is empty');
     return;
   }
 
-  const rules = getRules();
-  const result = scanPrompt(text, rules, 0);
-  const diagnostics = resultToDiagnostics(result, editor.document);
-  diagnosticCollection.set(editor.document.uri, diagnostics);
+  const key = editor.document.uri.toString();
+  clearTimeout(debounceTimers.get(key));
+  debounceTimers.delete(key);
 
-  showResultPanel(result, text.substring(0, 500));
+  try {
+    const result = scanPrompt(text, getRules(), getConfig().get('confidenceThreshold', 50));
+    const diagnostics = resultToDiagnostics(result, editor.document);
+    diagnosticCollection.set(editor.document.uri, diagnostics);
+    updateResultStatus(result);
+    showResultPanel(result, text.substring(0, 500));
+  } catch (error) {
+    console.error('Forensicate file scan error:', error);
+    const message = scanFailureMessage(error, 'File');
+    markDocumentUnscanned(editor.document, message);
+    vscode.window.showErrorMessage(message);
+  }
 }
 
 function toggleDiagnostics() {

@@ -92,6 +92,8 @@ describe('Audio Extractor', () => {
       expect(result.fileType).toBe('audio');
       expect(result.filename).toBe('song.mp3');
       expect(result.layers.some(l => l.type === 'audio-metadata' && l.content === 'My Song Title')).toBe(true);
+      expect(result.warnings.some(warning => warning.includes('No speech transcription'))).toBe(true);
+      expect(result.allText).not.toContain('No speech transcription');
     });
 
     it('extracts artist from ID3v2 TPE1 frame', async () => {
@@ -177,6 +179,8 @@ describe('Audio Extractor', () => {
 
       expect(result.fileType).toBe('audio');
       expect(result.warnings.some(w => w.includes('No text metadata'))).toBe(true);
+      expect(result.warnings.some(warning => warning.includes('not a threat finding'))).toBe(true);
+      expect(result.layers).toEqual([]);
     });
 
     it('handles file with no valid tags', async () => {

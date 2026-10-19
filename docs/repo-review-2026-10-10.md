@@ -1,0 +1,525 @@
+# Forensicate repository review
+
+Reviewed 10 October 2026. Baseline: main at `ecd1c5a`, last merged 10 June 2026. The 12 October release preparation and publication status are recorded below. Nothing was pushed or deployed before 19 October, when a session with GitHub access pushed the release branch for PR #62; its pre-deploy review and publication are recorded below.
+
+The browser app is functional, but green CI overstated coverage: some app tests exercised an obsolete scanner, the dependency audit suppressed failures, and API/browser/editor integrations had untested defects. This refresh removes unpublished package claims, updates dependencies, consolidates the scanner, and fixes verified runtime problems. The hosted API and release controls still need work before making stronger production claims. Input completeness and the local deployment gate received the follow-up fixes recorded below on 12 October.
+
+## Review scope
+
+- Read the seven workspace manifests, Python source/configuration, deployment and CI workflows, scanner, API, browser and editor integrations, web state/storage, file extractors, public copy, and the major analysis pages.
+- Inventoried all **61 PRs**: **24 merged, 31 closed, six open**. Reviewed changed-file inventories, discussions, and check results for every PR; read all six open diffs and substantive historical code/tooling changes. Generated lockfile diffs were assessed through dependency changes and audit results, not line-by-line semantic review.
+- Exercised the public homepage/scanner and isolated local Chrome sessions using ordinary text and a simple PDF. This was functional validation and defensive source review, not exploitation testing.
+- No authenticated production API/Cloudflare account inspection, real Firefox installation, VSCode Extension Host session, or new hosted GitHub Actions run was performed. Those limits matter for the remaining release work below.
+
+## Changes made
+
+| Area | Defect or misleading behavior | Result |
+| --- | --- | --- |
+| Public package claims | Unpublished registry install commands and package distribution claims appeared in landing copy, blog, metadata, and README | Removed the promotions; internal workspace imports and unpublished source implementations remain. Developer docs use source checkouts. |
+| Dependencies | Audit reported 71 occurrences: 30 high, 28 moderate, 13 low | Refreshed dependencies/lockfile; only one narrowly documented upstream advisory remains. |
+| Runtime setup | Old Node/pnpm docs, missing workspace build prerequisites, scalar build-script allowlist, API test watch mode | Node 24.13+ within v24 and pnpm 10.29.1; consistent scripts, frozen installs, explicit build-script allowlist, nonwatch tests. |
+| API build command | `build:api` actually deployed | It now performs a dry-run bundle build; deployment has a separate explicit command. |
+| Scanner correctness | Custom regex iteration could fail to advance; empty keywords were unsafe; YAML comments/lists could change parsed rules | Defensive iteration and parsing fixes with benign regression fixtures. |
+| NLP | Two heuristics interpreted compromise tag output incorrectly and were effectively inactive | Uses the supported tag-query API with unconditional regression assertions. On 19 October both became opt-in, because once working they flagged ordinary instructions. |
+| API HTTP behavior | Empty preflight allowlist, inconsistent origin matching/headers, ignored configured text limit, unbounded JSON parsing, ineffective timer | Explicit browser-origin config, bounded body reads, honored text caps, consistent response headers, and honest synchronous execution semantics. |
+| API lifecycle/auth | Usage writes could be cancelled; invalid expiry/tenant metadata and malformed limiter results were not rejected consistently | Uses `waitUntil`, validates those conditions, forwards retry metadata, and exposes threshold result as `isPositive`. |
+| API development | Generated test tokens did not satisfy the authentication format | Generator now produces accepted secure tokens; examples and local KV instructions corrected. |
+| Shared settings | StrictMode could consume shared URL state twice; edited rule fields and thresholds disappeared from links | URL cleanup occurs after initialization; serializable rule edits and threshold round-trip. |
+| Duplicate engine | Eight obsolete app scanner files contained a separate implementation; six test suites used it | Removed the obsolete tree and repointed consumers/tests at the maintained engine. |
+| PDF extraction | Removed PDF.js APIs were swallowed silently; workers/document buffers were not released | Migrated to PDF.js 6.3.289 Map/iterator APIs, typed document handling, explicit incomplete-inspection warnings, and cleanup in finally. |
+| Offline download | The tracked public HTML contained an old application build | Regenerated the existing public download from the refreshed source, along with the production standalone artifact. |
+| File scanning | Old async extraction could overwrite newer state; Clear left scan results behind; astral characters were corrupted | Request invalidation, wired reset callback, complete Unicode characters, and file picker types derived from supported extractors. |
+| Firefox build | Firefox package retained Chrome-only background service-worker settings | Builds a module event page and declares Firefox 121 minimum. Chrome keeps its service worker. |
+| GitHub Action | Tried installing an unpublished scanner, omitted composite output mappings, mishandled config/SARIF flags and path filtering | Builds scanner from action source; repaired outputs, option precedence, changed-file filters, root globs, filename handling, and annotation escaping. |
+| VSCode | Typecheck incompatible with current TypeScript; root files missed; one debounce timer shared across documents | Fixed build/type configuration, matching, initial state, per-document timers/cancellation, and configured manual-scan threshold. |
+| CI | Audit failures hidden; Python, action behavior, VSCode behavior/build, and API bundle were absent | Added coverage, removed blanket audit suppression, made local workspace tests sequential, and bounded concurrent jsdom instances to avoid resource contention. |
+| Maintenance docs | Old rule/category/test counts and a pricing reminder that always failed | Landing counts derive from engine; stale test counters removed; pricing workflow gets the missing issue-write permission. |
+
+Notable final dependencies: React 19.3, React Router 7.18.4, Vite 8.3.2, Vitest 4.1.11, TypeScript 6.0.3, compromise 14.17, PDF.js 6.3.289, Sharp 0.35.5, Wrangler 4.147. Node typings now follow Node 24.
+
+## Dependency exception
+
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) has no published patched braces release. Its only installed path here is `vite-plugin-singlefile → micromatch → braces`, used during builds. Inspection of the installed plugin shows micromatch is called only when `inlinePattern` is nonempty; this repo does not set it. No scanned document is passed to that code.
+
+The specific exception and rationale are recorded in [pnpm-workspace.yaml](../pnpm-workspace.yaml). Audit exits successfully with no actionable advisories; raw metadata still counts this one high advisory. Reassess before adding inline patterns or another braces consumer, and remove the exception once a fix is available. This is not a claim of zero vulnerabilities.
+
+PDF.js deserves a version distinction: the starting lockfile's 5.5.207 was outside the newly observed advisory range. A candidate same-major refresh selected an affected later 5.x version; final dependencies use patched 6.3.289 instead. The API migration follows the [upstream release notes](https://github.com/mozilla/pdf.js/releases/tag/v6.3.289). Firefox background configuration follows [Mozilla's supported manifest formats](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/background).
+
+## Recovery and continuation — 12 October 2026
+
+The 10 October changes survived the shutdown as uncommitted work on `main` at
+`ecd1c5a`. They were preserved in place. This continuation completes the next
+input-handling and deployment-workflow fixes. The user subsequently authorized
+rereleasing the web app; publication status is recorded below. The hosted API
+remains unfinished and outside that release.
+
+- **Complete scanner input:** `scanPrompt` and `scanWithCategories` now throw
+  `ScanInputTooLargeError` above 1,000,000 UTF-16 code units before any rule runs.
+  They no longer return a result for a silently truncated prefix. The exported
+  limit/error contract is documented in the scanner README.
+- **Web app:** oversized text and extracted files have no successful result;
+  main, learning and report views handle errors explicitly. Batch errors remain
+  visible in file mode. Pending text scans are cancelled when their inputs or
+  settings change, and restoring earlier text triggers a fresh scan.
+- **CLI:** stdin and regular files use bounded incremental UTF-8 reads; files
+  retain a separate configurable byte cap, and configuration reads are capped.
+  Missing/unreadable/oversized inputs, special files, encountered symlink entries,
+  and directories with no eligible files fail with exit 2. No JSON, SARIF, quiet
+  success, or partial text report is emitted on an input error. Contents are read
+  one input at a time. Existing extension/generated-directory filters remain.
+- **Editor/browser:** VSCode reports automatic scans above its 100,000-unit limit
+  as not scanned, while manual scans can use the full engine limit. Browser
+  extension failures replace old result overlays, clear cached current results,
+  and use a toolbar warning if a page disallows the overlay.
+- **GitHub Action:** selected files above its 512 KiB byte limit or with other
+  read failures now fail the job with exit 2 before success outputs, SARIF,
+  summaries or comments. Intentional path/extension filters and deleted-file
+  exclusions remain supported. It uses the CLI's bounded reader.
+- **Pages deployment:** successful same-repository `main` push CI supplies the
+  exact tested web artifact, identified by run ID and attempt. Deployment checks
+  the source workflow, success, attempt and live `main` SHA before publishing;
+  no fresh unchecked build runs in the deployment job. Redeploy by rerunning all
+  jobs in current-main push CI. Direct manual deployment was removed. Branch
+  protection still requires account configuration; hosted CI/Pages validation
+  has not been performed.
+
+Validation for the initial release candidate (`bc00eda`) on Node **24.13.0** /
+pnpm **10.29.1**; the second-review follow-up is recorded below:
+
+- **932 JavaScript/TypeScript tests passed:** scanner 423 (396 engine/config plus
+  27 CLI), app 338, API 109, browser extension 33, GitHub Action 15, VSCode 14.
+  The full workspace suite passed with 329 app tests; the subsequent Pages build
+  passed all 338 app tests, including the batch error and secondary-view cases.
+  The final small timeline adjustment also passed the eight focused regressions,
+  followed by compilation and regenerated web/standalone assets. The unchanged
+  Python package was not rerun; its 163-pass result below is from 10 October.
+- The web and standalone builds passed. The public offline download was
+  regenerated and matches the standalone build: **3,907,808 bytes**. JavaScript
+  assets total **2,079,521 bytes**, below the unchanged 2,097,152-byte budget;
+  the PDF worker remains outside that existing `.js`-only budget.
+- Chrome, Firefox and VSCode bundles passed. App/scanner compilation, API
+  typecheck, app lint, rule consistency and `git diff --check` passed. The
+  unchanged API deployment configuration was not bundled or deployed again.
+- Workflow validation covered YAML/artifact wiring, event eligibility, mocked
+  CI/main-SHA responses, shell syntax and ShellCheck. This is local validation,
+  not evidence of a hosted deployment.
+- A fresh real-browser smoke check was unavailable: the shared browser tool was
+  occupied, and a single separate headless Chrome launch with a new temporary
+  profile exited before opening a page. No browser assertions ran on this build.
+  DOM regressions passed; the 10 October browser observations below are historical.
+  Local launch evidence: `/private/tmp/forensicate-standalone-browser-evidence.json`.
+
+The previous package-promotion removals and all earlier fixes are preserved in
+the release branch below. Resume from this section and the remaining table,
+rather than repeating the 10 October review or discarding its changes.
+
+## Release preparation — 12 October 2026
+
+The user explicitly authorized the rerelease after local validation. The release
+scope is the existing static web app and offline HTML download; npm, PyPI and
+the hosted API remain unpublished by this work.
+
+Prepared on local branch `release/2026-10-12-refresh`, based on `ecd1c5a`.
+The final release review added visible scan rejection and recovery to the
+remaining education, transcript and timeline views, plus a Compliance sample
+reset fix. Eight benign UI regressions cover these paths. CI's Python setup
+action now uses v6 for its Node 24 runtime. App lint and the Pages production
+build passed; the required rule-consistency hook runs when saving the commit.
+
+The initial candidate's public, standalone-build and deployment-build offline copies were identical:
+3,907,808 bytes, SHA-256
+`50bc348f48e2f866242150b448cee01a336f2c474ade7db78055c270ad8f3684`.
+Local logs are `/private/tmp/forensicate-release-build.log`,
+`/private/tmp/forensicate-release-final-assets.log` and
+`/private/tmp/forensicate-release-lint.log`.
+
+Publication is blocked by this session's network access: GitHub CLI API calls
+could not connect, and the request for elevated access was rejected because
+sandbox approvals are disabled. No remote refs, PRs, releases or Pages settings
+were changed. Authenticated remote state, hosted CI and the live release remain
+unverified; the real-browser limitation described above also remains.
+
+Continue in a session with GitHub network access. Fetch and inspect current
+`origin/main` and repository/Pages settings before integrating this branch,
+preserving any intervening changes. Publish through the CI-to-Pages workflow,
+observe all required checks and deployment, then verify the live scanner and
+offline download. The user's release authorization is already recorded; no
+additional release permission is needed.
+
+## Second-review fixes — 12 October 2026
+
+The user requested another review of `bc00eda`, then authorized fixing all four
+findings. The follow-up remains on `release/2026-10-12-refresh`:
+
+- **YAML imports:** quotes are recognized at scalar boundaries. Apostrophes and
+  double quotes inside plain values no longer cause inline comments to become
+  part of keywords or paths. Actual quoted hashes and escaped quotes remain
+  supported. Twelve additional benign regressions cover these cases.
+- **Browser extension:** per-tab request generations and ordered UI updates
+  prevent older completions from replacing newer results/errors or clearing
+  newer warning badges. Shared current-result storage is ordered separately
+  across tabs, so in-flight writes/removals cannot overwrite the latest request.
+  Nine additional mocked overlap cases cover these transitions.
+- **GitHub Action:** all-mode discovery (including changed-mode fallback)
+  reports selected symbolic directory links as not scanned before success
+  outputs or reports. Target inspection reads metadata only; links are never
+  traversed. Intentional path, extension and generated-directory exclusions
+  remain supported. Seven additional benign remediation tests cover this.
+- **Web batch scans:** batch timers and busy state are separate from text
+  scans. Editing text leaves a queued batch running; changing scan settings
+  cancels the batch with an explanation and allows retry. Three additional
+  UI regressions cover automatic/manual text modes and cancellation recovery.
+
+Validation on Node **24.13.0** / pnpm **10.29.1**:
+
+- **840 tests passed in the changed packages:** scanner 435 (408 engine/config
+  plus 27 CLI), app 341, browser extension 42, GitHub Action 22. The unchanged
+  API 109 and VSCode 14 tests last passed earlier on 12 October, bringing the
+  recorded JavaScript/TypeScript total to **963**. Python remains unchanged;
+  its historical 163-pass result is from 10 October.
+- Scanner compilation, the Pages web/standalone build, full app lint and both
+  Chrome/Firefox extension builds passed. Independent reviews found no further
+  issue in the batch-cancellation and extension-request-ordering fixes.
+- All three offline HTML copies are identical: **3,908,327 bytes**, SHA-256
+  `6bc6e1d6e7fd9be5ed296917c98fa1cf11becb33a2aa8ff7593c3c455bb35aca`.
+  Web JavaScript assets total **2,080,043 bytes**, below the existing
+  2,097,152-byte budget. The separate PDF worker is still outside that budget.
+- Logs: `/private/tmp/forensicate-review-fixes-scanner.log`,
+  `/private/tmp/forensicate-review-fixes-build.log`,
+  `/private/tmp/forensicate-review-fixes-lint.log`, and
+  `/private/tmp/forensicate-followup-app-tests.log`.
+
+No deployment or other remote action occurred. The GitHub network restriction,
+pending hosted CI/deployment verification and real-browser limitation above
+remain unchanged. Continue publication from this follow-up commit, preserving
+the previously recorded release authorization.
+
+## CI maintenance — 16 October 2026
+
+- The app now exposes `build:only` and `build:gh-pages:only` for callers that
+  already ran its tests. Normal `build` and `build:gh-pages` still run tests
+  first. CI uses `build:gh-pages:only` after its existing required checks, so
+  the app suite runs once without weakening the artifact's test, lint,
+  security or typecheck gates.
+- Dependabot groups minor/patch updates for React and its types, Vite/Vitest,
+  Tailwind, and ESLint before the remaining development/production groups.
+  Action minor/patch updates are grouped too. Major upgrades remain separate
+  PRs, and no dependency is ignored.
+- Local checks parsed both workflow files and the Dependabot YAML, verified
+  the CI dependency graph and artifact identifiers against the previous
+  revision, and checked family assignment and build-script shell syntax.
+  The deployment workflow is unchanged; hosted execution remains unverified.
+- VSIX distribution is still blocked: `vsce` is not installed, and neither
+  the workspace lockfile nor the installed workspace/global packages contain
+  `@vscode/vsce`. No dependency or lockfile entry was fabricated. In an
+  environment with registry access, add and lock a supported packaging-tool
+  version, build/package the extension, then install that VSIX in an
+  Extension Host and verify activation, selection scanning and diagnostics
+  before calling it distribution-ready.
+
+## Modernization implementation — 16 October 2026
+
+The approved local follow-up now includes:
+
+- Version 2 saved settings: built-in definitions come from the current scanner,
+  with user edits stored separately. Known legacy snapshots migrate while
+  preserving enabled/weight preferences; ambiguous edits are retained with a
+  notice. Future-version settings cannot be overwritten by autosave. Legacy
+  share links remain supported. See [the migration contract](saved-rule-migration.md).
+- Pricing: 14 entries have individually sourced verification dates, and 10
+  non-deprecated remote models appear in the default comparison. GPT-5.2 Pro's
+  rate, the per-million rate columns, and Gemini long-context calculations are
+  corrected. Unverified historical selections stay explicitly dated; unsupported
+  model recommendations are removed. This is a selected catalog, not a claim
+  that every provider/model is current.
+- Python CLI: parsed category/rule/severity/output settings now take effect,
+  explicit flags override config, and unsupported settings fail clearly.
+  Configuration and UTF-8 input reads are bounded. The separate 87-rule engine
+  remains source-only, without a TypeScript-parity claim.
+- PDF extraction uses transformed text geometry with crop/rotation coverage,
+  including actual benign PDF fixtures parsed by PDF.js. PDF/media limitations
+  appear as warnings rather than being inserted into text sent to the scanner.
+- Ten known routes now have HTML entry files in the static build, with matching
+  canonical URLs and valid root-relative assets. Unknown routes render a
+  not-found page. Hosted HTTP behavior still needs deployment verification.
+- Saving custom JavaScript rules compiles syntax without executing the body.
+  Scanning remains synchronous: [worker isolation](scan-worker-migration.md)
+  is documented remaining work, not a completed timeout guarantee.
+
+Validation: **397 app tests passed**, including real PDF parsing, Vite route-shell
+generation, and persisted-settings save/reload cases. App ESLint passed. The
+full **209 Python tests passed on Python 3.14**, using the installed pytest
+package via `PYTHONPATH` with third-party plugin autoload disabled; no package
+download or environment installation was needed. Changed pricing/share helpers
+were checked again after bundle-size cleanup. Web/standalone build evidence and
+artifact hashes are recorded in the current release manifest and wiki handoff.
+Unchanged-package totals above remain historical, not a new all-package run.
+
+The final web JavaScript total is **2,096,086 bytes**, leaving **1,066 bytes**
+under the unchanged 2,097,152-byte budget (PDF worker excluded as before). An
+initial build exceeded the limit by 367 bytes; deduplicating historical pricing
+notes and removing redundant share-link processing recovered space. The final
+29 affected pricing/share tests and ESLint passed. The offline HTML is
+**3,924,559 bytes**, SHA-256
+`34713de4c23b951e1a484c285cc8999e6616cefab07bc40df3d9c18c3bc09f24`.
+The three repository offline copies match; all eleven HTML entry files resolve
+their assets, and the site now contains 58 files. Fresh browser interaction and
+hosted status checks remain unavailable.
+
+No GitHub issue or PR was changed, closed, or merged. Authenticated API access
+still fails, and public browsing did not establish a complete current inventory.
+The PR dispositions below are based on the earlier recorded inventory; they
+must be reconciled with current remote state before applying them.
+
+## Pre-deploy review — 19 October 2026
+
+This session had GitHub access, so the earlier publication blocker (no network
+in the previous session's sandbox) no longer applied. `origin/main` was still
+`ecd1c5a`. The branch was pushed and draft PR #62 opened. All ten hosted CI
+jobs passed on `8b6a31d`, and the hosted web artifact matched the local build.
+An isolated headless Chrome session then loaded settings that a rebuild of the
+live site had saved. The new build migrated them correctly, and it served every
+route, old and new share links, oversized input, a PDF scan and the offline
+file without errors.
+
+An adversarial review then checked eight areas: deploy pipeline, saved
+settings, UI runtime, extractors and pricing, scanner engine, the live Action,
+other integrations, and security. It kept 33 findings (23 confirmed, 10
+plausible) and rejected 4. These were fixed before publication:
+
+- **Saved settings could be wiped.** The new version 2 checks rejected records
+  that the app's own autosave wrote, such as duplicate IDs from a re-imported
+  YAML file or out-of-range values from a hand-edited JSON import. The next
+  visit then silently replaced every setting with defaults. Saving now writes
+  only data the loader accepts:
+  - each ID once: identical copies collapse, and a different custom rule that
+    reuses an ID is saved under a new ID, and its section entries follow
+  - invalid values and malformed custom rules are dropped
+
+  A YAML re-import replaces that file's whole section and says so; other
+  files keep their rules and sections, and imported YAML rules are now listed
+  in their section. A supported-version record that still fails validation is kept, and autosave
+  cannot overwrite it until reset.
+- **Extension links were rejected.** The published extension's hand-off links
+  (`version: '1'`) were refused. They load again, including base64 payloads
+  whose `+` signs query parsing turns into spaces. Opening one no longer
+  replaces a returning user's saved rules and prompt sections, as it already
+  did on the live site: the text opens, and the snippets replace only their own
+  section.
+- **Legacy recognition was incomplete.** The table now covers every rule
+  definition the deployed app shipped:
+  - 141 more definitions across 122 IDs, from commits `6e4ac85` to `5962e5b`
+  - 22 from the single-file builds served on 4–8 February 2026, before the
+    current history began; settings autosaved by those builds in Chrome are now
+    fully recognized
+
+  Untouched settings from February and March 2026 would otherwise have shown up
+  to 109 "edits" and kept stale definitions permanently. The table is now a
+  flat list of 32-bit identifiers, which keeps the JS bundle within the
+  unchanged budget.
+- **NLP false positives.** Once their tag check worked, `nlp-pos-imperative`
+  and `nlp-sentence-structure` flagged ordinary instructions as injection: 16
+  of 20 benign prompts flipped, with no change on the attack corpora. Both are
+  now off by default, and old enabled flags for them are ignored.
+- **Share links over the server limit.** GitHub Pages returns 414 for request
+  targets over about 8 KB. New links carry the configuration in the URL
+  fragment instead, and the scanner reloads when one is opened in its own tab.
+  Thresholds other than whole numbers from 0 to 99 are ignored in links and
+  saved settings.
+- **PDF scripts mislabeled.** Document-level PDF JavaScript is no longer
+  reported as zero/tiny-font hidden text. Suspicious calls in it are still
+  flagged by `f-pdf-javascript`.
+- **Smaller fixes:**
+  - The pricing check measures per-entry `verifiedAt` dates.
+  - `/.well-known/security.txt` is now included in the published artifact
+    (both upload actions skip dotfiles by default).
+  - The sitemap and structured data use the trailing-slash canonical URLs.
+  - The Action's setup step no longer caches the calling repository's
+    dependencies, and its reports show the number of rules actually run.
+  - The Mutation Engine's `?text=` hand-off is cleared after use, so it no
+    longer overrides shared prompts or enlarges share links.
+  - The offline file now works when opened from a web server, not only from
+    `file://`; it was blank there before.
+  - `security.txt` no longer links to a security policy page that does not
+    exist.
+
+Deferred, with reasons, to the remaining-work table below:
+
+- **GitHub Action.** It is already non-functional on `main`: it installs an
+  unpublished npm package. Its remaining defects need their own change before
+  the action is promoted:
+  - whole-file scans flag most ordinary files
+  - symlinks abort all-mode scans
+  - the composite replaces the caller's pnpm and PATH
+  - two config keys are ignored
+  - raw file names go into PR comments
+  - `.cursorrules` and `.env` files are never selected
+- **Pre-existing web app issues:**
+  - opening a share link from the app replaces the recipient's saved rules and
+    prompts
+  - PDF.js drops off-page and format-character glyphs before extraction
+  - YAML quoted escapes are not decoded
+  - older builds misread version 2 records, which matters for a rollback or a
+    tab left open across the deploy
+- **Unpublished packages:**
+  - the Python CLI rejects configs that start with a BOM
+  - a CLI config symlink and the CLI's reported oversize length
+  - two extension badge edge cases
+
+Validation of the final release head:
+- every CI job passed, locally on Node 24.13.0 and pnpm 10.29.1 and in hosted
+  CI
+- tests: scanner 409 plus 27 CLI, app 431, API 109, browser extension 42,
+  Action 22, VSCode 14, and Python 209 on both 3.10 and 3.14
+- builds, lint, typecheck, audit and rule counts also passed
+- web JavaScript totals **2,092,486 bytes**, 4,666 under the 2,097,152-byte
+  budget
+- the offline HTML is 3,921,857 bytes, SHA-256
+  `2271848b3f0c0d4ed40e37ad8c1673b0704affc4d06227552c453da4cf04f767`, and
+  the repository copy matches the deployment build
+
+A second adversarial review of the follow-up commits found five more
+problems, fixed before merging:
+- a re-import duplicating renamed YAML rules
+- section entries left pointing at the old ID after a rename
+- an import that could reuse an ID it had just assigned
+- same-named packs replacing each other
+- broad new PDF-script patterns that flagged ordinary .NET and Java text,
+  which were reverted
+Publication results will be added after deployment.
+
+## Remaining work in priority order
+
+Updated after the 16 October implementation and the 19 October pre-deploy
+review. The original 10 October validation and historical PR inventory are
+retained below.
+
+| Priority | Finding | Recommended next step |
+| --- | --- | --- |
+| P1 | [API](../packages/api/src/index.ts) still returns 501 for batch/rules/usage. Daily/monthly quotas and tenant feature fields are declared but not enforced. | Treat as unfinished source integration. Implement accounting/entitlements or remove those contractual promises before onboarding users. |
+| P1 | GitHub `main` had no branch protection or rulesets at the 10 October inspection. PRs #28/#33/#37 merged despite failed checks. | Require reviewed PRs and required checks. The local deployment workflow now consumes a validated artifact, but still needs hosted qualification after publication. Account settings have not been changed. |
+| P1 | Opening a share link generated by the app replaces the recipient's saved custom rules, sections and prompt sections without confirmation. This predates the release. Extension hand-off links now keep saved settings. | Keep shared state in memory until the user adopts it, or merge it. Back up the previous record first. |
+| P1 | The GitHub Action scans whole files with every default rule at threshold 50. Structural heuristics such as `h-nested-delimiters` flagged 92–98% of a benign README/source corpus. | Before promoting the action, use a whole-file rule profile or calibrate those heuristics on a benign corpus. Also review the `fail-on-finding` and `comment-on-pr` defaults. |
+| P2 | Action follow-ups from the 19 October review:<br>- discovered symlinks abort all-mode scans<br>- the composite's pnpm setup replaces the caller's pnpm, PATH and store<br>- `extensions` and `max-file-size-kb` are ignored<br>- raw file names reach PR comments<br>- `.cursorrules` and `.env` files are never selected | Fix them in one action change, each with a regression test. Run the composite against a scratch consumer repository. |
+| P2 | Older builds read version 2 records as version 1 and reset built-in preferences: after a rollback, or in a tab left open across a deploy. | Fix forward rather than roll back. Otherwise write version 2 under a new key and keep the version 1 record for one release. |
+| P2 | PDF.js removes glyphs outside the crop box and `\p{Cf}` characters before text extraction, so those payloads are never scanned. | Add an operator-list pass for the off-page and hidden layers, with real-PDF fixtures. |
+| P2 | Importing a JSON export made on the old site turns the two opt-in NLP checks back on. Imports bypass the version 1 migration, and old and new exports both say `1.0`. | Mark new exports (for example with `defaultsVersion`), then migrate unmarked replace-mode imports like saved settings, and apply only the opt-in rule in merge mode. |
+| P2 | [Worker config](../packages/api/wrangler.toml) retains placeholder KV IDs, 2025 compatibility date, and legacy Durable Object migration. | Audit actual account resources/migration history, choose deployment environments, then plan a tested runtime migration. Dry-run bundling does not establish production readiness. |
+| P2 | Ambiguous legacy rule edits are intentionally retained during migration. | Review any migration notice; do not reset intentional edits merely to obtain fresh defaults. Version 2 now tracks overrides separately. |
+| P2 | Historical pricing outside the verified default selection remains unverified. | Check additional models against provider sources before expanding the comparison; retain per-model dates and refresh verified rates as they age. |
+| P2 | Python remains a separate reduced engine with no demonstrated parity to the maintained TypeScript rules. CLI settings and input errors are now covered by integration tests. | Keep source-only status and define/test intended parity before publishing a package. |
+| P2 | [VSCode packaging](../packages/vscode/package.json) invokes undeclared `vsce`. Only bundle, typecheck and mocked behavioral tests are verified. | Add explicit packaging tooling and an Extension Host/VSIX smoke test before distribution. |
+| P2 | Regex/custom JavaScript rules still run synchronously; the extension's Promise.race cannot interrupt synchronous scanning. Saving a custom rule no longer executes its body. | Implement and qualify the [worker migration](scan-worker-migration.md), including offline mode and explicit failure results. |
+| P2 | Route-shell and not-found fixes are built locally but are not deployed. | Verify hosted status codes, trailing-slash behavior, query/hash retention, and canonical URLs after publication. |
+| P2 | PDF geometry fixes have fixture coverage, but clipping/colour visibility is approximate. Metadata-only images/audio/video are not OCR/transcription. | Keep extraction warnings visible and verify representative documents in the real hosted/offline browser. |
+| P3 | The YAML import keeps escape sequences inside quoted scalars, so a double-quoted regex such as `"\\s"` never matches. | Decode YAML escapes in `unquote` (rule files and config), with a test for the example pack. |
+| P3 | Smaller web app follow-ups:<br>- crafted links with non-string fields crash the scanner until the fragment is removed<br>- SVG `<script>` content is still described as zero/tiny-font text<br>- the entropy heuristic flags files that are almost entirely code, such as a PDF holding only a form script<br>- the extension's query-string hand-offs still get 414 for very long text<br>- the two opt-in NLP checks cannot be enabled outside the web app, so `--categories nlp-analysis` runs 2 of 4 rules<br>- every page's `og:image`, `twitter:image` and structured-data screenshot point to files that are not shipped<br>- `f-pdf-javascript` misses Acrobat email, network and open-URL calls (`mailDoc`, `SOAP`, `Net.HTTP`); broad patterns for them flag ordinary .NET and Java text<br>- in the offline file, the Mutation Engine and Scanner hand-offs assume BrowserRouter<br>- values a JSON import accepts but the loader rejects (out-of-range weights, unnamed custom rules) are dropped at the next save without a notice | Validate shared field types, and describe hidden layers by their location. Calibrate structural heuristics together with the Action's profile. Apply Acrobat-only patterns to the extracted PDF script layer. Read hand-off text from the router location. Move extension hand-offs to the fragment in the next extension release. |
+| P3 | Unpublished packages:<br>- the Python CLI exits 2 on BOM-prefixed configs<br>- the TypeScript CLI rejects symlinked configs and reports a partial length when oversized<br>- two extension badge/result edge cases | Fix them before publishing those packages. |
+| P3 | Shared links intentionally omit community data and do not preserve every sample-prompt edit or custom heuristic function body. | Define a versioned, documented sharing contract and add remaining round-trip cases. |
+| P3 | Compliance/forensics pages contain static framework mappings and strong reporting claims without specialist acceptance tests. | Review the mapping accuracy and copy independently before treating output as compliance evidence. |
+
+## PR decisions
+
+The six PRs open in the earlier inventory had green recorded checks, but those
+checks predate the stronger coverage here. Their current status is unverified.
+
+| Open PR | Assessment |
+| --- | --- |
+| [#49](https://github.com/peterhanily/forensicate.ai/pull/49) PDF.js 6.0.227 | Superseded locally by patched 6.3.289 plus API migration and PDF runtime checks. Do not merge the older proposed version over this work. |
+| [#50](https://github.com/peterhanily/forensicate.ai/pull/50) checkout v7 | Rebase onto refreshed workflows; verify action-major/runtime changes in hosted CI before merge. |
+| [#55](https://github.com/peterhanily/forensicate.ai/pull/55) setup-node v7 | Same: separate action-major change, rebase and run hosted CI. |
+| [#57](https://github.com/peterhanily/forensicate.ai/pull/57) production dependency group | Superseded by the newer locally validated dependency set; its proposed versions did not resolve all current advisories. |
+| [#58](https://github.com/peterhanily/forensicate.ai/pull/58) pnpm/action-setup 6.0.9 | Rebase onto explicit pnpm 10.29.1 configuration; verify the chosen upstream action tag and run hosted CI. |
+| [#61](https://github.com/peterhanily/forensicate.ai/pull/61) development dependency group | Superseded by the broader refresh, matching Worker types, and patched transitive Sharp override. |
+
+Older closed dependency groups were superseded or explicitly closed for compatibility/manual updating. #38 included the necessary Vite 8 chunk configuration change; #45 addressed TypeScript/Node typing; #46 repaired a React-hooks lint failure; #47 modernized action runtimes but did not itself align all project Node/pnpm versions. No PR was changed, closed, or merged during this review.
+
+## Verification — 10 October 2026
+
+| Check | Result |
+| --- | --- |
+| JavaScript/TypeScript tests | **859 passed**: scanner 392, app 325, API 109, extension 22, GitHub Action 5, VSCode 6. |
+| Python tests | **163 passed**, Python 3.14 in an isolated virtual environment. CI now covers 3.10 and 3.14; local 3.10 was not available. |
+| Lint and type checks | App ESLint, scanner/app TypeScript builds, API typecheck, and VSCode typecheck passed. |
+| Builds | Web, standalone, Chrome, Firefox, VSCode, and API dry-run all passed. |
+| API dry-run output | Wrangler 4.147.0: 967.40 KiB, gzip 248.45 KiB. No deployed resources were created or changed. |
+| Dependency consistency | Frozen-lockfile validation passed; audit exits 0 with the one documented exception above. |
+| Rule consistency | 182 built-in rules, 24 categories; rule verification passed. Online community imports add nine rules in the observed browser session. |
+| Production browser routes | All 11 routes rendered without JavaScript exceptions or error-boundary screens; no unpublished-package install ads appeared. Analysis tools were opened, not exhaustively exercised. |
+| Mobile scanner | At 390 px viewport width, document width was 390 px; no horizontal overflow observed. |
+| Ordinary PDF via app UI | Visible text extracted correctly from a 604-byte, one-page sample in the production build and downloaded HTML with Chrome network access disabled. |
+| Bundle budget | JS assets total 2,076,159 bytes, under the existing 2,097,152-byte budget by only 20,993 bytes. The separate PDF worker is 1,265,413 bytes and is excluded by the existing `.js`-only budget. |
+| Standalone size | 3,901,745 bytes, including the PDF worker. The public download was regenerated. |
+| Repository checks | `git diff --check` passed; generated Python caches are ignored. |
+
+The initial highly concurrent validation run exceeded scanner timing limits; an isolated run passed without relaxing benchmark thresholds. The app also exceeded a generic test timeout under contention. Workspace test commands now run packages sequentially, and the app caps parallel jsdom instances at two; the subsequent production build's full app test suite passed.
+
+Browser caveats: the hosted analytics request was blocked by this environment, so analytics delivery was not verified. Offline scanning succeeds, but optional community downloads report expected network failures, the standalone manifest link produces a file-origin warning, and PDF.js falls back from its worker after a file-origin worker warning. These are still cleanup/performance opportunities. Deep-link HTTP status and untested production integrations are listed above. Passing this suite is not evidence of universal detection accuracy or absence of vulnerabilities.
+
+## Complete PR inventory
+
+Recorded check states are historical, not proof that the final working tree has run on GitHub. A listed failure does not mean the PR introduced it; several inherited an already failing base.
+
+| PR | State | Change | Recorded checks |
+| --- | --- | --- | --- |
+| [#1](https://github.com/peterhanily/forensicate.ai/pull/1) | merged | Add Claude Code GitHub Workflow | Green |
+| [#2](https://github.com/peterhanily/forensicate.ai/pull/2) | closed | Bump actions/checkout from 4 to 6 | Lint failed; Type Check failed |
+| [#3](https://github.com/peterhanily/forensicate.ai/pull/3) | closed | Bump actions/upload-pages-artifact from 3 to 4 | Lint failed; Type Check failed |
+| [#4](https://github.com/peterhanily/forensicate.ai/pull/4) | closed | Bump actions/setup-node from 4 to 6 | Lint failed; Type Check failed |
+| [#5](https://github.com/peterhanily/forensicate.ai/pull/5) | closed | Bump actions/upload-artifact from 4 to 6 | Lint failed; Type Check failed |
+| [#6](https://github.com/peterhanily/forensicate.ai/pull/6) | closed | Bump the dev-dependencies group with 9 updates | Lint failed; Type Check failed |
+| [#7](https://github.com/peterhanily/forensicate.ai/pull/7) | closed | Bump react-router-dom from 7.13.0 to 7.13.1 in the production-dependencies group | Lint failed; Type Check failed |
+| [#8](https://github.com/peterhanily/forensicate.ai/pull/8) | closed | Bump globals from 16.5.0 to 17.3.0 | Lint failed; Type Check failed |
+| [#9](https://github.com/peterhanily/forensicate.ai/pull/9) | closed | Bump eslint from 9.39.2 to 10.0.2 | Lint failed; Type Check failed |
+| [#10](https://github.com/peterhanily/forensicate.ai/pull/10) | closed | Bump @eslint/js from 9.39.2 to 10.0.1 | Lint failed; Type Check failed |
+| [#11](https://github.com/peterhanily/forensicate.ai/pull/11) | closed | Bump wrangler from 3.114.17 to 4.68.1 | Lint failed; Type Check failed |
+| [#12](https://github.com/peterhanily/forensicate.ai/pull/12) | closed | Bump @types/node from 22.19.10 to 25.3.0 | Lint failed; Type Check failed |
+| [#13](https://github.com/peterhanily/forensicate.ai/pull/13) | closed | Bump vitest from 2.1.9 to 4.0.18 | Lint failed; Type Check failed |
+| [#14](https://github.com/peterhanily/forensicate.ai/pull/14) | merged | Bump actions/upload-artifact from 4 to 7 | Green |
+| [#15](https://github.com/peterhanily/forensicate.ai/pull/15) | closed | Bump the dev-dependencies group with 9 updates | Green |
+| [#16](https://github.com/peterhanily/forensicate.ai/pull/16) | closed | Bump the production-dependencies group with 2 updates | Green |
+| [#17](https://github.com/peterhanily/forensicate.ai/pull/17) | merged | Bump @types/node from 22.19.10 to 25.3.3 | Green |
+| [#18](https://github.com/peterhanily/forensicate.ai/pull/18) | closed | Bump wrangler from 3.114.17 to 4.69.0 | Green |
+| [#19](https://github.com/peterhanily/forensicate.ai/pull/19) | merged | Bump globals from 16.5.0 to 17.4.0 | Green |
+| [#20](https://github.com/peterhanily/forensicate.ai/pull/20) | merged | Bump the production-dependencies group across 1 directory with 3 updates | Green |
+| [#21](https://github.com/peterhanily/forensicate.ai/pull/21) | closed | Bump the dev-dependencies group across 1 directory with 11 updates | Build failed |
+| [#22](https://github.com/peterhanily/forensicate.ai/pull/22) | merged | Bump actions/github-script from 7 to 8 | Green |
+| [#23](https://github.com/peterhanily/forensicate.ai/pull/23) | closed | Bump the dev-dependencies group across 1 directory with 11 updates | Green |
+| [#24](https://github.com/peterhanily/forensicate.ai/pull/24) | merged | Bump pnpm/action-setup from 4 to 5 | Green |
+| [#25](https://github.com/peterhanily/forensicate.ai/pull/25) | merged | Bump actions/deploy-pages from 4 to 5 | Green |
+| [#26](https://github.com/peterhanily/forensicate.ai/pull/26) | closed | Bump the dev-dependencies group across 1 directory with 12 updates | Green |
+| [#27](https://github.com/peterhanily/forensicate.ai/pull/27) | closed | Bump the production-dependencies group with 2 updates | Green |
+| [#28](https://github.com/peterhanily/forensicate.ai/pull/28) | merged | Bump pnpm/action-setup from 5 to 6 | Lint failed; Security Audit failed; Test Scanner failed; Type Check failed |
+| [#29](https://github.com/peterhanily/forensicate.ai/pull/29) | merged | Bump actions/github-script from 8 to 9 | Green |
+| [#30](https://github.com/peterhanily/forensicate.ai/pull/30) | closed | Bump the production-dependencies group across 1 directory with 4 updates | Green |
+| [#31](https://github.com/peterhanily/forensicate.ai/pull/31) | closed | Bump the dev-dependencies group across 1 directory with 12 updates | Green |
+| [#32](https://github.com/peterhanily/forensicate.ai/pull/32) | merged | Bump actions/upload-pages-artifact from 3 to 5 | Green |
+| [#33](https://github.com/peterhanily/forensicate.ai/pull/33) | merged | Bump the dev-dependencies group across 1 directory with 13 updates | Lint failed |
+| [#34](https://github.com/peterhanily/forensicate.ai/pull/34) | closed | Bump the production-dependencies group across 1 directory with 5 updates | Green |
+| [#35](https://github.com/peterhanily/forensicate.ai/pull/35) | closed | Bump the production-dependencies group across 1 directory with 4 updates | Green |
+| [#36](https://github.com/peterhanily/forensicate.ai/pull/36) | merged | Bump the production-dependencies group across 1 directory with 4 updates | Green |
+| [#37](https://github.com/peterhanily/forensicate.ai/pull/37) | merged | Bump the dev-dependencies group with 8 updates | Lint failed |
+| [#38](https://github.com/peterhanily/forensicate.ai/pull/38) | merged | Bump vite from 7.3.1 to 8.0.16 | Green |
+| [#39](https://github.com/peterhanily/forensicate.ai/pull/39) | merged | Bump jsdom from 28.0.0 to 29.1.1 | Green |
+| [#40](https://github.com/peterhanily/forensicate.ai/pull/40) | merged | Bump eslint from 9.39.2 to 10.4.1 | Green |
+| [#41](https://github.com/peterhanily/forensicate.ai/pull/41) | merged | Bump @vitejs/plugin-react from 5.1.3 to 6.0.2 | Green |
+| [#42](https://github.com/peterhanily/forensicate.ai/pull/42) | merged | Bump vitest from 2.1.9 to 4.1.8 | Green |
+| [#43](https://github.com/peterhanily/forensicate.ai/pull/43) | merged | Bump wrangler from 3.114.17 to 4.99.0 | Green |
+| [#44](https://github.com/peterhanily/forensicate.ai/pull/44) | merged | Bump archiver from 7.0.1 to 8.0.0 | Green |
+| [#45](https://github.com/peterhanily/forensicate.ai/pull/45) | merged | Bump typescript from 5.9.3 to 6.0.3 | Green |
+| [#46](https://github.com/peterhanily/forensicate.ai/pull/46) | merged | Fix lint error blocking CI (Scanner.tsx setState in effect) | Green |
+| [#47](https://github.com/peterhanily/forensicate.ai/pull/47) | merged | chore: modernize CI actions (Node 24), husky hook, api peer dep | Green |
+| [#48](https://github.com/peterhanily/forensicate.ai/pull/48) | closed | Bump the dev-dependencies group with 13 updates | Green |
+| [#49](https://github.com/peterhanily/forensicate.ai/pull/49) | open | Bump pdfjs-dist from 5.5.207 to 6.0.227 | Green |
+| [#50](https://github.com/peterhanily/forensicate.ai/pull/50) | open | Bump actions/checkout from 5 to 7 | Green |
+| [#51](https://github.com/peterhanily/forensicate.ai/pull/51) | closed | Bump react-router-dom from 7.17.0 to 7.18.0 in the production-dependencies group | Green |
+| [#52](https://github.com/peterhanily/forensicate.ai/pull/52) | closed | Bump the dev-dependencies group across 1 directory with 14 updates | Green |
+| [#53](https://github.com/peterhanily/forensicate.ai/pull/53) | closed | Bump the dev-dependencies group across 1 directory with 16 updates | Green |
+| [#54](https://github.com/peterhanily/forensicate.ai/pull/54) | closed | Bump the dev-dependencies group across 1 directory with 15 updates | Green |
+| [#55](https://github.com/peterhanily/forensicate.ai/pull/55) | open | Bump actions/setup-node from 5 to 7 | Green |
+| [#56](https://github.com/peterhanily/forensicate.ai/pull/56) | closed | Bump the production-dependencies group across 1 directory with 2 updates | Green |
+| [#57](https://github.com/peterhanily/forensicate.ai/pull/57) | open | Bump the production-dependencies group across 1 directory with 4 updates | Green |
+| [#58](https://github.com/peterhanily/forensicate.ai/pull/58) | open | Bump pnpm/action-setup from 6 to 6.0.9 | Green |
+| [#59](https://github.com/peterhanily/forensicate.ai/pull/59) | closed | Bump the dev-dependencies group across 1 directory with 16 updates | Green |
+| [#60](https://github.com/peterhanily/forensicate.ai/pull/60) | closed | Bump the dev-dependencies group across 1 directory with 17 updates | Green |
+| [#61](https://github.com/peterhanily/forensicate.ai/pull/61) | open | Bump the dev-dependencies group across 1 directory with 14 updates | Green |

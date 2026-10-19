@@ -5,7 +5,7 @@ import crypto from 'crypto';
 
 // Generate a test API token
 function generateToken(env = 'test') {
-  const randomPart = crypto.randomBytes(16).toString('base64url').slice(0, 32);
+  const randomPart = crypto.randomBytes(16).toString('hex');
   return `fai_${env}_${randomPart}`;
 }
 
@@ -108,23 +108,23 @@ console.log('   Tenant ID:  ' + liveTenant.id);
 console.log('   Quota:      10,000/day\n');
 
 console.log('═══════════════════════════════════════════════════════════════');
-console.log('📋 Wrangler Commands to Upload Data');
+console.log('📋 Wrangler Commands for Local Development Data');
 console.log('═══════════════════════════════════════════════════════════════\n');
 
 console.log('# 1. Upload Test Token');
-console.log(`wrangler kv:key put --namespace-id=<API_TOKENS_PREVIEW_ID> "${testTokenHash}" '${JSON.stringify(testTokenData)}'`);
+console.log(`pnpm exec wrangler kv key put --local --binding=API_TOKENS "${testTokenHash}" '${JSON.stringify(testTokenData)}'`);
 console.log();
 
 console.log('# 2. Upload Test Tenant');
-console.log(`wrangler kv:key put --namespace-id=<TENANT_METADATA_PREVIEW_ID> "${testTenant.id}" '${JSON.stringify(testTenant)}'`);
+console.log(`pnpm exec wrangler kv key put --local --binding=TENANT_METADATA "${testTenant.id}" '${JSON.stringify(testTenant)}'`);
 console.log();
 
 console.log('# 3. Upload Live Token');
-console.log(`wrangler kv:key put --namespace-id=<API_TOKENS_PREVIEW_ID> "${liveTokenHash}" '${JSON.stringify(liveTokenData)}'`);
+console.log(`pnpm exec wrangler kv key put --local --binding=API_TOKENS "${liveTokenHash}" '${JSON.stringify(liveTokenData)}'`);
 console.log();
 
 console.log('# 4. Upload Live Tenant');
-console.log(`wrangler kv:key put --namespace-id=<TENANT_METADATA_PREVIEW_ID> "${liveTenant.id}" '${JSON.stringify(liveTenant)}'`);
+console.log(`pnpm exec wrangler kv key put --local --binding=TENANT_METADATA "${liveTenant.id}" '${JSON.stringify(liveTenant)}'`);
 console.log();
 
 console.log('═══════════════════════════════════════════════════════════════');

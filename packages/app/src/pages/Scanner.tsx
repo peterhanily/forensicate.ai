@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useRef, useCallback, Suspense, lazy } fro
 import { type PromptCategory, type PromptItem } from '../data/samplePrompts';
 import {
  scanPrompt,
+ MAX_SCAN_LENGTH,
+ ScanInputTooLargeError,
  ruleCategories,
  rehydrateHeuristics,
  fetchAllCommunityRules,
@@ -77,6 +79,8 @@ export default function Scanner() {
  setAutoImportCommunityPrompts,
  setTourCompleted,
  loadSource,
+ migrationNotice,
+ error: storageError,
  initialPromptText,
  generateShareUrl,
  resetToDefaults,
@@ -113,7 +117,19 @@ export default function Scanner() {
    } catch { /* ignore in test/SSR */ }
    return initialPromptText || '';
  });
- const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+ // The ?text= hand-off is used once; leaving it would override shared prompts and enlarge share links
+ useEffect(() => {
+ const url = new URL(window.location.href);
+ if (!url.searchParams.has('text')) return;
+ url.searchParams.delete('text');
+ window.history.replaceState(window.history.state, '', url.toString());
+ }, []);
+ const [lastScanResult, setScanResult] = useState<ScanResult | null>(null);
+ const [scanFailure, setScanFailure] = useState<string | null>(null);
+ const inputSizeError = promptText.length > MAX_SCAN_LENGTH
+ ? new ScanInputTooLargeError(promptText.length).message : null;
+ const scanError = inputSizeError ?? scanFailure;
+ const scanResult = scanError ? null : lastScanResult;
  const [isScanning, setIsScanning] = useState(false);
  const [editingKeywords, setEditingKeywords] = useState<string | null>(null);
 
@@ -121,6 +137,8 @@ export default function Scanner() {
  const [selectedPrompts, setSelectedPrompts] = useState<Set<string>>(new Set());
  const [batchResults, setBatchResults] = useState<Array<{ prompt: PromptItem; result: ScanResult }> | null>(null);
  const [showBatchResults, setShowBatchResults] = useState(false);
+ const [batchError, setBatchError] = useState<string | null>(null);
+ const [isBatchScanning, setIsBatchScanning] = useState(false);
 
  // Scan history state (session-only, not persisted)
  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
@@ -462,9 +480,11 @@ export default function Scanner() {
  ).filter(Boolean),
  }));
 
+ // A custom section lists its non-built-in rules, including those imported from YAML files
+ const builtInIds = new Set(ruleCategories.flatMap(cat => cat.rules.map(rule => rule.id)));
  const customCats = customCategories.map(cat => ({
  ...cat,
- rules: localRules.filter(r => r.id.startsWith('custom-') &&
+ rules: localRules.filter(r => !builtInIds.has(r.id) &&
  cat.rules.some(cr => cr.id === r.id)),
  }));
 
@@ -513,6 +533,25 @@ export default function Scanner() {
  const [showConfidenceInfo, setShowConfidenceInfo] = useState(false);
  const lastScannedRef = useRef<string>('');
  const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const scanTaskTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const batchTaskTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+ // Text edits cancel text scans independently of any queued batch.
+ useEffect(() => () => {
+ if (scanTaskTimerRef.current) clearTimeout(scanTaskTimerRef.current);
+ setIsScanning(false);
+ }, [promptText, localRules, confidenceThreshold, autoScan]);
+
+ // A batch uses the settings chosen when it was requested. Cancel explicitly
+ // if those settings change before it starts, and also clear work on unmount.
+ useEffect(() => () => {
+ if (batchTaskTimerRef.current !== null) {
+ clearTimeout(batchTaskTimerRef.current);
+ batchTaskTimerRef.current = null;
+ setIsBatchScanning(false);
+ setBatchError('Batch was cancelled because scan settings changed. Run it again.');
+ }
+ }, [localRules, confidenceThreshold]);
 
  // ============================================================================
  // Scan History Helpers (declared before auto-scan effect that uses them)
@@ -539,6 +578,7 @@ export default function Scanner() {
 
  const handleSelectHistoryEntry = (entry: ScanHistoryEntry) => {
  setPromptText(entry.fullPrompt);
+ setScanFailure(null);
  setScanResult(entry.result);
  lastScannedRef.current = ''; // Allow rescan if rules changed
  };
@@ -548,7 +588,7 @@ export default function Scanner() {
  // ============================================================================
 
  useEffect(() => {
- if (!autoScan) return;
+ if (!autoScan || inputSizeError) return;
  if (!promptText.trim()) {
  lastScannedRef.current = '';
  return;
@@ -563,20 +603,28 @@ export default function Scanner() {
 
  autoScanTimerRef.current = setTimeout(() => {
  setIsScanning(true);
+ setScanFailure(null);
+ setScanResult(null);
  // Use nested timeout so React can paint the scanning state
- setTimeout(() => {
+ scanTaskTimerRef.current = setTimeout(() => {
+ try {
  const result = scanPrompt(promptText, localRules, confidenceThreshold);
  setScanResult(result);
- setIsScanning(false);
  lastScannedRef.current = scanKey;
  addToHistory(promptText, result);
+ } catch (error) {
+ setScanFailure(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
+ } finally {
+ setIsScanning(false);
+ }
  }, 0);
  }, 300);
 
  return () => {
  if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
+ if (scanTaskTimerRef.current) clearTimeout(scanTaskTimerRef.current);
  };
- }, [promptText, localRules, autoScan, confidenceThreshold]);
+ }, [promptText, localRules, autoScan, confidenceThreshold, inputSizeError]);
 
  // ============================================================================
  // Scan Handlers
@@ -592,36 +640,42 @@ export default function Scanner() {
  });
  setPromptText(prompt.content || '');
  setScanResult(null);
+ setScanFailure(null);
  lastScannedRef.current = ''; // Force rescan
  };
 
  const handleManualScan = () => {
- if (!promptText.trim()) return;
+ if (!promptText.trim() || inputSizeError) return;
 
  setIsScanning(true);
  setScanResult(null);
+ setScanFailure(null);
 
- setTimeout(() => {
+ scanTaskTimerRef.current = setTimeout(() => {
+ try {
  const result = scanPrompt(promptText, localRules, confidenceThreshold);
  setScanResult(result);
- setIsScanning(false);
  lastScannedRef.current = promptText + '|' + localRules.filter(r => r.enabled).map(r => r.id).join(',') + '|' + confidenceThreshold;
  addToHistory(promptText, result);
+ } catch (error) {
+ setScanFailure(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
+ } finally {
+ setIsScanning(false);
+ }
  }, 150);
  };
 
  const handlePromptChange = (text: string) => {
  setPromptText(text);
- if (!autoScan) {
+ setScanFailure(null);
  setScanResult(null);
- } else if (!text.trim()) {
- setScanResult(null);
- }
+ lastScannedRef.current = '';
  };
 
  const handleClear = () => {
  setPromptText('');
  setScanResult(null);
+ setScanFailure(null);
  lastScannedRef.current = '';
  };
 
@@ -651,12 +705,16 @@ export default function Scanner() {
  };
 
  const handleBatchScan = () => {
- if (selectedPrompts.size === 0) return;
+ if (selectedPrompts.size === 0 || isBatchScanning) return;
 
- setIsScanning(true);
+ setIsBatchScanning(true);
  setBatchResults(null);
+ setShowBatchResults(false);
+ setBatchError(null);
 
- setTimeout(() => {
+ batchTaskTimerRef.current = setTimeout(() => {
+ batchTaskTimerRef.current = null;
+ try {
  const results: Array<{ prompt: PromptItem; result: ScanResult }> = [];
 
  for (const cat of allPromptCategories) {
@@ -670,7 +728,11 @@ export default function Scanner() {
 
  setBatchResults(results);
  setShowBatchResults(true);
- setIsScanning(false);
+ } catch (error) {
+ setBatchError(`Batch was not completed. ${error instanceof Error ? error.message : 'Please try again.'}`);
+ } finally {
+ setIsBatchScanning(false);
+ }
  }, 150);
  };
 
@@ -1034,6 +1096,16 @@ export default function Scanner() {
 
  return (
  <div className="space-y-4">
+ {migrationNotice && (
+ <p role="status" className="rounded-lg border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">
+ {migrationNotice}
+ </p>
+ )}
+ {storageError && (
+ <p role="alert" className="rounded-lg border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">
+ {storageError}
+ </p>
+ )}
  {/* Toast Notification */}
  {showToast && (
  <div className={`fixed top-4 right-4 z-50 px-4 py-3 bg-[#c9a227] text-gray-900 rounded-lg shadow-lg flex items-center gap-2 ${toastFading ? 'toast-exit' : 'toast-enter'}`}>
@@ -1125,18 +1197,30 @@ export default function Scanner() {
  showToastMessage('No valid rules found in YAML file', 3000);
  return;
  }
- // Add rules to localRules
- setLocalRules(prev => [...prev, ...result.rules]);
- // Add category
- setCustomCategories(prev => {
- const existing = prev.find(c => c.id === result.category.id);
- if (existing) {
- return prev.map(cat => cat.id === result.category.id
- ? { ...cat, rules: [...cat.rules, ...result.rules] } : cat);
- }
- return [...prev, result.category];
+ // Re-importing a file replaces its whole section. Rules and sections from other files that
+ // reuse an ID (files without ids share one) are kept, and the new ones get new IDs.
+ const uniqueId = (id: string, taken: Set<string>) => {
+ if (!taken.has(id)) return id;
+ let copy = 2;
+ while (taken.has(`${id}-${copy}`)) copy++;
+ return `${id}-${copy}`;
+ };
+ const existing = customCategories.find(c => c.id === result.category.id);
+ const sameFile = !!existing && (!existing.source || existing.source === result.category.source);
+ const replacedIds = new Set(sameFile ? existing.rules.map(rule => rule.id) : []);
+ const takenIds = new Set(localRules.map(rule => rule.id).filter(id => !replacedIds.has(id)));
+ const imported = result.rules.map(rule => {
+ const id = uniqueId(rule.id, takenIds);
+ takenIds.add(id);
+ return id === rule.id ? rule : { ...rule, id };
  });
- showToastMessage(`✅ Imported ${result.rules.length} rule${result.rules.length !== 1 ? 's' : ''} from ${file.name}`, 3000);
+ const category = { ...result.category, rules: imported,
+ id: sameFile ? result.category.id : uniqueId(result.category.id, new Set(customCategories.map(c => c.id))) };
+ setLocalRules(prev => [...prev.filter(rule => !replacedIds.has(rule.id)), ...imported]);
+ setCustomCategories(prev => sameFile ? prev.map(cat => cat.id === category.id ? category : cat) : [...prev, category]);
+ const replaced = localRules.filter(rule => replacedIds.has(rule.id)).length;
+ const replacedNote = replaced ? `, replacing ${replaced} rule${replaced !== 1 ? 's' : ''} from its earlier import` : '';
+ showToastMessage(`✅ Imported ${result.rules.length} rule${result.rules.length !== 1 ? 's' : ''} from ${file.name}${replacedNote}`, 3000);
  lastScannedRef.current = '';
  };
  reader.readAsText(file);
@@ -1225,6 +1309,7 @@ export default function Scanner() {
  />
  ) : (
  <Suspense fallback={null}><FileDropZone
+ onClear={resetFileScanner}
  onFileSelected={async (file) => {
  try {
  await handleFileSelected(file, localRules, confidenceThreshold);
@@ -1265,9 +1350,9 @@ export default function Scanner() {
  {!autoScan && (
  <button
  onClick={handleManualScan}
- disabled={!promptText.trim() || isScanning}
+ disabled={!promptText.trim() || !!inputSizeError || isScanning}
  className={`px-4 py-1 text-xs font-semibold uppercase tracking-wider rounded transition-all ${
- promptText.trim() && !isScanning
+ promptText.trim() && !inputSizeError && !isScanning
  ? 'bg-gradient-to-r from-[#8b0000] to-[#5c0000] text-[#c9a227] hover:from-[#a00000] hover:to-[#700000]'
  : 'bg-gray-800 text-gray-600 cursor-not-allowed'
  }`}
@@ -1335,6 +1420,16 @@ export default function Scanner() {
  )}
  </div>
 
+ {batchError && (
+ <p role="alert" className="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">
+ {batchError}
+ </p>
+ )}
+ {scanMode === 'text_input' && scanError && (
+ <p role="alert" className="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-300">
+ {scanError}
+ </p>
+ )}
  <div data-tour="scan-results">
  <ScannerResults
  scanResult={scanMode === 'file_scan' ? fileScanResult : scanResult}
@@ -1433,7 +1528,7 @@ export default function Scanner() {
  onSelectAll={selectAllPrompts}
  onClearSelection={clearPromptSelection}
  onBatchScan={handleBatchScan}
- isScanning={isScanning}
+ isScanning={isBatchScanning}
  onImportCommunityPrompt={(prompt) => {
  const importedCategoryId = 'custom-prompt-section-community-imported';
 

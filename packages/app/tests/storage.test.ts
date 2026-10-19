@@ -266,6 +266,13 @@ describe('urlHash.ts', () => {
 
       expect(result).toEqual(sampleConfig);
     });
+
+    it('returns config from a BrowserRouter fragment', () => {
+      window.location.hash = `#?config=${encodeConfig(sampleConfig)}`;
+      window.location.search = '';
+
+      expect(getConfigFromUrl()).toEqual(sampleConfig);
+    });
   });
 
   describe('clearUrlConfig', () => {
@@ -289,6 +296,16 @@ describe('urlHash.ts', () => {
       expect(window.history.replaceState).toHaveBeenCalled();
     });
 
+    it('removes a BrowserRouter fragment config without leaving an empty fragment', () => {
+      const encoded = encodeConfig(sampleConfig);
+      window.location.hash = `#?config=${encoded}`;
+      window.location.href = `http://localhost:3000/scanner?view=review#?config=${encoded}`;
+
+      clearUrlConfig();
+
+      expect(window.history.replaceState).toHaveBeenCalledWith(null, '', 'http://localhost:3000/scanner?view=review');
+    });
+
     it('does nothing when no config param', () => {
       window.location.hash = '#/scanner';
       window.location.search = '';
@@ -309,14 +326,24 @@ describe('urlHash.ts', () => {
       expect(url).toContain('#/scanner?config=');
     });
 
-    it('generates URL with search params for BrowserRouter', () => {
+    it('keeps BrowserRouter configs in the fragment, which is never sent to the server', () => {
       window.location.hash = '';
-      window.location.href = 'http://localhost:3000/scanner';
+      window.location.href = 'http://localhost:3000/scanner?config=stale&view=review';
+
+      const url = new URL(generateShareUrl(sampleConfig));
+
+      expect(url.pathname).toBe('/scanner');
+      expect(url.search).toBe('?view=review');
+      expect(url.hash).toMatch(/^#\?config=/);
+    });
+
+    it('keeps the standalone file\'s hash route even without a leading slash', () => {
+      window.location.hash = '#scanner';
+      window.location.href = 'file:///Users/me/forensicate-standalone.html#scanner';
 
       const url = generateShareUrl(sampleConfig);
 
-      expect(url).toContain('?config=');
-      expect(url).not.toContain('#');
+      expect(url).toMatch(/^file:\/\/\/Users\/me\/forensicate-standalone\.html#scanner\?config=/);
     });
 
     it('includes session promptText when provided', () => {
@@ -329,7 +356,7 @@ describe('urlHash.ts', () => {
       const url = generateShareUrl(configWithSession);
       // Use URL API to properly extract the encoded config param
       const urlObj = new URL(url);
-      const encoded = urlObj.searchParams.get('config');
+      const encoded = new URLSearchParams(urlObj.hash.split('?')[1]).get('config');
       expect(encoded).not.toBeNull();
       const decoded = decodeConfig(encoded!);
 

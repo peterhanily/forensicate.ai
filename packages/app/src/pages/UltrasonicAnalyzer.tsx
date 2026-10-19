@@ -1064,7 +1064,7 @@ function LiveMonitorPanel({
 // Transcription + Prompt Scan Panel
 // ============================================================================
 
-function TranscriptionPanel({
+export function TranscriptionPanel({
   audioBuffer,
   demodulatedBuffer,
 }: {
@@ -1075,38 +1075,56 @@ function TranscriptionPanel({
   const [transcript, setTranscript] = useState('');
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [source, setSource] = useState<'original' | 'demodulated'>('original');
   const [manualText, setManualText] = useState('');
   const stopRef = useRef<(() => void) | null>(null);
 
   const speechAvailable = isSpeechRecognitionAvailable();
 
+  const scanTranscript = useCallback((text: string) => {
+    setTranscript(text);
+    setScanResult(null);
+    setScanError(null);
+    if (!text.trim()) return;
+    try {
+      setScanResult(scanPrompt(text));
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'Text was not scanned. Please try again.');
+    }
+  }, []);
+
   const startTranscription = useCallback(async () => {
     const buffer = source === 'demodulated' && demodulatedBuffer ? demodulatedBuffer : audioBuffer;
     setIsTranscribing(true);
     setTranscript('');
     setScanResult(null);
+    setScanError(null);
 
     toast('Playing audio through speakers — speech recognition is listening...', 'info');
 
-    const { stop } = await transcribeAudioBuffer(
-      buffer,
-      (interim) => setTranscript(interim),
-      (result) => {
-        setTranscript(result.transcript);
-        setIsTranscribing(false);
-        if (result.transcript.trim()) {
-          const scan = scanPrompt(result.transcript);
-          setScanResult(scan);
-        }
-      },
-      (err) => {
-        toast(err, 'error');
-        setIsTranscribing(false);
-      },
-    );
-    stopRef.current = stop;
-  }, [audioBuffer, demodulatedBuffer, source, toast]);
+    try {
+      const { stop } = await transcribeAudioBuffer(
+        buffer,
+        (interim) => setTranscript(interim),
+        (result) => {
+          setIsTranscribing(false);
+          scanTranscript(result.transcript);
+        },
+        (err) => {
+          toast(err, 'error');
+          setIsTranscribing(false);
+          setScanResult(null);
+          setScanError(`Text was not scanned. ${err}`);
+        },
+      );
+      stopRef.current = stop;
+    } catch (error) {
+      setIsTranscribing(false);
+      setScanResult(null);
+      setScanError(`Text was not scanned. ${error instanceof Error ? error.message : 'Transcription failed. Please try again.'}`);
+    }
+  }, [audioBuffer, demodulatedBuffer, source, toast, scanTranscript]);
 
   const stopTranscription = useCallback(() => {
     stopRef.current?.();
@@ -1115,10 +1133,8 @@ function TranscriptionPanel({
 
   const scanManualText = useCallback(() => {
     if (!manualText.trim()) return;
-    setTranscript(manualText.trim());
-    const scan = scanPrompt(manualText.trim());
-    setScanResult(scan);
-  }, [manualText]);
+    scanTranscript(manualText);
+  }, [manualText, scanTranscript]);
 
   // Cleanup on unmount
   useEffect(() => { return () => { stopRef.current?.(); }; }, []);
@@ -1191,7 +1207,7 @@ function TranscriptionPanel({
           <input
             type="text"
             value={manualText}
-            onChange={(e) => setManualText(e.target.value)}
+            onChange={(e) => { setManualText(e.target.value); setScanResult(null); setScanError(null); setTranscript(''); }}
             onKeyDown={(e) => { if (e.key === 'Enter') scanManualText(); }}
             placeholder="Type what you hear (e.g. 'Hey Siri call 911')"
             className="flex-1 bg-gray-950 text-gray-200 text-sm border border-gray-600 rounded-lg px-3 py-1.5 placeholder-gray-600"
@@ -1205,6 +1221,8 @@ function TranscriptionPanel({
           </button>
         </div>
       </div>
+
+      {scanError && <p role="alert" className="text-sm text-amber-300">{scanError}</p>}
 
       {/* Transcript */}
       {transcript && (

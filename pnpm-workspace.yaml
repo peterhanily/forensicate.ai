@@ -1,4 +1,20 @@
 packages:
   - packages/*
 
-onlyBuiltDependencies: sharp
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - workerd
+
+# Reviewed 2026-10-10: build-only vite-plugin-singlefile -> micromatch -> braces.
+# No fixed braces release exists. The plugin never calls micromatch when
+# inlinePattern is empty (our configuration). No scanned input reaches this code.
+# Remove this exception when upstream fixes GHSA-vfj7-8cjw-p6xm; reassess before
+# adding inlinePattern or another braces consumer.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
+
+# Miniflare currently pins a sharp patch with a vulnerable bundled librsvg.
+overrides:
+  'sharp@<0.35.5': '^0.35.5'

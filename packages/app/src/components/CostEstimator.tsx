@@ -8,8 +8,8 @@ import {
  calculateMultiProviderCost,
  formatCost,
  formatTokens,
- isPricingStale,
- type CostEstimate,
+ getPricingStatus,
+ DEFAULT_PRICING_MODELS,
 } from '../lib/pricing';
 
 interface CostEstimatorProps {
@@ -20,52 +20,9 @@ interface CostEstimatorProps {
  className?: string;
 }
 
-// Top 5 models by performance/cost factor (highlighted by default)
-const TOP_5_MODELS = [
- { provider: 'google', model: 'gemini-2.5-flash-lite', badge: '🏆 Best Value' },
- { provider: 'openai', model: 'gpt-4o-mini', badge: '💰 Cheapest' },
- { provider: 'anthropic', model: 'claude-sonnet-4.6', badge: '🧠 Latest Sonnet' },
- { provider: 'openai', model: 'gpt-5.2-pro', badge: '🚀 Latest GPT' },
- { provider: 'anthropic', model: 'claude-opus-4.6', badge: '🔬 Most Capable' },
-];
-
-// All other tracked models (shown in dropdown)
-const ALL_OTHER_MODELS = [
- { provider: 'anthropic', model: 'claude-haiku-4.5' },
- { provider: 'anthropic', model: 'claude-sonnet-4.5' },
- { provider: 'anthropic', model: 'claude-opus-4.5' },
- { provider: 'anthropic', model: 'claude-3-haiku' },
- { provider: 'openai', model: 'gpt-5.2' },
- { provider: 'openai', model: 'gpt-5.1' },
- { provider: 'openai', model: 'gpt-5' },
- { provider: 'openai', model: 'gpt-4o' },
- { provider: 'openai', model: 'o3-mini' },
- { provider: 'openai', model: 'o1-mini' },
- { provider: 'google', model: 'gemini-3.1-pro' },
- { provider: 'google', model: 'gemini-3-flash' },
- { provider: 'google', model: 'gemini-3.1-flash-lite' },
- { provider: 'google', model: 'gemini-2.5-pro' },
- { provider: 'google', model: 'gemini-2.5-flash' },
- { provider: 'mistral', model: 'mistral-small-3.1' },
- { provider: 'mistral', model: 'mistral-medium-3' },
- { provider: 'mistral', model: 'mistral-large-2411' },
- { provider: 'perplexity', model: 'sonar' },
- { provider: 'perplexity', model: 'sonar-pro' },
- { provider: 'perplexity', model: 'sonar-reasoning-pro' },
- { provider: 'openai', model: 'gpt-4-turbo' },
- { provider: 'openai', model: 'o1-preview' },
- { provider: 'openai', model: 'gpt-4' },
-];
-
-// Default providers to show if none specified (updated Mar 2026)
-const DEFAULT_PROVIDERS = [
- ...TOP_5_MODELS.map(m => ({ provider: m.provider, model: m.model })),
- ...ALL_OTHER_MODELS,
-];
-
 function CostEstimator({
  promptText,
- providers = DEFAULT_PROVIDERS,
+ providers = DEFAULT_PRICING_MODELS,
  mode = 'single',
  batchSize = 1,
  className = '',
@@ -90,7 +47,7 @@ function CostEstimator({
  const totalMultiplier = mode === 'batch' ? batchSize : 1;
 
  // Check if pricing is stale for each provider
- const hasStaleData = estimates.some(e => isPricingStale(e.source.lastUpdated));
+ const hasUncertainData = estimates.some(e => getPricingStatus(e.source) !== 'verified');
 
  return (
  <div className={`border border-gray-700 rounded-lg bg-black shadow-lg ${className}`}>
@@ -130,10 +87,10 @@ function CostEstimator({
  </div>
 
  <div className="flex items-center gap-2">
- {hasStaleData && (
+ {hasUncertainData && (
  <span
  className="text-xs text-yellow-500 animate-pulse"
- title="Some pricing data may be outdated"
+ title="Some rates are stale or unverified"
  >
  ⚠
  </span>
@@ -192,10 +149,10 @@ function CostEstimator({
  {isDisclaimerExpanded && (
  <div className="bg-yellow-900/20 border border-yellow-700/50 border-t-0 rounded-b px-3 pb-3 pt-2">
  <div className="text-xs text-yellow-200/90 space-y-1 font-mono leading-relaxed">
- <div>• Token estimates use 4 char/token approximation (±25% variance typical)</div>
- <div>• Output tokens assumed at 100 (actual: 10-10,000+ depending on use case)</div>
- <div>• Prices manually verified {new Date(cheapest.source.lastUpdated).toLocaleDateString()} - may be outdated</div>
- <div>• Enterprise/volume pricing, regional variations, promotions NOT reflected</div>
+ <div>• Token estimates use 4 characters per token; accuracy varies by language and tokenizer</div>
+ <div>• Output assumes 100 billable tokens, including any reasoning tokens; actual use can be much higher</div>
+ <div>• Verification dates apply per model and appear with each source below</div>
+ <div>• Standard, uncached text rates in USD. Cache, batch and volume discounts, tools, search/request fees, taxes and regional surcharges are excluded</div>
  <div className="pt-1 text-yellow-300 font-semibold">
  → Use for ORDER-OF-MAGNITUDE estimation only, not budgeting
  </div>
@@ -245,7 +202,7 @@ function CostEstimator({
  >
  {showAllModels ? (
  <>
- <span>Show Top 5 Only</span>
+ <span>Show First 5 Only</span>
  <svg className="w-3 h-3 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
  </svg>
@@ -272,15 +229,12 @@ function CostEstimator({
  {/* Provider rows */}
  <div className="space-y-1">
  {estimates.map((estimate, idx) => {
- const isStale = isPricingStale(estimate.source.lastUpdated);
- const isTop5 = idx < 5;
- const shouldShow = showAllModels || isTop5;
+ const pricingStatus = getPricingStatus(estimate.source);
+ const isUncertain = pricingStatus !== 'verified';
+ const isFirstFive = idx < 5;
+ const shouldShow = showAllModels || isFirstFive;
 
  if (!shouldShow) return null;
-
- const top5Badge = TOP_5_MODELS.find(
- m => m.provider === estimate.provider && m.model === estimate.model
- )?.badge;
 
  return (
  <div
@@ -288,7 +242,7 @@ function CostEstimator({
  className={`grid grid-cols-12 gap-2 p-2 rounded font-mono text-xs border ${
  idx === 0
  ? 'bg-green-950/30 border-green-700/50 text-green-300'
- : isTop5
+ : isFirstFive
  ? 'bg-blue-950/20 border-blue-800/50 text-gray-300'
  : 'bg-gray-900/50 border-gray-800 text-gray-300'
  }`}
@@ -301,32 +255,23 @@ function CostEstimator({
  <div className="flex-1">
  <div className="font-semibold flex items-center gap-1">
  {estimate.displayName}
- {top5Badge && isTop5 && (
- <span className="text-[10px] text-blue-300 bg-blue-900/30 px-1 rounded">
- {top5Badge}
- </span>
- )}
  </div>
  <div className="text-xs text-gray-500 capitalize flex items-center gap-1">
  {estimate.provider}
- {isStale && <span className="text-yellow-500">⚠</span>}
+ {isUncertain && <span className="text-yellow-500">⚠</span>}
+ {estimate.status && <span className="text-yellow-500">{estimate.status}</span>}
  </div>
  </div>
  </div>
 
  {/* Input cost */}
  <div className="col-span-3 text-right text-xs text-gray-400">
- ${estimate.source.lastUpdated ?
- ((estimate.inputTokens / 1_000_000) *
- (estimates.find(e => e.provider === estimate.provider && e.model === estimate.model)?.source.lastUpdated ?
- getPricingFromEstimate(estimate).inputCostPer1M : 0)
- ).toFixed(4)
- : 'N/A'}
+ ${estimate.inputCostPer1M.toFixed(2)}
  </div>
 
  {/* Output cost */}
  <div className="col-span-3 text-right text-xs text-gray-400">
- ${estimate.outputCost.toFixed(4)}
+ ${estimate.outputCostPer1M.toFixed(2)}
  </div>
 
  {/* Total cost */}
@@ -341,7 +286,9 @@ function CostEstimator({
  )}
  </div>
 
- {/* Source link - EACH provider gets its own source */}
+ {estimate.notes && <div className="col-span-12 text-gray-400">{estimate.notes}</div>}
+
+ {/* Each rate has its own verification date and source. */}
  <div className="col-span-12 text-xs text-gray-600 pt-1 border-t border-gray-800 flex items-center justify-between">
  <div className="flex items-center gap-2">
  <span className="text-gray-500">SRC:</span>
@@ -358,16 +305,18 @@ function CostEstimator({
  <span className="text-gray-600">manual entry</span>
  )}
  <span className="text-gray-700">│</span>
- <span className={isStale ? 'text-yellow-500' : 'text-gray-500'}>
- {new Date(estimate.source.lastUpdated).toLocaleDateString('en-US', {
+ <span className={isUncertain ? 'text-yellow-500' : 'text-gray-500'}>
+ {estimate.source.verifiedAt ? 'Verified ' : 'Recorded '}
+ {new Date(estimate.source.verifiedAt ?? estimate.source.lastUpdated).toLocaleDateString('en-US', {
  month: 'short',
  day: 'numeric',
  year: 'numeric',
+ timeZone: 'UTC',
  })}
  </span>
  </div>
- {isStale && (
- <span className="text-yellow-500 text-xs">DATA STALE (&gt;30d)</span>
+ {isUncertain && (
+ <span className="text-yellow-500 text-xs">{pricingStatus === 'stale' ? 'DATA STALE (>30d)' : 'UNVERIFIED RATE'}</span>
  )}
  </div>
  </div>
@@ -376,18 +325,18 @@ function CostEstimator({
  </div>
  </div>
 
- {/* Savings comparison - Terminal style */}
+ {/* Compare the selected rates without recommending a model switch. */}
  {estimates.length > 1 && (
  <div className="bg-blue-950/30 border border-blue-700/50 rounded p-3">
  <div className="text-xs font-mono space-y-1">
- <div className="text-blue-400 font-semibold">💡 OPTIMIZATION</div>
+ <div className="text-blue-400 font-semibold">ESTIMATED COST DIFFERENCE</div>
  <div className="text-blue-200">
- Switching: {mostExpensive.displayName} → {cheapest.displayName}
+ Selected models: {mostExpensive.displayName} → {cheapest.displayName}
  </div>
  <div className="text-green-400 font-bold">
- SAVES: {formatCost((mostExpensive.totalCost - cheapest.totalCost) * totalMultiplier)}
+ Difference: {formatCost((mostExpensive.totalCost - cheapest.totalCost) * totalMultiplier)}
  {' '}
- ({Math.round(((mostExpensive.totalCost - cheapest.totalCost) / mostExpensive.totalCost) * 100)}% reduction)
+ ({mostExpensive.totalCost > 0 ? Math.round(((mostExpensive.totalCost - cheapest.totalCost) / mostExpensive.totalCost) * 100) : 0}% of the higher estimate)
  </div>
  </div>
  </div>
@@ -399,9 +348,10 @@ function CostEstimator({
  <div className="text-gray-600 pl-2 space-y-0.5">
  <div>• Character count ÷ 4 = rough token estimate</div>
  <div>• Provider tokenizers (tiktoken, anthropic) more accurate</div>
- <div>• Output estimate fixed at 100 tokens (arbitrary assumption)</div>
- <div>• Pricing manually scraped from provider websites</div>
- <div>• No API calls to verify live pricing</div>
+ <div>• Output estimate fixed at 100 billable tokens, including reasoning</div>
+ <div>• Batch size multiplies standard request cost; provider Batch API discounts are not applied</div>
+ <div>• Manually maintained rates; this is a selected comparison, not a complete model catalog or quality ranking</div>
+ <div>• No live pricing or model-availability check; use each source for current billing details</div>
  </div>
  </div>
  </div>
@@ -411,16 +361,3 @@ function CostEstimator({
 }
 
 export default memo(CostEstimator);
-
-// Helper to extract pricing from estimate (for display purposes)
-function getPricingFromEstimate(estimate: CostEstimate): { inputCostPer1M: number; outputCostPer1M: number } {
- // Back-calculate from the costs
- const inputCostPer1M = estimate.inputTokens > 0
- ? (estimate.inputCost / estimate.inputTokens) * 1_000_000
- : 0;
- const outputCostPer1M = estimate.estimatedOutputTokens > 0
- ? (estimate.outputCost / estimate.estimatedOutputTokens) * 1_000_000
- : 0;
-
- return { inputCostPer1M, outputCostPer1M };
-}

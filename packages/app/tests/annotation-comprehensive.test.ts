@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scanPrompt } from '../src/lib/scanner';
-import { ruleCategories } from '../src/lib/scanner/rules';
-import { heuristicRules } from '../src/lib/scanner/heuristicRules';
-import { nlpRules } from '../src/lib/scanner/nlpRules';
+import { scanPrompt, ruleCategories, heuristicRules, nlpRules } from '@forensicate/scanner';
 
 describe('Annotation System - Comprehensive Detection Coverage', () => {
   const allRules = [

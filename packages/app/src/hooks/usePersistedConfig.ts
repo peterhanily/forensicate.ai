@@ -3,6 +3,7 @@ import type { DetectionRule, RuleCategory } from '@forensicate/scanner';
 import type { PromptCategory } from '../data/samplePrompts';
 import { samplePrompts } from '../data/samplePrompts';
 import { allRules, rehydrateHeuristics } from '@forensicate/scanner';
+import { createRulePreferences, resolveRulePreferences } from '../lib/storage/rulePreferences';
 import {
   type PersistedConfig,
   type LoadSource,
@@ -48,6 +49,7 @@ interface UsePersistedConfigReturn {
   loadSource: LoadSource;
   lastSaved: Date | null;
   error: string | null;
+  migrationNotice: string | null;
 
   // Session state from URL (for sharing)
   initialPromptText: string;
@@ -65,18 +67,22 @@ function getDefaultPrompts(): PromptCategory[] {
   return JSON.parse(JSON.stringify(samplePrompts));
 }
 
-// Merge stored rules with current defaults so newly added built-in rules
-// appear even when the user has stale localStorage data.
-function mergeWithDefaultRules(storedRules: DetectionRule[]): DetectionRule[] {
-  const storedIds = new Set(storedRules.map(r => r.id));
-  const defaults = getDefaultRules();
-  const newBuiltInRules = defaults.filter(r => !storedIds.has(r.id));
-  if (newBuiltInRules.length === 0) return storedRules;
-  return [...storedRules, ...newBuiltInRules];
+// Ignore shared or saved thresholds the 0-99 slider cannot produce.
+function validThreshold(value: unknown): number | undefined {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 99 ? value as number : undefined;
 }
 
-// Load initial config from URL or localStorage (called once during initialization)
-function loadInitialConfig(): {
+function resolveSavedRules(config: PersistedConfig) {
+  const resolved = resolveRulePreferences(config.rules);
+  return {
+    rules: resolved.rules,
+    migrationNotice: resolved.preservedLegacyEdits > 0
+      ? `${resolved.preservedLegacyEdits} saved rule definition${resolved.preservedLegacyEdits === 1 ? ' differs' : 's differ'} from known defaults. Your saved definitions have been kept; review them if you want the latest built-in definitions.`
+      : null,
+  };
+}
+
+interface InitialConfig {
   source: LoadSource;
   rules: DetectionRule[];
   customCategories: RuleCategory[];
@@ -90,29 +96,58 @@ function loadInitialConfig(): {
   autoImportCommunityRules: boolean;
   autoImportCommunityPrompts: boolean;
   tourCompleted: boolean;
-} {
+  migrationNotice: string | null;
+}
+
+function fromStoredConfig(storedConfig: PersistedConfig): InitialConfig {
+  return {
+    source: 'localStorage',
+    ...resolveSavedRules(storedConfig),
+    customCategories: storedConfig.rules.customCategories,
+    prompts: storedConfig.prompts.localPrompts,
+    customPromptCategories: storedConfig.prompts.customPromptCategories,
+    promptText: '',
+    savedAt: new Date(storedConfig.savedAt),
+    expandedRuleCategory: storedConfig.ui?.expandedRuleCategory ?? null,
+    expandedPromptCategory: storedConfig.ui?.expandedPromptCategory ?? null,
+    confidenceThreshold: validThreshold(storedConfig.ui?.confidenceThreshold) ?? 50,
+    autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
+    autoImportCommunityPrompts: storedConfig.ui?.autoImportCommunityPrompts ?? true,
+    tourCompleted: storedConfig.ui?.tourCompleted ?? false,
+  };
+}
+
+// Read initial config without mutating browser state; React may call this twice.
+function loadInitialConfig(): InitialConfig {
   // Priority: URL > localStorage > defaults
   const urlConfig = getConfigFromUrl();
   if (urlConfig) {
-    // Clear URL param after reading
-    clearUrlConfig();
     // For URL configs, also try to load UI prefs from localStorage
     const storedConfig = loadConfig();
 
-    // Merge URL prompts with defaults (like we do for rules)
-    // If URL config has empty localPrompts, use defaults
-    // Otherwise merge: keep defaults + add any new categories from URL
+    // Keep defaults and place shared extension prompts in custom categories.
     const defaultPrompts = getDefaultPrompts();
     const urlLocalPrompts = urlConfig.prompts.localPrompts || [];
-    const mergedPrompts = urlLocalPrompts.length === 0
-      ? defaultPrompts
-      : defaultPrompts; // Always keep default prompts, extension prompts go to customPromptCategories
+
+    // Browser extension hand-offs ('1') carry text and snippets, not settings. Keep the
+    // saved settings; the latest snippets replace a section with the same ID.
+    if (urlConfig.version === '1' && storedConfig) {
+      const saved = fromStoredConfig(storedConfig);
+      const snippets = [...urlConfig.prompts.customPromptCategories, ...urlLocalPrompts];
+      const snippetIds = new Set(snippets.map(category => category.id));
+      return {
+        ...saved,
+        source: 'url',
+        customPromptCategories: [...saved.customPromptCategories.filter(category => !snippetIds.has(category.id)), ...snippets],
+        promptText: urlConfig.session?.promptText || '',
+      };
+    }
 
     return {
       source: 'url',
-      rules: mergeWithDefaultRules(rehydrateHeuristics(urlConfig.rules.localRules)),
+      ...resolveSavedRules(urlConfig),
       customCategories: urlConfig.rules.customCategories,
-      prompts: mergedPrompts,
+      prompts: defaultPrompts,
       customPromptCategories: [
         ...urlConfig.prompts.customPromptCategories,
         ...urlLocalPrompts  // Move extension prompts to custom categories
@@ -121,7 +156,8 @@ function loadInitialConfig(): {
       savedAt: new Date(urlConfig.savedAt),
       expandedRuleCategory: storedConfig?.ui?.expandedRuleCategory ?? null,
       expandedPromptCategory: storedConfig?.ui?.expandedPromptCategory ?? null,
-      confidenceThreshold: storedConfig?.ui?.confidenceThreshold ?? 50,
+      confidenceThreshold: validThreshold(urlConfig.ui?.confidenceThreshold)
+        ?? validThreshold(storedConfig?.ui?.confidenceThreshold) ?? 50,
       autoImportCommunityRules: storedConfig?.ui?.autoImportCommunityRules ?? true,
       autoImportCommunityPrompts: storedConfig?.ui?.autoImportCommunityPrompts ?? true,
       tourCompleted: storedConfig?.ui?.tourCompleted ?? false,
@@ -129,23 +165,7 @@ function loadInitialConfig(): {
   }
 
   const storedConfig = loadConfig();
-  if (storedConfig) {
-    return {
-      source: 'localStorage',
-      rules: mergeWithDefaultRules(rehydrateHeuristics(storedConfig.rules.localRules)),
-      customCategories: storedConfig.rules.customCategories,
-      prompts: storedConfig.prompts.localPrompts,
-      customPromptCategories: storedConfig.prompts.customPromptCategories,
-      promptText: '',
-      savedAt: new Date(storedConfig.savedAt),
-      expandedRuleCategory: storedConfig.ui?.expandedRuleCategory ?? null,
-      expandedPromptCategory: storedConfig.ui?.expandedPromptCategory ?? null,
-      confidenceThreshold: storedConfig.ui?.confidenceThreshold ?? 50,
-      autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
-      autoImportCommunityPrompts: storedConfig.ui?.autoImportCommunityPrompts ?? true,
-      tourCompleted: storedConfig.ui?.tourCompleted ?? false,
-    };
-  }
+  if (storedConfig) return fromStoredConfig(storedConfig);
 
   return {
     source: 'defaults',
@@ -161,6 +181,7 @@ function loadInitialConfig(): {
     autoImportCommunityRules: true,
     autoImportCommunityPrompts: true,
     tourCompleted: false,
+    migrationNotice: null,
   };
 }
 
@@ -197,7 +218,19 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
 
   // Mark initial load as done after first render
   useEffect(() => {
+    if (initialConfig.source === 'url') {
+      clearUrlConfig();
+    }
     initialLoadDone.current = true;
+  }, [initialConfig.source]);
+
+  // A share link opened in this tab changes only the fragment, which does not reload the page.
+  useEffect(() => {
+    const loadSharedConfig = () => {
+      if (getConfigFromUrl()) window.location.reload();
+    };
+    window.addEventListener('hashchange', loadSharedConfig);
+    return () => window.removeEventListener('hashchange', loadSharedConfig);
   }, []);
 
   // Auto-save to localStorage on changes (debounced)
@@ -216,10 +249,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
       const config: PersistedConfig = {
         version: CONFIG_VERSION,
         savedAt: new Date().toISOString(),
-        rules: {
-          localRules,
-          customCategories,
-        },
+        rules: createRulePreferences(localRules, customCategories),
         prompts: {
           localPrompts,
           customPromptCategories,
@@ -253,25 +283,12 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
   }, [localRules, customCategories, localPrompts, customPromptCategories, expandedRuleCategory, expandedPromptCategory, confidenceThreshold, autoImportCommunityRules, autoImportCommunityPrompts, tourCompleted]);
 
   const handleGenerateShareUrl = useCallback((promptText?: string): string => {
-    // For share URLs, only include custom/modified data to keep URLs shorter
-    // Don't include default built-in rules and sample prompts
-    const defaultRules = getDefaultRules();
-    const defaultRuleIds = new Set(defaultRules.map(r => r.id));
-
-    // Only include custom rules (not built-in, not community)
-    // Community rules have IDs starting with "community-" and will be auto-imported by recipients
-    const customRulesOnly = localRules.filter(r =>
-      !defaultRuleIds.has(r.id) && !r.id.startsWith('community-')
+    // Preference serialization already omits untouched built-ins. Community
+    // rules are fetched by recipients rather than embedded in share links.
+    const defaultRuleIds = new Set(allRules.map(r => r.id));
+    const rulesToShare = localRules.filter(r =>
+      defaultRuleIds.has(r.id) || !r.id.startsWith('community-')
     );
-
-    // Only include modified built-in rules (compare by enabled/weight)
-    const modifiedBuiltInRules = localRules.filter(r => {
-      if (!defaultRuleIds.has(r.id)) return false; // Not built-in
-      const defaultRule = defaultRules.find(dr => dr.id === r.id);
-      if (!defaultRule) return false;
-      // Check if enabled state or weight differs from default
-      return r.enabled !== defaultRule.enabled || r.weight !== defaultRule.weight;
-    });
 
     // Filter out community prompts from custom categories
     // Community prompts have IDs starting with "community-" and will be auto-imported by recipients
@@ -283,19 +300,17 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     const config: PersistedConfig = {
       version: CONFIG_VERSION,
       savedAt: new Date().toISOString(),
-      rules: {
-        localRules: [...customRulesOnly, ...modifiedBuiltInRules],
-        customCategories,
-      },
+      rules: createRulePreferences(rulesToShare, customCategories),
       prompts: {
         localPrompts: [], // Don't include default sample prompts in share URLs
         customPromptCategories: customPromptsOnly,
       },
       // Include session state in share URLs
       session: promptText ? { promptText } : undefined,
+      ui: { confidenceThreshold },
     };
     return generateShareUrl(config);
-  }, [localRules, customCategories, customPromptCategories]);
+  }, [localRules, customCategories, customPromptCategories, confidenceThreshold]);
 
   const resetToDefaults = useCallback(() => {
     setLocalRules(getDefaultRules());
@@ -335,6 +350,7 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     loadSource,
     lastSaved,
     error,
+    migrationNotice: loadSource === 'defaults' ? null : initialConfig.migrationNotice,
     initialPromptText,
     generateShareUrl: handleGenerateShareUrl,
     resetToDefaults,

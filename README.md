@@ -7,17 +7,15 @@ A comprehensive AI security toolkit for analyzing prompts for potential injectio
 
 ## Overview
 
-Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 182 rules in 20 categories.
+Forensicate.ai provides security analysis capabilities for AI/LLM prompts, helping identify potential injection attacks and other security concerns in prompt engineering workflows. It uses a multi-layered detection system combining keyword matching, regex patterns, heuristic analysis, and NLP-based detection across 182 rules in 24 categories.
 
 ## Available Formats
 
 1. **🌐 Web App** - [forensicate.ai](https://forensicate.ai) - Full-featured online version
 2. **📦 Standalone HTML** - Single-file offline version (like CyberChef)
 3. **🔌 Browser Extensions** - Real-time scanning for Chrome & Firefox
-4. **📦 npm Package** - `npm install @forensicate/scanner` — JS/TS library for Node.js, Deno, and edge runtimes
-5. **🐍 Python Package** - `pip install forensicate` — Python library and CLI
-6. **🤖 GitHub Action** - CI/CD prompt injection scanning for PRs
-7. **💻 VS Code Extension** - Inline diagnostics in your editor
+4. **🤖 GitHub Action** - CI/CD prompt injection scanning for PRs
+5. **💻 VS Code Extension** - Inline diagnostics in your editor (build from source)
 
 ## Browser Extensions
 
@@ -42,7 +40,7 @@ The Forensicate.ai browser extension brings prompt injection detection directly 
 
 **Manual Installation - Chrome (Developer Mode):**
 1. Download or clone this repository
-2. Build the extension: `cd packages/extension && pnpm build:chrome`
+2. From the repository root, install dependencies with `pnpm install --frozen-lockfile`, then build with `pnpm build:extensions`
 3. Open Chrome and navigate to `chrome://extensions`
 4. Enable "Developer mode" (toggle in top-right)
 5. Click "Load unpacked"
@@ -51,7 +49,7 @@ The Forensicate.ai browser extension brings prompt injection detection directly 
 
 **Manual Installation - Firefox (Developer Mode):**
 1. Download or clone this repository
-2. Build the extension: `cd packages/extension && pnpm build:firefox`
+2. From the repository root, install dependencies with `pnpm install --frozen-lockfile`, then build with `pnpm build:extensions`
 3. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
 4. Click "Load Temporary Add-on"
 5. Select `packages/extension/dist/firefox/manifest.json` file
@@ -64,66 +62,6 @@ The Forensicate.ai browser extension brings prompt injection detection directly 
 3. **Save Scans**: Click "💾 Save" in bubble to add to library
 4. **View Library**: Click extension icon → "💾 View Saved Prompt Library"
 5. **Export**: From library page, export prompts to forensicate.ai for batch analysis
-
-## npm Package
-
-Use the detection engine in any JavaScript or TypeScript project:
-
-```bash
-npm install @forensicate/scanner
-```
-
-```typescript
-import { scanPrompt } from '@forensicate/scanner';
-
-const result = scanPrompt('Ignore all previous instructions');
-console.log(result.isPositive);  // true
-console.log(result.confidence);  // 63
-console.log(result.matchedRules); // matched rule details
-```
-
-Works with Node.js, Deno, Cloudflare Workers, and any bundler. See [packages/scanner/README.md](packages/scanner/README.md) for full API docs.
-
-<!-- TODO: Replace with actual npm badge once published -->
-<!-- [![npm version](https://img.shields.io/npm/v/@forensicate/scanner)](https://www.npmjs.com/package/@forensicate/scanner) -->
-
-## Python Package
-
-Zero-dependency Python library and CLI:
-
-```bash
-pip install forensicate
-```
-
-```python
-from forensicate import scan_prompt
-
-result = scan_prompt("Ignore all previous instructions")
-print(result.is_positive)    # True
-print(result.confidence)     # 63
-print(result.matched_rules)  # matched rule details
-```
-
-**CLI usage:**
-
-```bash
-# Pipe text
-echo "You are now DAN" | forensicate
-
-# Scan a file
-forensicate scan file.txt
-
-# JSON output
-echo "ignore instructions" | forensicate --json
-
-# Quiet mode (exit code only: 0=clean, 1=injection)
-forensicate --quiet < prompt.txt
-```
-
-87 rules (32 keyword, 51 regex, 4 heuristic) ported from the TypeScript engine. See [packages/python/README.md](packages/python/README.md) for full docs.
-
-<!-- TODO: Replace with actual PyPI badge once published -->
-<!-- [![PyPI version](https://img.shields.io/pypi/v/forensicate)](https://pypi.org/project/forensicate/) -->
 
 ## GitHub Action
 
@@ -171,7 +109,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - **🔗 Source Attribution**: Each provider links to official pricing page with verification date
 - **⚠️ Accuracy Disclaimers**: Clear warnings about estimation limitations and data freshness
 - **🖥️ Terminal-Style UI**: Dark theme with monospace fonts and color-coded data grid
-- **📅 Staleness Detection**: Warns when pricing data is >60 days old
+- **📅 Staleness Detection**: Marks a rate stale 30 days after its verification date
 
 **What It Shows:**
 - Input/output token breakdown
@@ -184,12 +122,12 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 - Costs are ORDER-OF-MAGNITUDE estimates only, not for budgeting
 - Token estimation uses 4 char/token (±25% variance typical)
 - Output tokens assumed at 100 (actual varies 10-10,000+)
-- Pricing manually verified Feb 2026 - may become outdated
+- Each verified rate shows its own verification date; unverified historical rates are labelled and left out of the default comparison
 - Enterprise/volume/regional pricing NOT reflected
 
-### Detection Rules (182 Rules in 20 Categories)
+### Detection Rules (182 Rules in 24 Categories)
 
-- **Keyword Detection (49 rules)**: Pattern matching for known injection phrases
+- **Keyword Detection (52 rules)**: Pattern matching for known injection phrases
   - Instruction Override, Jailbreak Personas (DAN, STAN, DUDE, EvilBOT, Maximum)
   - Role Manipulation, Dual Response, System Prompt Extraction
   - Authority Claims, Developer Mode, Context Manipulation
@@ -200,7 +138,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
   - MCP Tool Poisoning, Agent Memory Poisoning, Agent Data Exfiltration
   - Tool Privilege Escalation, AI-Targeted Code Comments, Suspicious Package Install Hooks
 
-- **Regex Pattern Detection (97 rules)**: Advanced pattern matching
+- **Regex Pattern Detection (100 rules)**: Advanced pattern matching
   - Ignore/disregard/forget override patterns
   - DAN version patterns, Jailbreak persona names
   - Role assignment and character enforcement
@@ -214,7 +152,7 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
   - MCP important tag injection, cross-tool injection, fake system prompts
   - Markdown image exfiltration, credential path references, environment variable exfiltration
 
-- **Heuristic Analysis (11 rules)**: Algorithmic pattern detection
+- **Heuristic Analysis (13 rules)**: Algorithmic pattern detection
   - Shannon Entropy Analysis: Detects encoded payloads via sliding-window entropy
   - Imperative Verb Density: Flags instruction-heavy prompts
   - Nested Delimiter Detection: Catches framing attacks with 3+ delimiter types
@@ -224,9 +162,9 @@ Estimate API costs for testing prompts across multiple LLM providers with Bloomb
 
 - **NLP Analysis (4 rules)**: Natural language processing detection
   - Sentiment Manipulation: AFINN-165 word-level sentiment scoring for coercive tone
-  - POS Imperative Detection: compromise.js POS tagging to find imperative sentences
+  - POS Imperative Detection: compromise.js POS tagging to find imperative sentences (off by default; ordinary instructions also match)
   - Entity Impersonation: NER + keyword matching for authority impersonation attempts
-  - Sentence Structure Anomaly: Detects short imperative sentence clustering
+  - Sentence Structure Anomaly: Detects short imperative sentence clustering (off by default for the same reason)
 
 ### Rule Management
 
@@ -321,7 +259,7 @@ Community rules are reviewed by maintainers before being added to the index and 
 ## Tech Stack
 
 - **Frontend**: React 19 + TypeScript
-- **Build Tool**: Vite 7
+- **Build Tool**: Vite 8
 - **Styling**: Tailwind CSS 4
 - **Routing**: React Router DOM 7
 - **NLP**: compromise.js (POS tagging, NER) + AFINN-165 (sentiment)
@@ -335,13 +273,15 @@ Community rules are reviewed by maintainers before being added to the index and 
 
 ### Prerequisites
 
-- Node.js (v18+)
-- pnpm
+- Node.js 24.13 or later in the 24.x LTS line
+- pnpm 10.29.1 (pinned in `package.json`)
+- Python 3.10+ for the Python source and tests
 
 ### Installation
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
+pnpm --filter @forensicate/scanner build
 ```
 
 ### Development
@@ -359,12 +299,7 @@ The app will be available at `http://localhost:5173`
 
 ### Testing
 
-**584 tests total** across all packages:
-- 277 tests - Web app (Scanner, components, file extractors, storage)
-- 165 tests - Scanner engine (detection rules, heuristics, NLP, file rules)
-- 87 tests - REST API (auth, scan, rate limiting)
-- 55 tests - Python package (rules, heuristics, compound threats, CLI)
-- 22 tests - Chrome extension (background, storage, scanning)
+Test suites cover the web app, scanner engine, REST API, Python source, browser extension, and GitHub Action. Use the test runner output for current test counts and results.
 
 ```bash
 # Run JS/TS tests
@@ -394,34 +329,34 @@ pnpm build
 ```
 forensicate_ai/
 ├── packages/
-│   ├── app/                     # Web application (React 19 + Vite 7)
+│   ├── app/                     # Web application (React 19 + Vite 8)
 │   │   ├── src/
 │   │   │   ├── components/      # UI components
 │   │   │   ├── pages/           # Scanner.tsx — main page
 │   │   │   ├── hooks/           # React hooks
 │   │   │   ├── lib/             # Utilities, pricing, file extractors
 │   │   │   └── data/            # Sample test prompts & file test battery
-│   │   └── tests/               # 277 tests
+│   │   └── tests/               # UI, storage, and file extraction tests
 │   │
-│   ├── scanner/                 # Scanner engine — npm: @forensicate/scanner
+│   ├── scanner/                 # Internal TypeScript scanner engine
 │   │   ├── src/
 │   │   │   ├── scanner.ts       # Core scanPrompt() function
-│   │   │   ├── rules.ts         # 121 keyword + regex rules
-│   │   │   ├── heuristicRules.ts # 11 heuristic rules
+│   │   │   ├── rules.ts         # Keyword and regex rules
+│   │   │   ├── heuristicRules.ts # Heuristic rules
 │   │   │   ├── nlpRules.ts      # 4 NLP rules (compromise.js)
 │   │   │   ├── fileRules.ts     # 13 file-based rules
 │   │   │   ├── compoundDetector.ts
 │   │   │   └── types.ts
-│   │   └── tests/               # 165 tests
+│   │   └── tests/               # Scanner engine tests
 │   │
-│   ├── python/                  # Python package — PyPI: forensicate
+│   ├── python/                  # Python scanner source
 │   │   ├── src/forensicate/     # 87 rules (keyword, regex, heuristic)
 │   │   │   ├── scanner.py       # scan_prompt() function
 │   │   │   ├── rules.py         # All keyword + regex rules
 │   │   │   ├── heuristics.py    # 4 heuristic functions
 │   │   │   ├── compound.py      # Compound threat detection
 │   │   │   └── cli.py           # CLI entry point
-│   │   └── tests/               # 55 tests
+│   │   └── tests/               # Python scanner and CLI tests
 │   │
 │   ├── github-action/           # GitHub Action for CI/CD scanning
 │   │   ├── action.yml           # Action definition
@@ -430,11 +365,11 @@ forensicate_ai/
 │   ├── extension/               # Browser extension (Chrome + Firefox MV3)
 │   │   ├── src/                 # background.js, content.js, popup
 │   │   ├── pages/               # library, history, result pages
-│   │   └── tests/               # 22 tests
+│   │   └── tests/               # Background, storage, and scanning tests
 │   │
 │   ├── api/                     # REST API (Cloudflare Workers)
 │   │   └── src/                 # auth, rate limiter, scan handler
-│   │                            # 87 tests
+│   │   └── src/__tests__/       # API request and authorization tests
 │   │
 │   └── vscode/                  # VS Code extension
 │       └── src/                 # diagnostics, commands, result panel

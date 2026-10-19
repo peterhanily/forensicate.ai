@@ -33,6 +33,7 @@ global.chrome = {
     local: {
       get: vi.fn().mockResolvedValue({}),
       set: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue(undefined),
       getBytesInUse: vi.fn().mockResolvedValue(1024),
       QUOTA_BYTES: 10485760 // 10MB
     }
@@ -47,7 +48,12 @@ global.chrome = {
   },
   tabs: {
     query: vi.fn().mockResolvedValue([{ id: 1, url: 'https://example.com' }]),
-    sendMessage: vi.fn().mockResolvedValue({ success: true })
+    sendMessage: vi.fn().mockResolvedValue({ success: true }),
+    onRemoved: { addListener: vi.fn() }
+  },
+  action: {
+    setBadgeText: vi.fn().mockResolvedValue(undefined),
+    setTitle: vi.fn().mockResolvedValue(undefined)
   },
   scripting: {
     executeScript: vi.fn().mockResolvedValue([{ result: 'selected text' }])

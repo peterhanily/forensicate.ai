@@ -4,11 +4,19 @@ AI prompt injection detection engine for Python. Zero dependencies.
 
 87 detection rules across keyword, regex, and heuristic analysis -- ported from the [Forensicate.ai](https://forensicate.ai) TypeScript scanner engine.
 
-## Installation
+This implementation is maintained as source in this repository. Use a local checkout for development; a PyPI release is not part of this repository release. The Python scanner has its own 87-rule registry and does not yet have rule or feature parity with the TypeScript scanner.
+
+## Local Setup
 
 ```bash
-pip install forensicate
+git clone https://github.com/peterhanily/forensicate.ai.git
+cd forensicate.ai
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ./packages/python
 ```
+
+The Python examples and CLI commands below assume this virtual environment is active.
 
 ## Quick Start
 
@@ -107,6 +115,42 @@ Quiet mode (exit code only -- 0=clean, 1=injection):
 echo "hello world" | forensicate --quiet && echo "clean"
 ```
 
+The CLI returns **2 on input or configuration errors**, with a diagnostic on stderr and no scan result. Files and stdin must contain valid UTF-8 and at most 1,000,000 Python characters (up to 4,000,000 UTF-8 bytes). Larger input is rejected before scanning; it is never reported as a successful partial scan. The library API's existing truncation behavior is unchanged.
+
+### Configuration and filters
+
+The CLI loads `forensicate.yaml` or `forensicate.yml` from the current directory or its nearest matching parent. Use `--config path/to/config.yaml` for an explicit file. Config files are limited to 1 MiB of UTF-8.
+
+```yaml
+threshold: 50
+min-severity: medium
+categories:
+  - structural
+  - heuristic-analysis
+disable-categories:
+  - structural
+disable-rules:
+  - h-entropy-analysis
+output: json
+```
+
+| Config key | CLI override | Behavior |
+|---|---|---|
+| `threshold` | `--threshold 50` | Integer from 0 to 99; 0 flags any match |
+| `min-severity` | `--min-severity high` | Include rules at or above low, medium, high or critical |
+| `categories` | `--categories structural,heuristic-analysis` | Include these category IDs; an empty list includes all categories |
+| `disable-categories` | `--disable-categories structural` | Exclude these category IDs |
+| `disable-rules` | `--disable-rules h-entropy-analysis` | Exclude these rule IDs |
+| `output` | `--output text`, `--json`, or `--sarif` | Select text, JSON or SARIF output |
+
+CLI options replace the corresponding config values. Category exclusions and disabled rules take precedence over included categories. Filters apply before scanning, confidence calculation and exit status, and include heuristic rules. `--quiet` suppresses result output regardless of its format. Unknown rule or category IDs are errors, including IDs only available in the TypeScript registry.
+
+This dependency-free YAML subset supports top-level scalar values, indented lists, optional scalar quotes and comments. Hyphenated, snake_case and camelCase names are accepted for the keys above. Inline arrays, nested mappings, duplicate keys, unknown keys and other YAML features are rejected by the CLI. TypeScript-only options such as directory traversal, file-extension filters, `max-file-size-kb` and custom rule definitions are unsupported. Library callers of `parse_config` and `load_config` retain permissive unknown-key handling unless they pass `strict=True`.
+
+Supported category IDs are `instruction-override`, `jailbreak`, `role-manipulation`, `compliance-forcing`, `safety-removal`, `prompt-extraction`, `authority-developer`, `threats-consequences`, `context-manipulation`, `fiction-hypothetical`, `persuasion`, `encoding-obfuscation`, `structural` and `heuristic-analysis`.
+
+`--benchmark` runs the existing built-in battery with an optional threshold. It rejects rule filters, non-text output, quiet mode and input files because that mode does not support them.
+
 ## Detection Categories
 
 | Category | Rules | Description |
@@ -130,7 +174,7 @@ echo "hello world" | forensicate --quiet && echo "clean"
 
 - Web App: [forensicate.ai](https://forensicate.ai)
 - GitHub: [github.com/peterhanily/forensicate.ai](https://github.com/peterhanily/forensicate.ai)
-- Chrome Extension: [Chrome Web Store](https://chromewebstore.google.com/detail/forensicateai/placeholder)
+- Chrome Extension: [Chrome Web Store](https://chromewebstore.google.com/detail/forensicateai-prompt-secu/ckohijglmbhlmbpiplcjhnlpijcbkapa)
 
 ## License
 

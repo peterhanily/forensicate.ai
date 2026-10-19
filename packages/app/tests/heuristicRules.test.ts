@@ -6,8 +6,8 @@ import {
   languageSwitchDetection,
   heuristicRules,
   rehydrateHeuristics,
-} from '../src/lib/scanner/heuristicRules';
-import { scanPrompt, allRules } from '../src/lib/scanner';
+} from '../../scanner/src/heuristicRules';
+import { scanPrompt, allRules } from '@forensicate/scanner';
 
 describe('Heuristic Rules', () => {
   describe('Entropy Analysis', () => {

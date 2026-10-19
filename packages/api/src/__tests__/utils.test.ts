@@ -129,6 +129,14 @@ describe('validateScanRequest', () => {
     expect(result.valid).toBe(false);
     expect(result.error).toContain('key count');
   });
+
+  it('measures metadata in UTF-8 bytes', () => {
+    expect(validateScanRequest({ text: 'Hello', metadata: { note: '🌼'.repeat(1100) } }).valid).toBe(false);
+  });
+
+  it('rejects non-finite thresholds', () => {
+    expect(validateScanRequest({ text: 'Hello', confidenceThreshold: NaN }).valid).toBe(false);
+  });
 });
 
 describe('validateBatchScanRequest', () => {
@@ -230,6 +238,17 @@ describe('getCORSHeaders', () => {
       ['*.forensicate.ai']
     );
     expect(headers['Access-Control-Allow-Origin']).toBe('https://app.forensicate.ai');
+  });
+
+  it('matches wildcard origins with explicit ports consistently', () => {
+    expect(getCORSHeaders(makeRequest('https://app.forensicate.ai:8443'), ['*.forensicate.ai'])['Access-Control-Allow-Origin'])
+      .toBe('https://app.forensicate.ai:8443');
+  });
+
+  it('varies allowed responses by origin and exposes retry headers', () => {
+    const headers = getCORSHeaders(makeRequest('https://forensicate.ai'), ['forensicate.ai']);
+    expect(headers.Vary).toBe('Origin');
+    expect(headers['Access-Control-Expose-Headers']).toContain('Retry-After');
   });
 
   it('wildcard matches base domain too', () => {

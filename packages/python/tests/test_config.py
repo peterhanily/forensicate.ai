@@ -156,6 +156,11 @@ class TestValidation:
         with pytest.raises(ValueError, match="threshold must be an integer"):
             parse_config("threshold: abc")
 
+    @pytest.mark.parametrize("value", ["true", "false", "1.5", "nan", "inf"])
+    def test_noninteger_threshold_is_not_coerced(self, value):
+        with pytest.raises(ValueError, match="threshold must be an integer"):
+            parse_config(f"threshold: {value}")
+
     def test_invalid_severity(self):
         with pytest.raises(ValueError, match="min_severity must be one of"):
             parse_config("min_severity: extreme")
@@ -280,3 +285,39 @@ class TestEdgeCases:
         yaml = "threshold: null\n"
         cfg = parse_config(yaml)
         assert cfg["threshold"] is None
+
+
+class TestStrictConfig:
+    """CLI configuration must not silently ignore unsupported settings."""
+
+    @pytest.mark.parametrize("yaml, message", [
+        ("threshold: 0\nextensions:\n  - .txt", "Unsupported Python config key"),
+        ("threshold: 0\nthreshold: 50", "Duplicate config key"),
+        ("min-severity: high\nminSeverity: low", "Duplicate config key"),
+        ("  threshold: 50", "Nested config values"),
+        ("this is not a mapping", "Unsupported config syntax"),
+        ("categories: [structural]", "categories must be a list"),
+        ("categories:\n  - ''", "nonempty string IDs"),
+    ])
+    def test_invalid_config_rejected(self, yaml, message):
+        with pytest.raises(ValueError, match=message):
+            parse_config(yaml, strict=True)
+
+    def test_quoted_hash_is_not_a_comment(self):
+        cfg = parse_config('disable_rules:\n  - "fixture # label" # comment\n', strict=True)
+        assert cfg["disable_rules"] == ["fixture # label"]
+
+    def test_plain_apostrophe_does_not_hide_comment(self):
+        cfg = parse_config("disable_rules:\n  - fixture's-label # comment\n", strict=True)
+        assert cfg["disable_rules"] == ["fixture's-label"]
+
+    def test_camel_case_compatibility(self):
+        cfg = parse_config("minSeverity: high\ndisableRules:\n  - fixture\n", strict=True)
+        assert cfg["min_severity"] == "high"
+        assert cfg["disable_rules"] == ["fixture"]
+
+    def test_invalid_utf8_config(self, tmp_path):
+        path = tmp_path / "forensicate.yaml"
+        path.write_bytes(b"threshold: \xff\n")
+        with pytest.raises(UnicodeDecodeError):
+            load_config(str(path), strict=True)

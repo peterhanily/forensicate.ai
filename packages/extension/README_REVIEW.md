@@ -148,9 +148,9 @@ The extension uses **dozens of static detection rules** across multiple categori
 
 **NLP Rules:**
 - Sentiment Manipulation (AFINN-165)
-- POS Imperative Detection (compromise.js)
+- POS Imperative Detection (compromise.js; off by default)
 - Entity Impersonation (NER)
-- Sentence Structure Anomaly
+- Sentence Structure Anomaly (off by default)
 
 Rules are statically defined in the bundled scanner and can be verified in the source code at:
 https://github.com/peterhanily/forensicate.ai/tree/main/packages/scanner/src

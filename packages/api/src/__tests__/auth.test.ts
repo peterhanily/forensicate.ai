@@ -205,6 +205,31 @@ describe('authenticate', () => {
       expect.objectContaining({ expirationTtl: 31536000 })
     );
   });
+
+  it('keeps the usage write alive through the execution context', async () => {
+    const ctx = { waitUntil: vi.fn() };
+    await authenticate(new Request('https://api.forensicate.ai/', {
+      headers: { Authorization: `Bearer ${validToken}` }
+    }), mockEnv, ctx);
+    expect(ctx.waitUntil).toHaveBeenCalledWith(expect.any(Promise));
+  });
+
+  it('rejects an invalid expiration date', async () => {
+    tokenData.expiresAt = 'invalid-date';
+    const result = await authenticate(new Request('https://api.forensicate.ai/', {
+      headers: { Authorization: `Bearer ${validToken}` }
+    }), mockEnv);
+    expect(result).toBeNull();
+    expect(mockEnv.API_TOKENS.put).not.toHaveBeenCalled();
+  });
+
+  it('rejects metadata for a different tenant', async () => {
+    tenantData.id = 'different-tenant';
+    const result = await authenticate(new Request('https://api.forensicate.ai/', {
+      headers: { Authorization: `Bearer ${validToken}` }
+    }), mockEnv);
+    expect(result).toBeNull();
+  });
 });
 
 describe('checkIPWhitelist', () => {

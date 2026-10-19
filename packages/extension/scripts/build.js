@@ -26,7 +26,7 @@ await esbuild.build({
   format: 'esm',
   outfile: join(outdir, 'background.js'),
   platform: 'browser',
-  target: 'chrome96',
+  target: browser === 'firefox' ? 'firefox121' : 'chrome96',
   minify: !isDev, // Minify in production
   minifyWhitespace: !isDev,
   minifyIdentifiers: !isDev,
@@ -137,11 +137,15 @@ if (browser === 'firefox') {
   console.log('Applying Firefox-specific changes...');
   const manifest = JSON.parse(readFileSync(join(outdir, 'manifest.json'), 'utf8'));
 
-  // Firefox uses 'browser_specific_settings' instead of 'action'
+  // Firefox MV3 uses an event page rather than Chrome's service worker.
+  manifest.background = {
+    scripts: ['background.js'],
+    type: 'module',
+  };
   manifest.browser_specific_settings = {
     gecko: {
       id: 'forensicate@forensicate.ai',
-      strict_min_version: '96.0'
+      strict_min_version: '121.0'
     }
   };
 

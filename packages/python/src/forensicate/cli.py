@@ -10,7 +10,80 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any
 
-from .scanner import scan_prompt
+from .scanner import MAX_SCAN_LENGTH, scan_prompt
+
+
+MAX_INPUT_BYTES = MAX_SCAN_LENGTH * 4
+
+
+def _threshold(value: str) -> int:
+    try:
+        threshold = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("threshold must be an integer from 0 to 99")
+    if not 0 <= threshold <= 99:
+        raise argparse.ArgumentTypeError("threshold must be an integer from 0 to 99")
+    return threshold
+
+
+def _ids(value: str) -> list[str]:
+    ids = [item.strip() for item in value.split(",")]
+    if not all(ids):
+        raise argparse.ArgumentTypeError("provide nonempty, comma-separated IDs")
+    return ids
+
+
+def _configured_rules(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Select enabled rules without modifying the shared rule registry."""
+    from .heuristics import heuristic_rules
+    from .rules import get_all_rules, rule_categories
+
+    all_rules = get_all_rules() + heuristic_rules
+    categories = {category["id"]: set(category["rule_ids"]) for category in rule_categories}
+    categories["heuristic-analysis"] = {rule["id"] for rule in heuristic_rules}
+    known_rules = {rule["id"] for rule in all_rules}
+
+    for key in ("categories", "disable_categories", "disable_rules"):
+        known = known_rules if key == "disable_rules" else categories.keys()
+        unknown = set(config.get(key) or []) - set(known)
+        if unknown:
+            raise ValueError(f"Unknown Python {key}: {', '.join(sorted(unknown))}")
+
+    # An empty allowlist means all categories, as in the TypeScript CLI.
+    enabled_ids = set(known_rules)
+    if config.get("categories"):
+        enabled_ids = set().union(*(categories[key] for key in config["categories"]))
+    for key in config.get("disable_categories") or []:
+        enabled_ids.difference_update(categories[key])
+    enabled_ids.difference_update(config.get("disable_rules") or [])
+    rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    minimum = rank[config.get("min_severity") or "low"]
+    return [
+        rule for rule in all_rules
+        if rule.get("enabled", True) and rule["id"] in enabled_ids
+        and rank[rule["severity"]] >= minimum
+    ]
+
+
+def _read_input(path: str | None) -> str:
+    """Reject oversized or malformed input before the scanner can truncate it."""
+    if path:
+        with open(path, "rb") as stream:
+            data = stream.read(MAX_INPUT_BYTES + 1)
+    elif hasattr(sys.stdin, "buffer"):
+        data = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
+    else:
+        # Support embedded callers with a text-only stdin such as StringIO.
+        data = sys.stdin.read(MAX_SCAN_LENGTH + 1)
+    if isinstance(data, bytes):
+        if len(data) > MAX_INPUT_BYTES:
+            raise ValueError(f"Input exceeds {MAX_INPUT_BYTES:,} UTF-8 bytes; not scanned")
+        text = data.decode("utf-8", errors="strict")
+    else:
+        text = data
+    if len(text) > MAX_SCAN_LENGTH:
+        raise ValueError(f"Input exceeds {MAX_SCAN_LENGTH:,} characters; not scanned")
+    return text
 
 
 def main() -> None:
@@ -26,11 +99,12 @@ def main() -> None:
     )
     parser.add_argument(
         "-t", "--threshold",
-        type=int,
+        type=_threshold,
         default=None,
         help="Confidence threshold (0-99, default: 0)",
     )
-    parser.add_argument(
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument(
         "-j", "--json",
         action="store_true",
         dest="json_output",
@@ -39,13 +113,18 @@ def main() -> None:
     parser.add_argument(
         "-q", "--quiet",
         action="store_true",
-        help="Quiet mode - only output exit code (0=clean, 1=injection detected)",
+        help="Quiet mode - exit code only (0=clean, 1=detected, 2=error)",
     )
-    parser.add_argument(
+    output.add_argument(
         "--sarif",
         action="store_true",
         help="Output results in SARIF format",
     )
+    output.add_argument("--output", choices=("text", "json", "sarif"), help="Output format")
+    parser.add_argument("--min-severity", choices=("low", "medium", "high", "critical"))
+    parser.add_argument("--categories", type=_ids, help="Comma-separated category IDs to include")
+    parser.add_argument("--disable-categories", type=_ids, help="Comma-separated category IDs to exclude")
+    parser.add_argument("--disable-rules", type=_ids, help="Comma-separated rule IDs to exclude")
     parser.add_argument(
         "--config",
         dest="config_path",
@@ -66,7 +145,20 @@ def main() -> None:
     args = parser.parse_args()
 
     # --- Load config if available ---
-    config = _load_cli_config(args.config_path)
+    config = _load_cli_config(args.config_path) or {}
+
+    for key in ("min_severity", "categories", "disable_categories", "disable_rules"):
+        value = getattr(args, key)
+        if value is not None:
+            config[key] = value
+    output_format = (
+        "sarif" if args.sarif else "json" if args.json_output
+        else args.output or config.get("output") or "text"
+    )
+    try:
+        rules = _configured_rules(config)
+    except ValueError as error:
+        parser.error(str(error))
 
     # Merge config with CLI args (CLI takes precedence)
     threshold = args.threshold
@@ -77,26 +169,24 @@ def main() -> None:
 
     # --- Benchmark mode ---
     if args.benchmark:
+        if any(config.get(key) for key in (
+            "min_severity", "categories", "disable_categories", "disable_rules",
+        )) or output_format != "text" or args.quiet or args.file:
+            parser.error("--benchmark supports threshold only; remove rule filters, output options and input files")
         _run_benchmark(threshold)
         return
 
     # --- Normal scan mode ---
     # Read input
-    if args.file:
-        try:
-            with open(args.file, encoding="utf-8") as f:
-                text = f.read()
-        except FileNotFoundError:
-            print(f"Error: File not found: {args.file}", file=sys.stderr)
-            sys.exit(2)
-        except OSError as e:
-            print(f"Error reading file: {e}", file=sys.stderr)
-            sys.exit(2)
-    elif not sys.stdin.isatty():
-        text = sys.stdin.read()
-    else:
+    if not args.file and sys.stdin.isatty():
         print("Usage: forensicate [file] or echo 'text' | forensicate", file=sys.stderr)
         print("Run 'forensicate --help' for more options.", file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        text = _read_input(args.file)
+    except (OSError, ValueError) as error:
+        print(f"Error reading input: {error}", file=sys.stderr)
         sys.exit(2)
 
     if not text.strip():
@@ -104,16 +194,16 @@ def main() -> None:
         sys.exit(2)
 
     # Scan
-    result = scan_prompt(text, confidence_threshold=threshold)
+    result = scan_prompt(text, confidence_threshold=threshold, custom_rules=rules)
 
     # Output
     if args.quiet:
         sys.exit(1 if result.is_positive else 0)
 
-    if args.sarif:
+    if output_format == "sarif":
         sarif_output = _to_sarif(result, source_file=args.file)
         print(json.dumps(sarif_output, indent=2, default=str))
-    elif args.json_output:
+    elif output_format == "json":
         output = asdict(result)
         print(json.dumps(output, indent=2, default=str))
     else:
@@ -127,8 +217,8 @@ def _load_cli_config(config_path: str | None) -> dict[str, Any] | None:
     from .config import load_config
 
     try:
-        return load_config(path=config_path)
-    except FileNotFoundError as e:
+        return load_config(path=config_path, strict=True)
+    except OSError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(2)
     except ValueError as e:

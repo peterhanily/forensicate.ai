@@ -1,13 +1,28 @@
 import type { PersistedConfig } from './types';
+import { isStorableRule, validateRuleOverride } from './rulePreferences';
 
 export const STORAGE_KEY = 'forensicate_config';
-export const CONFIG_VERSION = '1.0';
+export const CONFIG_VERSION = '2.0';
+// Browser extension hand-off links write version 1 as '1'.
+const supportedVersions = new Set(['1', '1.0', CONFIG_VERSION]);
 
 /**
  * Save configuration to localStorage
  */
 export function saveConfig(config: PersistedConfig): { success: boolean; error?: string } {
   try {
+    const existing = localStorage.getItem(STORAGE_KEY);
+    if (existing) {
+      try {
+        const previous = JSON.parse(existing);
+        if (typeof previous?.version === 'string' && !supportedVersions.has(previous.version)) {
+          return { success: false, error: 'Saved settings use an unsupported version. They have been kept unchanged. Use the matching app version, or reset settings to save new changes.' };
+        }
+        if (typeof previous?.version === 'string' && !validateConfig(previous)) {
+          return { success: false, error: 'Saved settings could not be read. They have been kept unchanged. Reset settings to save new changes.' };
+        }
+      } catch { /* Invalid JSON does not describe a newer configuration format. */ }
+    }
     const serialized = JSON.stringify(config);
     localStorage.setItem(STORAGE_KEY, serialized);
     return { success: true };
@@ -55,7 +70,7 @@ export function validateConfig(data: unknown): data is PersistedConfig {
   const config = data as Record<string, unknown>;
 
   // Check version
-  if (typeof config.version !== 'string') {
+  if (typeof config.version !== 'string' || !supportedVersions.has(config.version)) {
     return false;
   }
 
@@ -72,16 +87,20 @@ export function validateConfig(data: unknown): data is PersistedConfig {
   if (!Array.isArray(rules.localRules) || !Array.isArray(rules.customCategories)) {
     return false;
   }
+  if (config.version === CONFIG_VERSION) {
+    if (typeof rules.defaultsVersion !== 'string' || !Array.isArray(rules.builtInOverrides)
+        || !rules.builtInOverrides.every(validateRuleOverride)) return false;
+    const ids = [...rules.localRules.map(rule => rule?.id), ...rules.builtInOverrides.map(override => override.id)];
+    if (new Set(ids).size !== ids.length) return false;
+  } else if (rules.builtInOverrides !== undefined || rules.defaultsVersion !== undefined) {
+    return false;
+  }
 
   // Validate individual rules have required fields
-  const validTypes = new Set(['keyword', 'regex', 'heuristic', 'encoding', 'structural']);
-  const validSeverities = new Set(['low', 'medium', 'high', 'critical']);
-  for (const rule of rules.localRules as Record<string, unknown>[]) {
-    if (!rule || typeof rule !== 'object') return false;
-    if (typeof rule.id !== 'string' || typeof rule.name !== 'string') return false;
-    if (typeof rule.type !== 'string' || !validTypes.has(rule.type)) return false;
-    if (typeof rule.severity !== 'string' || !validSeverities.has(rule.severity)) return false;
-  }
+  const allStoredRules = [...rules.localRules,
+    ...(Array.isArray(rules.builtInOverrides) ? rules.builtInOverrides.map(override => override.fallback) : []),
+  ];
+  if (!allStoredRules.every(isStorableRule)) return false;
 
   // Check prompts structure
   if (!config.prompts || typeof config.prompts !== 'object') {

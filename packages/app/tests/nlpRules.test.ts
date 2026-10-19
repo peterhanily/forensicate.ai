@@ -4,8 +4,8 @@ import {
   posImperativeDetection,
   entityImpersonation,
   sentenceStructureAnomaly,
-} from '../src/lib/scanner/nlpRules';
-import { allRules, rehydrateHeuristics } from '../src/lib/scanner';
+} from '../../scanner/src/nlpRules';
+import { allRules, rehydrateHeuristics, scanPrompt } from '@forensicate/scanner';
 
 describe('NLP Rules', () => {
   describe('sentimentManipulation', () => {
@@ -155,13 +155,24 @@ describe('NLP Rules', () => {
       }
     });
 
+    it('does not flag ordinary multi-sentence instructions with the default rules', () => {
+      for (const text of [
+        'Summarize the following article. Highlight the main arguments. Keep it under 200 words.',
+        'Is this sentence grammatically correct? Can you suggest a better phrasing? Does it sound natural? Is the tone too formal?',
+      ]) {
+        expect(scanPrompt(text, undefined, 50).isPositive).toBe(false);
+      }
+    });
+
     it('NLP rules have proper structure', () => {
       const nlpRules = allRules.filter(r => r.id.startsWith('nlp-'));
       expect(nlpRules.length).toBe(4);
 
+      // The imperative checks also match ordinary instructions, so they are opt-in.
+      const offByDefault = new Set(['nlp-pos-imperative', 'nlp-sentence-structure']);
       for (const rule of nlpRules) {
         expect(rule.type).toBe('heuristic');
-        expect(rule.enabled).toBe(true);
+        expect(rule.enabled).toBe(!offByDefault.has(rule.id));
         expect(typeof rule.heuristic).toBe('function');
         expect(rule.name).toBeTruthy();
         expect(rule.description).toBeTruthy();

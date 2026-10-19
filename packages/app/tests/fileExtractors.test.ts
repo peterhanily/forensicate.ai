@@ -60,6 +60,13 @@ describe('File Extractors', () => {
       expect(result.hasHidden).toBe(false);
       expect(result.cleanText).toBe('');
     });
+
+    it('preserves complete non-BMP characters and hidden-character offsets', () => {
+      const tag = String.fromCodePoint(0xE0041);
+      const result = detectZeroWidthChars(`Hello 🌍${tag}𠮷`);
+      expect(result.cleanText).toBe('Hello 🌍𠮷');
+      expect(result.hiddenChars).toEqual([{ char: tag, code: 0xE0041, position: 8 }]);
+    });
   });
 
   describe('detectFileType', () => {

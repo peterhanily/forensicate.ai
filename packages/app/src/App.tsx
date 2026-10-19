@@ -4,6 +4,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import Layout from './components/Layout';
 import Scanner from './pages/Scanner';
+import NotFound from './pages/NotFound';
+import { routePaths } from './routePaths';
 
 const Landing = lazy(() => import('./pages/Landing'));
 const MutationEngine = lazy(() => import('./pages/MutationEngine'));
@@ -16,8 +18,10 @@ const Compliance = lazy(() => import('./pages/Compliance'));
 const BlogDetection = lazy(() => import('./pages/BlogDetection'));
 const UltrasonicAnalyzer = lazy(() => import('./pages/UltrasonicAnalyzer'));
 
-// Detect standalone mode: file:// protocol means we're running as a downloaded HTML file
-const isStandalone = typeof window !== 'undefined' && window.location.protocol === 'file:';
+// Detect standalone mode: a downloaded HTML file (file://), or the single-file build
+// (relative base) opened from a web server, where BrowserRouter cannot match the path
+const isStandalone = typeof window !== 'undefined'
+  && (window.location.protocol === 'file:' || import.meta.env.BASE_URL === './');
 
 // Get base path from Vite config for proper routing on GitHub Pages
 const basename = import.meta.env.BASE_URL;
@@ -41,16 +45,17 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
-              <Route path="scanner" element={<Scanner />} />
-              <Route path="mutate" element={<Suspense fallback={<PageLoader />}><MutationEngine /></Suspense>} />
-              <Route path="timeline" element={<Suspense fallback={<PageLoader />}><ForensicTimeline /></Suspense>} />
-              <Route path="learn" element={<Suspense fallback={<PageLoader />}><Learn /></Suspense>} />
-              <Route path="learn/jailbreaks" element={<Suspense fallback={<PageLoader />}><LearnJailbreaks /></Suspense>} />
-              <Route path="learn/challenges" element={<Suspense fallback={<PageLoader />}><LearnChallenges /></Suspense>} />
-              <Route path="learn/model-attacks" element={<Suspense fallback={<PageLoader />}><LearnModelAttacks /></Suspense>} />
-              <Route path="compliance" element={<Suspense fallback={<PageLoader />}><Compliance /></Suspense>} />
-              <Route path="blog/detect-prompt-injection" element={<Suspense fallback={<PageLoader />}><BlogDetection /></Suspense>} />
-              <Route path="ultrasonic" element={<Suspense fallback={<PageLoader />}><UltrasonicAnalyzer /></Suspense>} />
+              <Route path={routePaths.scanner} element={<Scanner />} />
+              <Route path={routePaths.mutate} element={<Suspense fallback={<PageLoader />}><MutationEngine /></Suspense>} />
+              <Route path={routePaths.timeline} element={<Suspense fallback={<PageLoader />}><ForensicTimeline /></Suspense>} />
+              <Route path={routePaths.learn} element={<Suspense fallback={<PageLoader />}><Learn /></Suspense>} />
+              <Route path={routePaths.jailbreaks} element={<Suspense fallback={<PageLoader />}><LearnJailbreaks /></Suspense>} />
+              <Route path={routePaths.challenges} element={<Suspense fallback={<PageLoader />}><LearnChallenges /></Suspense>} />
+              <Route path={routePaths.modelAttacks} element={<Suspense fallback={<PageLoader />}><LearnModelAttacks /></Suspense>} />
+              <Route path={routePaths.compliance} element={<Suspense fallback={<PageLoader />}><Compliance /></Suspense>} />
+              <Route path={routePaths.detectionBlog} element={<Suspense fallback={<PageLoader />}><BlogDetection /></Suspense>} />
+              <Route path={routePaths.ultrasonic} element={<Suspense fallback={<PageLoader />}><UltrasonicAnalyzer /></Suspense>} />
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
         </Router>

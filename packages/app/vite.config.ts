@@ -1,10 +1,11 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { routeShells } from './build/routeShells.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), routeShells()],
   // Custom domain (forensicate.ai) serves from root
   base: '/',
   build: {
@@ -23,6 +24,8 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Bound concurrent jsdom instances so large-input checks are stable in CI.
+    maxWorkers: 2,
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',
     include: ['tests/**/*.test.{ts,tsx}'],

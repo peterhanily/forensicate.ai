@@ -7,12 +7,13 @@
 //   forensicate --config file.yaml  Use custom config
 //   cat prompt.txt | forensicate    Pipe input
 
-import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
-import { resolve, extname, join, basename } from 'node:path';
+import { lstatSync, readdirSync } from 'node:fs';
+import { resolve, extname, join } from 'node:path';
 import { scanPrompt } from './scanner.js';
 import { getEnabledRules, ruleCategories } from './rules.js';
-import { computeAttackComplexity, getComplexityDescription } from './attackComplexity.js';
+import { computeAttackComplexity } from './attackComplexity.js';
 import { parseConfigYaml, applyConfigToRules } from './config.js';
+import { DEFAULT_MAX_FILE_BYTES, MAX_CONFIG_BYTES, readBoundedFile, readBoundedStdin } from './cliInput.js';
 import type { ForensicateConfig } from './config.js';
 import type { DetectionRule, ScanResult } from './types.js';
 
@@ -49,6 +50,11 @@ function parseArgs(argv: string[]): CliArgs {
   };
 
   let i = 0;
+  function optionValue(option: string): string {
+    const value = argv[++i];
+    if (!value || value.startsWith('-')) throw new Error(`Missing value for ${option}`);
+    return value;
+  }
   while (i < argv.length) {
     const arg = argv[i];
     switch (arg) {
@@ -58,11 +64,15 @@ function parseArgs(argv: string[]): CliArgs {
         break;
       case '--config':
       case '-c':
-        args.config = argv[++i] || null;
+        args.config = optionValue(arg);
         break;
       case '--threshold':
       case '-t':
-        args.threshold = parseInt(argv[++i] || '0', 10);
+        {
+          const value = optionValue(arg);
+          if (!/^\d+$/.test(value) || Number(value) > 99) throw new Error('Threshold must be an integer from 0 to 99');
+          args.threshold = Number(value);
+        }
         break;
       case '--json':
       case '-j':
@@ -84,18 +94,24 @@ function parseArgs(argv: string[]): CliArgs {
         args.help = true;
         break;
       case '--min-severity':
-        args.minSeverity = argv[++i] || null;
+        args.minSeverity = optionValue(arg);
+        if (!['low', 'medium', 'high', 'critical'].includes(args.minSeverity)) {
+          throw new Error('Minimum severity must be low, medium, high, or critical');
+        }
         break;
       case '--categories':
-        args.categories = (argv[++i] || '').split(',').filter(s => s);
+        args.categories = optionValue(arg).split(',').filter(s => s);
         break;
       case '--disable-rules':
-        args.disableRules = (argv[++i] || '').split(',').filter(s => s);
+        args.disableRules = optionValue(arg).split(',').filter(s => s);
         break;
+      case '--':
+        args.files.push(...argv.slice(i + 1));
+        return args;
       default:
         if (!arg.startsWith('-')) {
           args.files.push(arg);
-        }
+        } else throw new Error(`Unknown option: ${arg}`);
         break;
     }
     i++;
@@ -109,11 +125,7 @@ function parseArgs(argv: string[]): CliArgs {
 // ---------------------------------------------------------------------------
 function findConfig(explicitPath: string | null): ForensicateConfig | null {
   if (explicitPath) {
-    if (!existsSync(explicitPath)) {
-      console.error(`Error: Config file not found: ${explicitPath}`);
-      process.exit(2);
-    }
-    const content = readFileSync(explicitPath, 'utf-8');
+    const content = readBoundedFile(resolve(explicitPath), MAX_CONFIG_BYTES);
     return parseConfigYaml(content);
   }
 
@@ -121,10 +133,13 @@ function findConfig(explicitPath: string | null): ForensicateConfig | null {
   const candidates = ['forensicate.yaml', 'forensicate.yml', '.forensicaterc.yaml', '.forensicaterc.yml'];
   for (const name of candidates) {
     const path = resolve(name);
-    if (existsSync(path)) {
-      const content = readFileSync(path, 'utf-8');
-      return parseConfigYaml(content);
+    try {
+      lstatSync(path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw error;
     }
+    return parseConfigYaml(readBoundedFile(path, MAX_CONFIG_BYTES));
   }
 
   return null;
@@ -144,29 +159,20 @@ const DEFAULT_EXTENSIONS = new Set([
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv']);
 
-function listFilesRecursive(dir: string, extensions: Set<string>, maxSize: number): string[] {
-  const results: string[] = [];
-
-  function walk(d: string) {
-    let entries: string[];
-    try { entries = readdirSync(d); } catch { return; }
-
-    for (const entry of entries) {
-      if (SKIP_DIRS.has(entry)) continue;
-      const full = join(d, entry);
-      try {
-        const stats = statSync(full);
-        if (stats.isDirectory()) {
-          walk(full);
-        } else if (stats.isFile() && stats.size <= maxSize && extensions.has(extname(entry).toLowerCase())) {
-          results.push(full);
-        }
-      } catch { /* skip */ }
+function* listFilesRecursive(dir: string, extensions: Set<string>): Generator<string> {
+  for (const entry of readdirSync(dir).sort()) {
+    if (SKIP_DIRS.has(entry)) continue;
+    const full = join(dir, entry);
+    const stats = lstatSync(full);
+    if (stats.isSymbolicLink()) throw new Error(`${full}: Symbolic links are not followed`);
+    if (stats.isDirectory()) {
+      yield* listFilesRecursive(full, extensions);
+    } else if (!stats.isFile()) {
+      throw new Error(`${full}: Expected a regular file or directory`);
+    } else if (extensions.has(extname(entry).toLowerCase())) {
+      yield full;
     }
   }
-
-  walk(dir);
-  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,12 +331,21 @@ const HELP = `
   -t, --threshold <n>     Confidence threshold (0-99, default: 0)
   -j, --json              JSON output
       --sarif             SARIF output
-  -q, --quiet             Exit code only (0=clean, 1=found)
+  -q, --quiet             Suppress results (0=clean, 1=found, 2=input/error)
   -c, --config <file>     Config file (default: auto-discover forensicate.yaml)
       --stdin             Read from stdin
       --min-severity <s>  Minimum rule severity (low|medium|high|critical)
       --categories <ids>  Comma-separated category IDs to enable
       --disable-rules <ids>  Comma-separated rule IDs to disable
+
+\x1b[1mINPUT POLICY\x1b[0m
+  Text is limited to 1,000,000 UTF-16 code units per input; no truncation.
+  Files also obey max-file-size-kb (default: 512 KiB). Config: 64 KiB max.
+  Directory scans filter extensions and skip build/dependency directories.
+  Symlink inputs and symlink entries in directory scans are rejected.
+  Missing, unreadable, special, or oversized inputs fail with exit 2 and
+  stderr diagnostics, including in quiet mode.
+  Any input failure suppresses all scan output, including JSON and SARIF.
 
 \x1b[1mCONFIG FILE\x1b[0m (forensicate.yaml)
   threshold: 50
@@ -382,9 +397,12 @@ async function main() {
 
   const threshold = config.threshold ?? 0;
   const extensions = config.extensions
-    ? new Set(config.extensions.map(e => e.startsWith('.') ? e : `.${e}`))
+    ? new Set(config.extensions.map(e => (e.startsWith('.') ? e : `.${e}`).toLowerCase()))
     : DEFAULT_EXTENSIONS;
-  const maxFileSize = (config.maxFileSizeKb ?? 512) * 1024;
+  const maxFileSize = config.maxFileSizeKb === undefined ? DEFAULT_MAX_FILE_BYTES : config.maxFileSizeKb * 1024;
+  if (!Number.isFinite(maxFileSize) || maxFileSize < 1) {
+    throw new Error('max-file-size-kb must be a finite positive number');
+  }
 
   // Build filtered rule set
   const { enabledRuleIds } = applyConfigToRules(config, ruleCategories);
@@ -392,50 +410,31 @@ async function main() {
   const filteredRules: DetectionRule[] = allRules.filter(r => enabledRuleIds.has(r.id));
 
   // Determine inputs
-  let inputs: Array<{ file: string | null; content: string }> = [];
-
-  if (args.stdin || (args.files.length === 0 && !process.stdin.isTTY)) {
-    // Read from stdin
-    const chunks: Buffer[] = [];
-    for await (const chunk of process.stdin) {
-      chunks.push(chunk as Buffer);
-    }
-    const content = Buffer.concat(chunks).toString('utf-8');
-    inputs.push({ file: null, content });
-  } else if (args.files.length > 0) {
-    for (const fileArg of args.files) {
-      const absPath = resolve(fileArg);
-      if (!existsSync(absPath)) {
-        if (!args.quiet) console.error(`Warning: File not found: ${fileArg}`);
-        continue;
-      }
-
-      const stats = statSync(absPath);
-      if (stats.isDirectory()) {
-        const files = listFilesRecursive(absPath, extensions, maxFileSize);
-        for (const f of files) {
-          try {
-            const content = readFileSync(f, 'utf-8');
-            if (content.trim()) inputs.push({ file: f, content });
-          } catch { /* skip */ }
-        }
-      } else if (stats.isFile()) {
-        try {
-          const content = readFileSync(absPath, 'utf-8');
-          if (content.trim()) inputs.push({ file: absPath, content });
-        } catch {
-          if (!args.quiet) console.error(`Warning: Cannot read: ${fileArg}`);
-        }
-      }
-    }
-  } else {
+  const useStdin = args.stdin || (args.files.length === 0 && !process.stdin.isTTY);
+  if (!useStdin && args.files.length === 0) {
     console.log(HELP);
     process.exit(0);
   }
 
-  if (inputs.length === 0) {
-    if (!args.quiet) console.error('No input to scan.');
-    process.exit(0);
+  async function* readInputs(): AsyncGenerator<{ file: string | null; content: string }> {
+    if (useStdin) yield { file: null, content: await readBoundedStdin(process.stdin) };
+    for (const fileArg of args.files) {
+      const absPath = resolve(fileArg);
+      const stats = lstatSync(absPath);
+      if (stats.isSymbolicLink()) throw new Error(`${absPath}: Symbolic links are not followed`);
+      if (stats.isDirectory()) {
+        let foundFile = false;
+        for (const file of listFilesRecursive(absPath, extensions)) {
+          foundFile = true;
+          yield { file, content: readBoundedFile(file, maxFileSize) };
+        }
+        if (!foundFile) throw new Error(`${absPath}: No eligible input files to scan`);
+      } else if (stats.isFile()) {
+        yield { file: absPath, content: readBoundedFile(absPath, maxFileSize) };
+      } else {
+        throw new Error(`${absPath}: Expected a regular file or directory`);
+      }
+    }
   }
 
   // Scan all inputs once, store results
@@ -443,7 +442,7 @@ async function main() {
   const findings: Array<{ file: string | null; result: ScanResult }> = [];
   let hasPositive = false;
 
-  for (const { file, content } of inputs) {
+  for await (const { file, content } of readInputs()) {
     const result = scanPrompt(content, filteredRules, threshold);
     allResults.push({ file, result });
     if (result.isPositive) {
@@ -453,6 +452,8 @@ async function main() {
       findings.push({ file, result });
     }
   }
+
+  if (allResults.length === 0) throw new Error('No eligible input files to scan.');
 
   // Output
   if (args.quiet) {
@@ -472,8 +473,8 @@ async function main() {
     console.log(JSON.stringify(formatSarif(sarifFindings), null, 2));
   } else {
     // Text output
-    if (findings.length === 0 && inputs.length > 0) {
-      console.log(`\x1b[32m✓ No injection patterns detected\x1b[0m (${inputs.length} file${inputs.length !== 1 ? 's' : ''} scanned, ${filteredRules.length} rules)`);
+    if (findings.length === 0) {
+      console.log(`\x1b[32m✓ No injection patterns detected\x1b[0m (${allResults.length} file${allResults.length !== 1 ? 's' : ''} scanned, ${filteredRules.length} rules)`);
     } else {
       for (const { file, result } of findings) {
         console.log(formatText(file, result, config));
@@ -481,7 +482,7 @@ async function main() {
       }
 
       // Summary
-      console.log(`\x1b[1m${findings.length} finding${findings.length !== 1 ? 's' : ''}\x1b[0m in ${inputs.length} file${inputs.length !== 1 ? 's' : ''} (${filteredRules.length} rules)`);
+      console.log(`\x1b[1m${findings.length} finding${findings.length !== 1 ? 's' : ''}\x1b[0m in ${allResults.length} file${allResults.length !== 1 ? 's' : ''} (${filteredRules.length} rules)`);
     }
   }
 

@@ -7,19 +7,21 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "vitest",
+    "test": "vitest run",
     "test:ci": "vitest run",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:watch": "vitest",
+    "build": "wrangler deploy --dry-run --outdir dist"
   },
   "dependencies": {
     "@forensicate/scanner": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260610.1",
-    "@types/node": "^25.9.1",
+    "@cloudflare/workers-types": "^5.20261001.1",
+    "@types/node": "^24.19.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8",
-    "wrangler": "^4.99.0"
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
   },
   "keywords": [
     "prompt-injection",

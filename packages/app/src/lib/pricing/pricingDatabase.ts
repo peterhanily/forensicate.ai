@@ -1,18 +1,20 @@
 /**
  * LLM Pricing Database
  *
- * Sources verified as of March 2026
- * Prices in USD per 1M tokens
+ * Standard, uncached text-token prices in USD per 1M tokens.
+ * Each independently checked entry has its own source.verifiedAt date.
+ * Older entries remain available for saved selections, without claiming verification.
  */
 
-import type { ModelPricing } from './types';
+import type { ModelPricing, PricingSource } from './types';
 
-// Last updated date for all pricing data
+// Date of the historical fallback data; never use this as a verification date.
 const PRICING_LAST_UPDATED = '2026-03-15T00:00:00Z';
+const HISTORICAL_RATE_NOTE = 'Historical rate; current pricing and model availability have not been verified.';
 
 /**
- * Hardcoded pricing database with official sources
- * This serves as fallback and will be supplemented by automated fetching
+ * Manually maintained snapshots. There is no live pricing fetch.
+ * A linked source alone does not mean a historical price was reverified.
  */
 export const PRICING_DATABASE: ModelPricing[] = [
   // OpenAI - https://openai.com/api/pricing/
@@ -20,16 +22,16 @@ export const PRICING_DATABASE: ModelPricing[] = [
     provider: 'openai',
     model: 'gpt-5.2-pro',
     displayName: 'GPT-5.2 Pro',
-    inputCostPer1M: 1.75,
-    outputCostPer1M: 14.00,
-    contextWindow: 200000,
+    inputCostPer1M: 21.00,
+    outputCostPer1M: 168.00,
+    contextWindow: 400000,
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://openai.com/api/pricing/',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://developers.openai.com/api/docs/models/gpt-5.2-pro',
     },
-    notes: 'Latest flagship with xhigh reasoning (90% cache discount)',
   },
   {
     provider: 'openai',
@@ -37,14 +39,14 @@ export const PRICING_DATABASE: ModelPricing[] = [
     displayName: 'GPT-5.2',
     inputCostPer1M: 1.75,
     outputCostPer1M: 14.00,
-    contextWindow: 200000,
+    contextWindow: 400000,
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://openai.com/api/pricing/',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://developers.openai.com/api/docs/models/gpt-5.2',
     },
-    notes: 'Latest model with thinking mode (90% cache discount)',
   },
   {
     provider: 'openai',
@@ -52,14 +54,16 @@ export const PRICING_DATABASE: ModelPricing[] = [
     displayName: 'GPT-5.1',
     inputCostPer1M: 1.25,
     outputCostPer1M: 10.00,
-    contextWindow: 200000,
+    contextWindow: 400000,
+    status: 'deprecated',
+    notes: 'Deprecated model; check provider availability before use.',
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://openai.com/api/pricing/',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://developers.openai.com/api/docs/models/gpt-5.1',
     },
-    notes: 'Adaptive reasoning (faster on simple tasks)',
   },
   {
     provider: 'openai',
@@ -67,14 +71,16 @@ export const PRICING_DATABASE: ModelPricing[] = [
     displayName: 'GPT-5',
     inputCostPer1M: 1.25,
     outputCostPer1M: 10.00,
-    contextWindow: 200000,
+    contextWindow: 400000,
+    status: 'deprecated',
+    notes: 'Deprecated model; check provider availability before use.',
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://openai.com/api/pricing/',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://developers.openai.com/api/docs/models/gpt-5',
     },
-    notes: 'Flagship model (released August 2025)',
   },
   {
     provider: 'openai',
@@ -83,13 +89,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 15.00,
     outputCostPer1M: 60.00,
     contextWindow: 128000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://openai.com/api/pricing/',
-      verifiedBy: 'manual',
     },
-    notes: 'Original o1 reasoning model (legacy)',
   },
   {
     provider: 'openai',
@@ -98,13 +103,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 1.10,
     outputCostPer1M: 4.40,
     contextWindow: 128000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://openai.com/api/pricing/',
-      verifiedBy: 'manual',
     },
-    notes: 'Cost-efficient reasoning (80% cheaper than o1-preview)',
   },
   {
     provider: 'openai',
@@ -113,13 +117,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 1.10,
     outputCostPer1M: 4.40,
     contextWindow: 128000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://openai.com/api/pricing/',
-      verifiedBy: 'manual',
     },
-    notes: 'Higher intelligence at same latency/price as o1-mini',
   },
   {
     provider: 'openai',
@@ -128,13 +131,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 10.00,
     outputCostPer1M: 30.00,
     contextWindow: 128000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://openai.com/api/pricing/',
-      verifiedBy: 'manual',
     },
-    notes: 'Legacy Turbo model (superseded by GPT-4o)',
   },
   {
     provider: 'openai',
@@ -143,13 +145,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 30.00,
     outputCostPer1M: 60.00,
     contextWindow: 8192,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://openai.com/api/pricing/',
-      verifiedBy: 'manual',
     },
-    notes: 'Original GPT-4 (legacy)',
   },
   {
     provider: 'openai',
@@ -158,13 +159,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 2.50,
     outputCostPer1M: 10.00,
     contextWindow: 128000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://openai.com/api/pricing/',
-      verifiedBy: 'manual',
     },
-    notes: 'Most capable multimodal model',
   },
   {
     provider: 'openai',
@@ -173,13 +173,15 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.15,
     outputCostPer1M: 0.60,
     contextWindow: 128000,
+    status: 'deprecated',
+    notes: 'Deprecated model; check provider availability before use.',
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://openai.com/api/pricing/',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://developers.openai.com/api/docs/models/gpt-4o-mini',
     },
-    notes: 'Fast, affordable, intelligent',
   },
   {
     provider: 'openai',
@@ -188,90 +190,96 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.50,
     outputCostPer1M: 1.50,
     contextWindow: 16385,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://openai.com/api/pricing/',
-      verifiedBy: 'manual',
     },
-    notes: 'Legacy fast and inexpensive model',
   },
 
   // Anthropic Claude - https://platform.claude.com/docs/en/docs/about-claude/models
   {
     provider: 'anthropic',
-    model: 'claude-opus-4.6',
+    model: 'claude-opus-4-6',
+    aliases: ['claude-opus-4.6'],
     displayName: 'Claude Opus 4.6',
     inputCostPer1M: 5.00,
     outputCostPer1M: 25.00,
     contextWindow: 1000000,
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://www.anthropic.com/pricing',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://platform.claude.com/docs/en/about-claude/pricing',
     },
-    notes: 'Most intelligent model, 1M context, extended thinking',
   },
   {
     provider: 'anthropic',
-    model: 'claude-sonnet-4.6',
+    model: 'claude-sonnet-4-6',
+    aliases: ['claude-sonnet-4.6'],
     displayName: 'Claude Sonnet 4.6',
     inputCostPer1M: 3.00,
     outputCostPer1M: 15.00,
     contextWindow: 1000000,
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://www.anthropic.com/pricing',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://platform.claude.com/docs/en/about-claude/pricing',
     },
-    notes: 'Best speed/intelligence balance, 1M context',
   },
   {
     provider: 'anthropic',
-    model: 'claude-opus-4.5',
+    model: 'claude-opus-4-5',
+    aliases: ['claude-opus-4.5'],
     displayName: 'Claude Opus 4.5',
     inputCostPer1M: 5.00,
     outputCostPer1M: 25.00,
     contextWindow: 200000,
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://www.anthropic.com/pricing',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://platform.claude.com/docs/en/about-claude/pricing',
     },
-    notes: 'Legacy Opus (200K context)',
   },
   {
     provider: 'anthropic',
-    model: 'claude-sonnet-4.5',
+    model: 'claude-sonnet-4-5',
+    aliases: ['claude-sonnet-4.5'],
     displayName: 'Claude Sonnet 4.5',
     inputCostPer1M: 3.00,
     outputCostPer1M: 15.00,
     contextWindow: 200000,
+    status: 'deprecated',
+    notes: 'Claude API retirement scheduled for November 30, 2026.',
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://www.anthropic.com/pricing',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://platform.claude.com/docs/en/about-claude/pricing',
     },
-    notes: 'Legacy Sonnet (1M with beta header)',
   },
   {
     provider: 'anthropic',
-    model: 'claude-haiku-4.5',
+    model: 'claude-haiku-4-5',
+    aliases: ['claude-haiku-4.5'],
     displayName: 'Claude Haiku 4.5',
     inputCostPer1M: 1.00,
     outputCostPer1M: 5.00,
     contextWindow: 200000,
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://www.anthropic.com/pricing',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://platform.claude.com/docs/en/about-claude/pricing',
     },
-    notes: 'Fastest with near-frontier intelligence',
   },
   {
     provider: 'anthropic',
@@ -280,30 +288,32 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.25,
     outputCostPer1M: 1.25,
     contextWindow: 200000,
+    status: 'retired',
+    notes: 'Retired from the provider API. Historical rate only.',
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://www.anthropic.com/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Deprecated — retiring April 19, 2026',
   },
 
   // Google Gemini - https://ai.google.dev/pricing
   {
     provider: 'google',
-    model: 'gemini-3.1-pro',
-    displayName: 'Gemini 3.1 Pro',
+    model: 'gemini-3.1-pro-preview',
+    aliases: ['gemini-3.1-pro'],
+    displayName: 'Gemini 3.1 Pro Preview',
     inputCostPer1M: 2.00,
     outputCostPer1M: 12.00,
-    contextWindow: 2000000,
+    longContext: { inputTokenThreshold: 200000, inputCostPer1M: 4, outputCostPer1M: 18 },
+    notes: 'Preview model. Above 200K input tokens, the full request uses $4 input / $18 output per 1M.',
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://ai.google.dev/pricing',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://ai.google.dev/gemini-api/docs/pricing',
     },
-    notes: 'Latest flagship preview ($4/$18 for >200K prompts)',
   },
   {
     provider: 'google',
@@ -313,12 +323,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     outputCostPer1M: 1.50,
     contextWindow: 1000000,
     source: {
-      type: 'fallback',
-      lastUpdated: PRICING_LAST_UPDATED,
-      url: 'https://ai.google.dev/pricing',
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
       verifiedBy: 'manual',
+      url: 'https://ai.google.dev/gemini-api/docs/pricing',
     },
-    notes: 'Latest flash-lite preview',
   },
   {
     provider: 'google',
@@ -327,13 +337,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.50,
     outputCostPer1M: 3.00,
     contextWindow: 1000000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://ai.google.dev/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Preview flash model',
   },
   {
     provider: 'google',
@@ -342,13 +351,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 1.25,
     outputCostPer1M: 10.00,
     contextWindow: 1000000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://ai.google.dev/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Best for coding ($2.50/$15 for >200K prompts)',
   },
   {
     provider: 'google',
@@ -357,13 +365,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.30,
     outputCostPer1M: 2.50,
     contextWindow: 1000000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://ai.google.dev/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Hybrid reasoning with speed (thinking enabled)',
   },
   {
     provider: 'google',
@@ -372,16 +379,47 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.10,
     outputCostPer1M: 0.40,
     contextWindow: 1000000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://ai.google.dev/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Most economical for high-volume tasks',
   },
 
-  // Mistral - https://mistral.ai/pricing
+  // Official model pages checked October 16, 2026; standard USD token rates.
+  {
+    provider: 'mistral',
+    model: 'mistral-small-2603',
+    displayName: 'Mistral Small 4',
+    inputCostPer1M: 0.15,
+    outputCostPer1M: 0.60,
+    contextWindow: 256000,
+    source: {
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
+      verifiedBy: 'manual',
+      url: 'https://docs.mistral.ai/models/mistral-small-4-0-26-03',
+    },
+  },
+  {
+    provider: 'mistral',
+    model: 'mistral-medium-3-5',
+    displayName: 'Mistral Medium 3.5',
+    inputCostPer1M: 1.50,
+    outputCostPer1M: 7.50,
+    contextWindow: 256000,
+    source: {
+      type: 'official',
+      lastUpdated: '2026-10-16T00:00:00Z',
+      verifiedAt: '2026-10-16T00:00:00Z',
+      verifiedBy: 'manual',
+      url: 'https://docs.mistral.ai/models/mistral-medium-3-5-26-04',
+    },
+  },
+
+  // Historical Mistral rates retained only for saved selections
   {
     provider: 'mistral',
     model: 'mistral-large-2411',
@@ -389,13 +427,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 2.00,
     outputCostPer1M: 6.00,
     contextWindow: 131000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://mistral.ai/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Flagship model (Nov 2024)',
   },
   {
     provider: 'mistral',
@@ -404,13 +441,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.40,
     outputCostPer1M: 2.00,
     contextWindow: 131000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://mistral.ai/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Balanced model (May 2025)',
   },
   {
     provider: 'mistral',
@@ -419,13 +455,13 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0.03,
     outputCostPer1M: 0.11,
     contextWindow: 131000,
+    status: 'retired',
+    notes: 'Retired from the provider API. Historical rate only.',
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://mistral.ai/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Most cost-effective',
   },
 
   // Perplexity - https://docs.perplexity.ai/guides/pricing
@@ -436,13 +472,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 1.00,
     outputCostPer1M: 1.00,
     contextWindow: 127000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://docs.perplexity.ai/guides/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Base search model',
   },
   {
     provider: 'perplexity',
@@ -451,13 +486,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 3.00,
     outputCostPer1M: 15.00,
     contextWindow: 127000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://docs.perplexity.ai/guides/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Advanced search capabilities',
   },
   {
     provider: 'perplexity',
@@ -466,13 +500,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 2.00,
     outputCostPer1M: 8.00,
     contextWindow: 127000,
+    notes: HISTORICAL_RATE_NOTE,
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://docs.perplexity.ai/guides/pricing',
-      verifiedBy: 'manual',
     },
-    notes: 'Reasoning-focused with web search',
   },
 
   // Ollama (local) - Free but compute costs
@@ -483,13 +516,12 @@ export const PRICING_DATABASE: ModelPricing[] = [
     inputCostPer1M: 0,
     outputCostPer1M: 0,
     contextWindow: 128000,
+    notes: 'Local inference has no provider token fee. Hardware and electricity costs are excluded.',
     source: {
       type: 'fallback',
       lastUpdated: PRICING_LAST_UPDATED,
       url: 'https://ollama.com/library',
-      verifiedBy: 'manual',
     },
-    notes: 'Free local inference (compute costs only)',
   },
 ];
 
@@ -498,7 +530,7 @@ export const PRICING_DATABASE: ModelPricing[] = [
  */
 export function getPricing(provider: string, model: string): ModelPricing | undefined {
   return PRICING_DATABASE.find(
-    p => p.provider === provider && p.model === model
+    p => p.provider === provider && (p.model === model || p.aliases?.includes(model))
   );
 }
 
@@ -520,7 +552,22 @@ export function getAllProviders(): string[] {
  * Check if pricing data is stale (>30 days old)
  */
 export function isPricingStale(lastUpdated: string, maxAgeDays = 30): boolean {
-  const age = Date.now() - new Date(lastUpdated).getTime();
+  const timestamp = Date.parse(lastUpdated);
+  if (!Number.isFinite(timestamp) || timestamp > Date.now()) return true;
+  const age = Date.now() - timestamp;
   const ageInDays = age / (1000 * 60 * 60 * 24);
   return ageInDays > maxAgeDays;
 }
+
+/** Verification applies only to the specific linked rate, not to the entire catalog. */
+export function getPricingStatus(source: PricingSource): 'verified' | 'stale' | 'unverified' {
+  if (!source.verifiedAt || !Number.isFinite(Date.parse(source.verifiedAt))
+    || Date.parse(source.verifiedAt) > Date.now()) return 'unverified';
+  return isPricingStale(source.verifiedAt) ? 'stale' : 'verified';
+}
+
+/** Default comparison excludes unverified, deprecated, retired, and local-only entries. */
+export const DEFAULT_PRICING_MODELS = PRICING_DATABASE
+  .filter(pricing => getPricingStatus(pricing.source) !== 'unverified'
+    && !pricing.status && pricing.provider !== 'ollama')
+  .map(({ provider, model }) => ({ provider, model }));

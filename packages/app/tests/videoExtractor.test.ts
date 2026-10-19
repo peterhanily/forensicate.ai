@@ -118,6 +118,8 @@ describe('Video Extractor', () => {
       expect(result.fileType).toBe('video');
       expect(result.filename).toBe('video.mp4');
       expect(result.layers.some(l => l.type === 'video-metadata' && l.content.includes('test video description'))).toBe(true);
+      expect(result.warnings.some(warning => warning.includes('No speech transcription, frame analysis or OCR'))).toBe(true);
+      expect(result.allText).not.toContain('No speech transcription');
     });
 
     it('extracts copyright from MP4 cprt atom', async () => {

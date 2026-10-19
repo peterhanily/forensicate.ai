@@ -2,10 +2,9 @@
 
 import { scanPrompt, getEnabledRules, ruleCategories } from '@forensicate/scanner';
 import type { Env, ScanRequest, ScanResponse, TenantMetadata } from '../types';
-import { createErrorResponse, validateScanRequest } from '../utils';
+import { createErrorResponse, validateScanRequest, readBoundedJson, RequestBodyTooLargeError } from '../utils';
 
-const MAX_TEXT_LENGTH = 100000; // 100KB
-const SCAN_TIMEOUT_MS = 5000; // 5 seconds
+const MAX_TEXT_LENGTH = 100000; // UTF-16 code units, matching String.length
 
 /**
  * POST /v1/scan - Scan a single prompt
@@ -20,15 +19,25 @@ export async function handleScan(
   try {
     // Validate Content-Type
     const contentType = request.headers.get('Content-Type');
-    if (!contentType || !contentType.includes('application/json')) {
+    if (contentType?.split(';', 1)[0].trim().toLowerCase() !== 'application/json') {
       return createErrorResponse('INVALID_CONTENT_TYPE', 'Content-Type must be application/json', 415);
     }
 
+    const configuredMaxLength = Number(env.MAX_TEXT_LENGTH);
+    const maxTextLength = Number.isSafeInteger(configuredMaxLength) && configuredMaxLength > 0
+      ? Math.min(configuredMaxLength, MAX_TEXT_LENGTH)
+      : MAX_TEXT_LENGTH;
+    // A JSON-escaped UTF-16 code unit uses at most six bytes. Allow space for metadata.
+    const maxBodyBytes = maxTextLength * 6 + 8192;
+
     // Parse request body
-    let body: ScanRequest;
+    let body: unknown;
     try {
-      body = await request.json();
-    } catch {
+      body = await readBoundedJson(request, maxBodyBytes);
+    } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return createErrorResponse('REQUEST_TOO_LARGE', 'Request body exceeds maximum size', 413);
+      }
       return createErrorResponse('INVALID_JSON', 'Request body must be valid JSON', 400);
     }
 
@@ -38,13 +47,13 @@ export async function handleScan(
       return createErrorResponse('VALIDATION_ERROR', validation.error!, 400);
     }
 
-    const { text, confidenceThreshold = 0, includePositions = false } = body;
+    const { text, confidenceThreshold = 0, includePositions = false } = body as ScanRequest;
 
     // Check text length
-    if (text.length > MAX_TEXT_LENGTH) {
+    if (text.length > maxTextLength) {
       return createErrorResponse(
         'TEXT_TOO_LONG',
-        `Text length ${text.length} exceeds maximum ${MAX_TEXT_LENGTH} characters`,
+        `Text length ${text.length} exceeds maximum ${maxTextLength} characters`,
         413
       );
     }
@@ -52,16 +61,9 @@ export async function handleScan(
     // Get enabled rules
     const rules = getEnabledRules();
 
-    // Scan text against rules
-    // Note: scanPrompt runs synchronously so Promise.race cannot interrupt it mid-execution.
-    // The Cloudflare Workers CPU time limit (configured in wrangler.toml) is the real
-    // protection against long-running scans. This timeout only guards async operations.
-    const result = await Promise.race<ReturnType<typeof scanPrompt>>([
-      Promise.resolve(scanPrompt(text, rules, confidenceThreshold)),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Scan timeout exceeded')), SCAN_TIMEOUT_MS)
-      ) as never
-    ]);
+    // Scanning is synchronous: only the Workers CPU limit can interrupt execution.
+    // A timer/Promise.race would run after scanning and would not enforce a deadline.
+    const result = scanPrompt(text, rules, confidenceThreshold);
 
     const processingTimeMs = Date.now() - startTime;
 
@@ -87,6 +89,7 @@ export async function handleScan(
       success: true,
       data: {
         textLength: text.length,
+        isPositive: result.isPositive,
         confidence: result.confidence,
         riskLevel,
         matchCount: result.matchedRules.length,

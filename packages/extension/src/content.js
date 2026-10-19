@@ -1,5 +1,6 @@
 // Content script for showing scan results as an overlay bubble
 let currentBubble = null;
+let bubbleHideTimer;
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -8,6 +9,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ loaded: true });
   } else if (message.type === 'SHOW_SCAN_RESULT') {
     showScanBubble(message.result, message.fullResult);
+    sendResponse({ success: true });
+  } else if (message.type === 'SHOW_SCAN_ERROR') {
+    showScanError(message.message);
     sendResponse({ success: true });
   } else if (message.type === 'HIDE_BUBBLE') {
     hideBubble();
@@ -37,7 +41,29 @@ function showScanBubble(result, fullResult) {
   positionBubble(currentBubble, rect);
 
   // Auto-hide after 30 seconds
-  setTimeout(() => hideBubble(), 30000);
+  bubbleHideTimer = setTimeout(() => hideBubble(), 30000);
+}
+
+function showScanError(message) {
+  hideBubble();
+  const bubble = document.createElement('div');
+  bubble.id = 'forensicate-ai-bubble';
+  bubble.setAttribute('role', 'alert');
+  bubble.style.cssText = 'position:fixed;z-index:2147483647;right:20px;bottom:20px;max-width:400px;box-sizing:border-box;padding:16px;background:#030712;color:#f9fafb;border:2px solid #c9a227;border-radius:12px;font:14px/1.5 system-ui,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.5)';
+  const title = document.createElement('strong');
+  title.textContent = 'Forensicate.ai: Not scanned';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.textContent = '✕';
+  close.setAttribute('aria-label', 'Close scan error');
+  close.style.cssText = 'float:right;margin-left:16px;background:transparent;border:0;color:#f9fafb;cursor:pointer;font:inherit';
+  close.addEventListener('click', hideBubble);
+  const detail = document.createElement('p');
+  detail.style.cssText = 'margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere';
+  detail.textContent = String(message || 'Scanning failed. Please try again.');
+  bubble.append(close, title, detail);
+  currentBubble = bubble;
+  document.body.appendChild(bubble);
 }
 
 function createBubbleElement(result, fullResult) {
@@ -275,7 +301,8 @@ function createBubbleElement(result, fullResult) {
     const btn = bubble.querySelector('#forensicate-save');
     btn.textContent = '✅ Saved!';
     btn.disabled = true;
-    setTimeout(hideBubble, 1500);
+    clearTimeout(bubbleHideTimer);
+    bubbleHideTimer = setTimeout(hideBubble, 1500);
   });
 
   bubble.querySelector('#forensicate-library').addEventListener('click', () => {
@@ -365,6 +392,8 @@ function positionBubble(bubble, selectionRect) {
 }
 
 function hideBubble() {
+  clearTimeout(bubbleHideTimer);
+  clearTimeout(scrollTimeout);
   if (currentBubble) {
     currentBubble.remove();
     currentBubble = null;
