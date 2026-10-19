@@ -1188,19 +1188,30 @@ export default function Scanner() {
  showToastMessage('No valid rules found in YAML file', 3000);
  return;
  }
- // Add rules to localRules; re-importing a file replaces rules with the same IDs
- const importedIds = new Set(result.rules.map(rule => rule.id));
- const replaced = localRules.filter(rule => importedIds.has(rule.id)).length;
- setLocalRules(prev => [...prev.filter(rule => !importedIds.has(rule.id)), ...result.rules]);
+ // Re-importing a file replaces the rules already in its section. A rule from another file
+ // with the same ID (files without ids share one) is kept, and the new rule gets a new ID.
+ const sameFileIds = new Set(customCategories.find(c => c.id === result.category.id)?.rules.map(rule => rule.id));
+ const existingIds = new Set(localRules.map(rule => rule.id));
+ const takenIds = new Set(existingIds);
+ const imported = result.rules.map(rule => {
+ if (!takenIds.has(rule.id) || sameFileIds.has(rule.id)) return rule;
+ let copy = 2;
+ while (takenIds.has(`${rule.id}-${copy}`)) copy++;
+ takenIds.add(`${rule.id}-${copy}`);
+ return { ...rule, id: `${rule.id}-${copy}` };
+ });
+ const replacedIds = new Set(imported.map(rule => rule.id).filter(id => sameFileIds.has(id) && existingIds.has(id)));
+ setLocalRules(prev => [...prev.filter(rule => !replacedIds.has(rule.id)), ...imported]);
  // Add category
  setCustomCategories(prev => {
  const existing = prev.find(c => c.id === result.category.id);
  if (existing) {
  return prev.map(cat => cat.id === result.category.id
- ? { ...cat, rules: [...cat.rules.filter(rule => !importedIds.has(rule.id)), ...result.rules] } : cat);
+ ? { ...cat, rules: [...cat.rules.filter(rule => !replacedIds.has(rule.id)), ...imported] } : cat);
  }
- return [...prev, result.category];
+ return [...prev, { ...result.category, rules: imported }];
  });
+ const replaced = replacedIds.size;
  const replacedNote = replaced ? `, replacing ${replaced} existing rule${replaced !== 1 ? 's' : ''} with the same ID` : '';
  showToastMessage(`✅ Imported ${result.rules.length} rule${result.rules.length !== 1 ? 's' : ''} from ${file.name}${replacedNote}`, 3000);
  lastScannedRef.current = '';

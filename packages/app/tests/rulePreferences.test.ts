@@ -14,7 +14,7 @@ const original: DetectionRule = {
 const updated: DetectionRule = { ...original, keywords: ['updated fixture'], description: 'Updated description' };
 const custom: DetectionRule = { ...original, id: 'custom-fixture', isCustom: true };
 const legacy = (rules: DetectionRule[]) => ({ localRules: rules, customCategories: [] });
-const known = { [original.id]: [legacyRuleIdentifier(original)] };
+const known = new Set([legacyRuleIdentifier(original)]);
 const config = (rules: PersistedConfig['rules']): PersistedConfig => ({
   version: CONFIG_VERSION, savedAt: '2026-10-16T00:00:00Z', rules,
   prompts: { localPrompts: [], customPromptCategories: [] },
@@ -81,7 +81,7 @@ describe('versioned rule preferences', () => {
 
   it('recognizes every snapshot from the pre-migration maintained scanner', () => {
     for (const rule of allRules) {
-      expect((legacySignatures as Record<string, string[]>)[rule.id]).toContain(legacyRuleIdentifier(rule));
+      expect(legacySignatures).toContain(legacyRuleIdentifier(rule));
     }
   });
 
@@ -95,11 +95,13 @@ describe('versioned rule preferences', () => {
     }
   });
 
-  it('saves one rule per ID, keeping the latest copy', () => {
+  it('saves each custom rule under a unique ID and keeps the latest built-in edit', () => {
     const imported = { ...custom, id: 'yaml-plugin' };
-    const newer = { ...imported, keywords: ['newer fixture'] };
-    const preferences = createRulePreferences([imported, original, newer, { ...original, enabled: false }], [], [original]);
-    expect(preferences.localRules).toEqual([newer]);
+    const otherFile = { ...imported, keywords: ['other file fixture'] };
+    const preferences = createRulePreferences(
+      [imported, original, imported, otherFile, { ...custom, id: 'yaml-plugin-2' }, { ...original, enabled: false }], [], [original]);
+    expect(preferences.localRules.map(rule => rule.id)).toEqual(['yaml-plugin', 'yaml-plugin-3', 'yaml-plugin-2']);
+    expect(preferences.localRules[1]).toEqual({ ...otherFile, id: 'yaml-plugin-3' });
     expect(preferences.builtInOverrides?.map(override => override.values)).toEqual([{ enabled: false }]);
     expect(validateConfig(config(preferences))).toBe(true);
   });

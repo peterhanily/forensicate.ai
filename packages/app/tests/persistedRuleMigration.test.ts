@@ -64,16 +64,19 @@ describe('saved-rule migration through the app hook', () => {
     hook.unmount();
   });
 
+  const yamlRule = { id: 'yaml-plugin', name: 'Imported', description: 'From YAML', type: 'keyword' as const, severity: 'high' as const, enabled: true, keywords: ['zebra canary'] };
   it.each([
-    ['re-imported YAML rules that share an ID', (legacy: PersistedConfig) => {
-      const yamlRule = { id: 'yaml-plugin', name: 'Imported', description: 'From YAML', type: 'keyword' as const, severity: 'high' as const, enabled: true, keywords: ['zebra canary'] };
-      legacy.rules.localRules = [...allRules, yamlRule, { ...yamlRule, keywords: ['newer canary'] }];
+    ['the same YAML file imported twice', ['yaml-plugin'], (legacy: PersistedConfig) => {
+      legacy.rules.localRules = [...allRules, yamlRule, yamlRule];
     }],
-    ['a built-in value the editor cannot produce', (legacy: PersistedConfig) => {
+    ['two YAML files without ids', ['yaml-plugin', 'yaml-plugin-2'], (legacy: PersistedConfig) => {
+      legacy.rules.localRules = [...allRules, yamlRule, { ...yamlRule, name: 'Other file', keywords: ['yak canary'] }];
+    }],
+    ['a built-in value the editor cannot produce', [], (legacy: PersistedConfig) => {
       legacy.rules.localRules = allRules.map((rule, index) => index === 0 ? { ...rule, weight: 150 }
         : index === 1 ? { ...rule, enabled: 'false' as unknown as boolean } : rule);
     }],
-  ])('keeps every setting across reloads after %s', async (_label, mutate) => {
+  ])('keeps every setting across reloads after %s', async (_label, savedYamlIds, mutate) => {
     const legacy = storedConfig();
     mutate(legacy);
     legacy.prompts.customPromptCategories = [{ id: 'custom-prompts', name: 'Personal', description: 'Notes', prompts: [] }];
@@ -89,7 +92,7 @@ describe('saved-rule migration through the app hook', () => {
       hook.unmount();
     }
     const saved: PersistedConfig = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    expect(saved.rules.localRules.filter(rule => rule.id === 'yaml-plugin').length).toBeLessThanOrEqual(1);
+    expect(saved.rules.localRules.map(rule => rule.id).filter(id => id.startsWith('yaml-'))).toEqual(savedYamlIds);
   });
 
   it('keeps saved settings it cannot read until an explicit reset', async () => {

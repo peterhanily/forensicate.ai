@@ -69,7 +69,7 @@ function getDefaultPrompts(): PromptCategory[] {
 
 // Ignore shared or saved thresholds the 0-99 slider cannot produce.
 function validThreshold(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 99 ? value : undefined;
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 99 ? value as number : undefined;
 }
 
 function resolveSavedRules(config: PersistedConfig) {
@@ -82,8 +82,7 @@ function resolveSavedRules(config: PersistedConfig) {
   };
 }
 
-// Read initial config without mutating browser state; React may call this twice.
-function loadInitialConfig(): {
+interface InitialConfig {
   source: LoadSource;
   rules: DetectionRule[];
   customCategories: RuleCategory[];
@@ -98,7 +97,28 @@ function loadInitialConfig(): {
   autoImportCommunityPrompts: boolean;
   tourCompleted: boolean;
   migrationNotice: string | null;
-} {
+}
+
+function fromStoredConfig(storedConfig: PersistedConfig): InitialConfig {
+  return {
+    source: 'localStorage',
+    ...resolveSavedRules(storedConfig),
+    customCategories: storedConfig.rules.customCategories,
+    prompts: storedConfig.prompts.localPrompts,
+    customPromptCategories: storedConfig.prompts.customPromptCategories,
+    promptText: '',
+    savedAt: new Date(storedConfig.savedAt),
+    expandedRuleCategory: storedConfig.ui?.expandedRuleCategory ?? null,
+    expandedPromptCategory: storedConfig.ui?.expandedPromptCategory ?? null,
+    confidenceThreshold: validThreshold(storedConfig.ui?.confidenceThreshold) ?? 50,
+    autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
+    autoImportCommunityPrompts: storedConfig.ui?.autoImportCommunityPrompts ?? true,
+    tourCompleted: storedConfig.ui?.tourCompleted ?? false,
+  };
+}
+
+// Read initial config without mutating browser state; React may call this twice.
+function loadInitialConfig(): InitialConfig {
   // Priority: URL > localStorage > defaults
   const urlConfig = getConfigFromUrl();
   if (urlConfig) {
@@ -108,6 +128,20 @@ function loadInitialConfig(): {
     // Keep defaults and place shared extension prompts in custom categories.
     const defaultPrompts = getDefaultPrompts();
     const urlLocalPrompts = urlConfig.prompts.localPrompts || [];
+
+    // Browser extension hand-offs ('1') carry text and snippets, not settings. Keep the
+    // saved settings; the latest snippets replace a section with the same ID.
+    if (urlConfig.version === '1' && storedConfig) {
+      const saved = fromStoredConfig(storedConfig);
+      const snippets = [...urlConfig.prompts.customPromptCategories, ...urlLocalPrompts];
+      const snippetIds = new Set(snippets.map(category => category.id));
+      return {
+        ...saved,
+        source: 'url',
+        customPromptCategories: [...saved.customPromptCategories.filter(category => !snippetIds.has(category.id)), ...snippets],
+        promptText: urlConfig.session?.promptText || '',
+      };
+    }
 
     return {
       source: 'url',
@@ -131,23 +165,7 @@ function loadInitialConfig(): {
   }
 
   const storedConfig = loadConfig();
-  if (storedConfig) {
-    return {
-      source: 'localStorage',
-      ...resolveSavedRules(storedConfig),
-      customCategories: storedConfig.rules.customCategories,
-      prompts: storedConfig.prompts.localPrompts,
-      customPromptCategories: storedConfig.prompts.customPromptCategories,
-      promptText: '',
-      savedAt: new Date(storedConfig.savedAt),
-      expandedRuleCategory: storedConfig.ui?.expandedRuleCategory ?? null,
-      expandedPromptCategory: storedConfig.ui?.expandedPromptCategory ?? null,
-      confidenceThreshold: validThreshold(storedConfig.ui?.confidenceThreshold) ?? 50,
-      autoImportCommunityRules: storedConfig.ui?.autoImportCommunityRules ?? true,
-      autoImportCommunityPrompts: storedConfig.ui?.autoImportCommunityPrompts ?? true,
-      tourCompleted: storedConfig.ui?.tourCompleted ?? false,
-    };
-  }
+  if (storedConfig) return fromStoredConfig(storedConfig);
 
   return {
     source: 'defaults',
@@ -205,6 +223,15 @@ export function usePersistedConfig(): UsePersistedConfigReturn {
     }
     initialLoadDone.current = true;
   }, [initialConfig.source]);
+
+  // A share link opened in this tab changes only the fragment, which does not reload the page.
+  useEffect(() => {
+    const loadSharedConfig = () => {
+      if (getConfigFromUrl()) window.location.reload();
+    };
+    window.addEventListener('hashchange', loadSharedConfig);
+    return () => window.removeEventListener('hashchange', loadSharedConfig);
+  }, []);
 
   // Auto-save to localStorage on changes (debounced)
   // Note: promptText is NOT saved to localStorage, only to share URLs

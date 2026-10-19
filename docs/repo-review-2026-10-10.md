@@ -291,27 +291,40 @@ plausible) and rejected 4. These were fixed before publication:
   that the app's own autosave wrote, such as duplicate IDs from a re-imported
   YAML file or out-of-range values from a hand-edited JSON import. The next
   visit then silently replaced every setting with defaults. Saving now writes
-  only data the loader accepts: one rule per ID, with invalid values and
-  malformed custom rules dropped. A YAML re-import replaces rules with the same
-  ID and says so. A supported-version record that still fails validation is
-  kept, and autosave cannot overwrite it until reset.
+  only data the loader accepts:
+  - each ID once: identical copies collapse, and a different custom rule that
+    reuses an ID is saved under a new ID
+  - invalid values and malformed custom rules are dropped
+
+  A YAML re-import replaces the rules in that file's section and says so. A
+  supported-version record that still fails validation is kept, and autosave
+  cannot overwrite it until reset.
 - **Extension links were rejected.** The published extension's hand-off links
   (`version: '1'`) were refused. They load again, including base64 payloads
-  whose `+` signs query parsing turns into spaces.
+  whose `+` signs query parsing turns into spaces. Opening one no longer
+  replaces a returning user's saved rules and prompt sections, as it already
+  did on the live site: the text opens, and the snippets replace only their own
+  section.
 - **Legacy recognition was incomplete.** The table now covers every rule
-  definition the deployed app shipped: 141 more definitions across 122 IDs,
-  from commits `6e4ac85` to `5962e5b`. Untouched settings saved from February
-  to March 2026 would otherwise have shown up to 109 "edits" and kept stale
-  definitions permanently. Identifiers are now 32 bits each, which keeps the JS
-  bundle within the unchanged budget.
+  definition the deployed app shipped:
+  - 141 more definitions across 122 IDs, from commits `6e4ac85` to `5962e5b`
+  - 22 from the single-file builds served on 4–8 February 2026, before the
+    current history began; settings autosaved by those builds in Chrome are now
+    fully recognized
+
+  Untouched settings from February and March 2026 would otherwise have shown up
+  to 109 "edits" and kept stale definitions permanently. The table is now a
+  flat list of 32-bit identifiers, which keeps the JS bundle within the
+  unchanged budget.
 - **NLP false positives.** Once their tag check worked, `nlp-pos-imperative`
   and `nlp-sentence-structure` flagged ordinary instructions as injection: 16
   of 20 benign prompts flipped, with no change on the attack corpora. Both are
   now off by default, and old enabled flags for them are ignored.
 - **Share links over the server limit.** GitHub Pages returns 414 for request
   targets over about 8 KB. New links carry the configuration in the URL
-  fragment instead. Thresholds outside 0–99 are ignored in links and saved
-  settings.
+  fragment instead, and the scanner reloads when one is opened in its own tab.
+  Thresholds other than whole numbers from 0 to 99 are ignored in links and
+  saved settings.
 - **PDF scripts mislabeled.** Document-level PDF JavaScript is no longer
   reported as zero/tiny-font hidden text. Suspicious calls in it are still
   flagged by `f-pdf-javascript`.
@@ -321,7 +334,7 @@ plausible) and rejected 4. These were fixed before publication:
     (both upload actions skip dotfiles by default).
   - The sitemap and structured data use the trailing-slash canonical URLs.
   - The Action's setup step no longer caches the calling repository's
-    dependencies.
+    dependencies, and its reports show the number of rules actually run.
 
 Deferred, with reasons, to the remaining-work table below:
 
@@ -335,8 +348,10 @@ Deferred, with reasons, to the remaining-work table below:
   - raw file names go into PR comments
   - `.cursorrules` and `.env` files are never selected
 - **Pre-existing web app issues:**
-  - opening a share link replaces the recipient's saved rules and prompts
+  - opening a share link from the app replaces the recipient's saved rules and
+    prompts
   - PDF.js drops off-page and format-character glyphs before extraction
+  - YAML-imported rules never appear in the rules panel
   - YAML quoted escapes are not decoded
   - older builds misread version 2 records, which matters for a rollback or a
     tab left open across the deploy
@@ -362,12 +377,14 @@ retained below.
 | --- | --- | --- |
 | P1 | [API](../packages/api/src/index.ts) still returns 501 for batch/rules/usage. Daily/monthly quotas and tenant feature fields are declared but not enforced. | Treat as unfinished source integration. Implement accounting/entitlements or remove those contractual promises before onboarding users. |
 | P1 | GitHub `main` had no branch protection or rulesets at the 10 October inspection. PRs #28/#33/#37 merged despite failed checks. | Require reviewed PRs and required checks. The local deployment workflow now consumes a validated artifact, but still needs hosted qualification after publication. Account settings have not been changed. |
-| P1 | Opening any share link replaces the recipient's saved custom rules, sections and prompt sections without confirmation. Extension hand-off links, which carry only text, do the same. This predates the release. | Keep URL state in memory until the user adopts it, or merge it, and treat text-only hand-offs as session state. Back up the previous record first. |
+| P1 | Opening a share link generated by the app replaces the recipient's saved custom rules, sections and prompt sections without confirmation. This predates the release. Extension hand-off links now keep saved settings. | Keep shared state in memory until the user adopts it, or merge it. Back up the previous record first. |
 | P1 | The GitHub Action scans whole files with every default rule at threshold 50. Structural heuristics such as `h-nested-delimiters` flagged 92–98% of a benign README/source corpus. | Before promoting the action, use a whole-file rule profile or calibrate those heuristics on a benign corpus. Also review the `fail-on-finding` and `comment-on-pr` defaults. |
 | P2 | Action follow-ups from the 19 October review:<br>- discovered symlinks abort all-mode scans<br>- the composite's pnpm setup replaces the caller's pnpm, PATH and store<br>- `extensions` and `max-file-size-kb` are ignored<br>- raw file names reach PR comments<br>- `.cursorrules` and `.env` files are never selected | Fix them in one action change, each with a regression test. Run the composite against a scratch consumer repository. |
 | P2 | Older builds read version 2 records as version 1 and reset built-in preferences: after a rollback, or in a tab left open across a deploy. | Fix forward rather than roll back. Otherwise write version 2 under a new key and keep the version 1 record for one release. |
 | P2 | PDF.js removes glyphs outside the crop box and `\p{Cf}` characters before text extraction, so those payloads are never scanned. | Add an operator-list pass for the off-page and hidden layers, with real-PDF fixtures. |
+| P2 | YAML-imported rules are scanned but never listed: custom sections show only `custom-` rule IDs, so they cannot be seen, edited or disabled in the rules panel. | List a custom section's rules by membership, not ID prefix, and add a UI test that imports a file and toggles its rule. |
 | P3 | The YAML import keeps escape sequences inside quoted scalars, so a double-quoted regex such as `"\\s"` never matches. | Decode YAML escapes in `unquote` (rule files and config), with a test for the example pack. |
+| P3 | Smaller web app follow-ups:<br>- importing a JSON export from the old site re-enables the two opt-in NLP checks, because imports bypass migration<br>- crafted links with non-string fields crash the scanner until the fragment is removed<br>- SVG `<script>` content is still described as zero/tiny-font text<br>- the entropy heuristic flags files that are almost entirely code, such as a PDF holding only a form script<br>- the extension's query-string hand-offs still get 414 for very long text | Route imports through the same migration, validate shared field types, and describe hidden layers by their location. Calibrate structural heuristics together with the Action's profile. Move extension hand-offs to the fragment in the next extension release. |
 | P3 | Unpublished packages:<br>- the Python CLI exits 2 on BOM-prefixed configs<br>- the TypeScript CLI rejects symlinked configs and reports a partial length when oversized<br>- two extension badge/result edge cases | Fix them before publishing those packages. |
 | P2 | [Worker config](../packages/api/wrangler.toml) retains placeholder KV IDs, 2025 compatibility date, and legacy Durable Object migration. | Audit actual account resources/migration history, choose deployment environments, then plan a tested runtime migration. Dry-run bundling does not establish production readiness. |
 | P2 | Ambiguous legacy rule edits are intentionally retained during migration. | Review any migration notice; do not reset intentional edits merely to obtain fresh defaults. Version 2 now tracks overrides separately. |

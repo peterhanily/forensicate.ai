@@ -1,6 +1,6 @@
 import { allRules, rehydrateHeuristics, type DetectionRule } from '@forensicate/scanner';
 import type { BuiltInRuleOverride, PersistedConfig } from './types';
-import legacySignatures from './legacyRuleSignatures.json';
+import legacyIdentifiers from './legacyRuleSignatures.json';
 import { fingerprint, legacyRuleIdentifier, ruleSignature } from './ruleSignature';
 
 type StoredRules = PersistedConfig['rules'];
@@ -20,6 +20,8 @@ const ruleSeverities = ['low', 'medium', 'high', 'critical'];
 // These checks could never match before version 2 (a tag lookup bug) and are now off by
 // default, so an enabled flag in a version 1 snapshot records no working choice.
 const neverRanBeforeVersion2 = new Set(['nlp-pos-imperative', 'nlp-sentence-structure']);
+
+const knownLegacyIdentifiers = new Set(legacyIdentifiers);
 
 function clone(rule: DetectionRule): DetectionRule {
   return JSON.parse(JSON.stringify(rule));
@@ -57,14 +59,33 @@ export function createRulePreferences(
   const builtInOverrides: BuiltInRuleOverride[] = [];
   const localRules: DetectionRule[] = [];
   // Save only what the loader accepts, or a single invalid entry would discard every
-  // setting. A later rule with the same ID (such as a re-imported file) replaces an earlier one.
-  const latestById = new Map(rules.map(rule => [rule.id, rule]));
-  for (const rule of latestById.values()) {
-    const original = byId.get(rule.id);
-    if (!original) {
-      if (isStorableRule(rule)) localRules.push(clone(rule));
+  // setting. Each ID is saved once: identical copies collapse, a different custom rule
+  // that reuses an ID (two YAML files without ids) gets a new one, and the latest edit
+  // of a built-in wins.
+  const latestBuiltIns = new Map<string, DetectionRule>();
+  const savedIds = new Set<string>();
+  const savedDefinitions = new Set<string>();
+  const takenIds = new Set([...byId.keys(), ...rules.map(rule => rule.id)]);
+  for (const rule of rules) {
+    if (byId.has(rule.id)) {
+      latestBuiltIns.set(rule.id, rule);
       continue;
     }
+    const definition = JSON.stringify(rule);
+    if (!isStorableRule(rule) || savedDefinitions.has(definition)) continue;
+    savedDefinitions.add(definition);
+    let id = rule.id;
+    if (savedIds.has(id)) {
+      let copy = 2;
+      while (takenIds.has(`${rule.id}-${copy}`)) copy++;
+      id = `${rule.id}-${copy}`;
+    }
+    savedIds.add(id);
+    takenIds.add(id);
+    localRules.push({ ...clone(rule), id });
+  }
+  for (const rule of latestBuiltIns.values()) {
+    const original = byId.get(rule.id)!;
     const values: BuiltInRuleOverride['values'] = {};
     const unset: RuleField[] = [];
     for (const field of ruleFields) {
@@ -94,7 +115,7 @@ export function createRulePreferences(
 export function resolveRulePreferences(
   stored: StoredRules,
   defaults: DetectionRule[] = allRules,
-  knownLegacy: Record<string, string[]> = legacySignatures,
+  knownLegacy: ReadonlySet<string> = knownLegacyIdentifiers,
 ): { rules: DetectionRule[]; preservedLegacyEdits: number } {
   const byId = new Map(defaults.map(rule => [rule.id, rule]));
   if (stored.builtInOverrides) {
@@ -125,7 +146,7 @@ export function resolveRulePreferences(
   const migrated = stored.localRules.map(rule => {
     const current = byId.get(rule.id);
     if (!current) return clone(rule);
-    if (ruleSignature(rule) === ruleSignature(current) || knownLegacy[rule.id]?.includes(legacyRuleIdentifier(rule))) {
+    if (ruleSignature(rule) === ruleSignature(current) || knownLegacy.has(legacyRuleIdentifier(rule))) {
       const keepEnabled = typeof rule.enabled === 'boolean' && !neverRanBeforeVersion2.has(rule.id);
       const migratedRule = { ...clone(current), enabled: keepEnabled ? rule.enabled : current.enabled };
       if (rule.weight !== undefined) migratedRule.weight = rule.weight;

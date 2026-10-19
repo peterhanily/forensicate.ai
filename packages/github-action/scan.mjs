@@ -63,6 +63,7 @@ if (fileConfig.categories || fileConfig.disableCategories || fileConfig.disableR
   configuredRules = allRules.filter(r => enabledRuleIds.has(r.id));
   console.log(`  Config filtered rules: ${configuredRules.length}/${allRules.length}`);
 }
+const activeRuleCount = (configuredRules ?? getEnabledRules()).length;
 
 // Extensions considered scannable (text-like files)
 const SCANNABLE_EXTENSIONS = new Set([
@@ -451,7 +452,7 @@ function generatePrComment(findings, filesScanned, maxConfidence) {
     lines.push(`| Confidence threshold | ${CONFIDENCE_THRESHOLD}% |`);
     lines.push('');
     lines.push('---');
-    lines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 182 detection rules*');
+    lines.push(`*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · ${activeRuleCount} detection rules*`);
     return lines.join('\n');
   }
 
@@ -550,7 +551,7 @@ function generatePrComment(findings, filesScanned, maxConfidence) {
   }
 
   lines.push('---');
-  lines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 182 detection rules*');
+  lines.push(`*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · ${activeRuleCount} detection rules*`);
 
   return lines.join('\n');
 }
@@ -782,7 +783,7 @@ async function main() {
   }
 
   summaryLines.push('---');
-  summaryLines.push('*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · 182 detection rules*');
+  summaryLines.push(`*Scanned by [Forensicate.ai](https://github.com/peterhanily/forensicate.ai) · ${activeRuleCount} detection rules*`);
 
   const summaryContent = summaryLines.join('\n');
 

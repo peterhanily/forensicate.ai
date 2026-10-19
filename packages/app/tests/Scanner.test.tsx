@@ -324,4 +324,30 @@ describe('Scanner', () => {
       else localStorage.setItem(STORAGE_KEY, previous);
     }
   });
+
+  it('keeps rules from two different YAML files that have no ids', async () => {
+    const previous = localStorage.getItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
+    const files = [
+      new File(['name: Zebra Rule\ntype: keyword\nseverity: high\nkeywords:\n  - "zebra canary"\n'], 'zebra.yaml'),
+      new File(['name: Yak Rule\ntype: keyword\nseverity: high\nkeywords:\n  - "yak canary"\n'], 'yak.yaml'),
+    ];
+    const settle = (ms: number) => act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); });
+    try {
+      const view = render(<Scanner />);
+      for (const file of files) {
+        fireEvent.change(screen.getByLabelText('Import YAML rule file'), { target: { files: [file] } });
+        await settle(100);
+      }
+      expect(screen.queryByText(/replacing/)).not.toBeInTheDocument();
+      await settle(600);
+      view.unmount();
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+      expect(saved.rules.localRules.map((rule: { id: string; name: string }) => `${rule.id}:${rule.name}`))
+        .toEqual(['yaml-plugin:Zebra Rule', 'yaml-plugin-2:Yak Rule']);
+    } finally {
+      if (previous === null) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, previous);
+    }
+  });
 });

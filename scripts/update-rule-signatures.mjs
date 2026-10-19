@@ -8,10 +8,9 @@ const path = new URL('../packages/app/src/lib/storage/legacyRuleSignatures.json'
 const known = JSON.parse(await readFile(path, 'utf8'));
 let added = 0;
 for (const rule of allRules) {
-  known[rule.id] ??= [];
   const signature = legacyRuleIdentifier(rule);
-  if (!known[rule.id].includes(signature)) {
-    known[rule.id].push(signature);
+  if (!known.includes(signature)) {
+    known.push(signature);
     added++;
   }
 }

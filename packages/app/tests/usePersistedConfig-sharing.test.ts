@@ -124,7 +124,7 @@ describe('shared configuration round trips', () => {
     expect(result.current.confidenceThreshold).toBe(70);
   });
 
-  it.each([1000, -1, '50', { value: 50 }, null])('ignores a shared threshold the slider cannot produce: %j', async threshold => {
+  it.each([1000, -1, 50.5, '50', { value: 50 }, null])('ignores a shared threshold the slider cannot produce: %j', async threshold => {
     saveConfig(sharedConfig({ ui: { confidenceThreshold: 70 } }));
     const link = sharedConfig({ ui: { confidenceThreshold: threshold as number } });
     window.history.replaceState(null, '', `/scanner#?config=${encodeConfig(link)}`);
@@ -156,5 +156,48 @@ describe('shared configuration round trips', () => {
     const { result } = renderHook(() => usePersistedConfig());
     expect(result.current.loadSource).toBe('url');
     expect(result.current.customPromptCategories).toEqual([snippets]);
+  });
+
+  it('keeps a returning user\'s saved settings when an extension hand-off opens', async () => {
+    const customRule: DetectionRule = { id: 'custom-kept', name: 'Kept rule', description: 'Saved fixture', type: 'keyword', severity: 'high', enabled: true, keywords: ['kept canary'], isCustom: true };
+    const personal = { id: 'custom-prompt-section-kept', name: 'Personal', description: 'Saved', prompts: [] };
+    const oldSnippets = { id: 'extension-snippets', name: 'Extension Snippets', description: 'Old', prompts: [] };
+    saveConfig(sharedConfig({
+      rules: createRulePreferences([customRule], [{ id: 'custom-section', name: 'Mine', description: 'Saved', rules: [customRule], isCustom: true }]),
+      prompts: { localPrompts: [], customPromptCategories: [personal, oldSnippets] },
+      ui: { confidenceThreshold: 70, tourCompleted: true },
+    }));
+    const snippets = { ...oldSnippets, description: 'Latest export', prompts: [{ id: 'ext-2', name: 'Snippet', content: 'Snippet text', tags: [] }] };
+    window.history.replaceState(null, '', extensionLink(extensionConfig('Selected page text', [snippets])));
+
+    const { result } = renderHook(() => usePersistedConfig());
+    expect(result.current.loadSource).toBe('url');
+    expect(result.current.initialPromptText).toBe('Selected page text');
+    expect(result.current.localRules.find(rule => rule.id === customRule.id)).toEqual(customRule);
+    expect(result.current.customCategories.map(category => category.id)).toEqual(['custom-section']);
+    expect(result.current.customPromptCategories).toEqual([personal, snippets]);
+    expect(result.current.confidenceThreshold).toBe(70);
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    const saved: PersistedConfig = JSON.parse(localStorage.getItem('forensicate_config')!);
+    expect(saved.rules.localRules).toEqual([customRule]);
+    expect(saved.prompts.customPromptCategories).toEqual([personal, snippets]);
+  });
+
+  it('reloads to open a share link pasted into the scanner tab', () => {
+    const { unmount } = renderHook(() => usePersistedConfig());
+    const original = window.location;
+    const reload = vi.fn();
+    delete (window as { location?: Location }).location;
+    (window as unknown as { location: object }).location = { hash: `#?config=${encodeConfig(sharedConfig())}`, search: '', href: 'http://localhost:3000/scanner', reload };
+    try {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(reload).toHaveBeenCalledTimes(1);
+      (window.location as unknown as { hash: string }).hash = '#notes';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      (window as unknown as { location: Location }).location = original;
+      unmount();
+    }
   });
 });
