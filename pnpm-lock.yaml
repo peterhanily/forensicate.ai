@@ -46,8 +46,8 @@ importers:
         specifier: workspace:*
         version: link:../scanner
       compromise:
-        specifier: ^14.18.0
-        version: 14.18.0
+        specifier: ^14.19.0
+        version: 14.19.0
       exifr:
         specifier: ^7.1.3
         version: 7.1.3
@@ -167,8 +167,8 @@ importers:
   packages/scanner:
     dependencies:
       compromise:
-        specifier: ^14.18.0
-        version: 14.18.0
+        specifier: ^14.19.0
+        version: 14.19.0
     devDependencies:
       '@types/node':
         specifier: ^24.19.1
@@ -1424,8 +1424,8 @@ packages:
     resolution: {integrity: sha512-g0S8KAD8qf4+V//pr3BfB1aBnARLXNz2Gx+jmHU0LEriUuoQUOPOulVquHKTJ8+EAIIO7fhseNDr9wK5Q9FKBQ==}
     engines: {node: '>=18'}
 
-  compromise@14.18.0:
-    resolution: {integrity: sha512-SCNTeMZN8ZnvDz96igAjV2QuvvmcKA1bVDbFr8IH672Ec9w+fTSxixIPGgrlivaxU+jyk/Ei3AT3gGtP23n6Vg==}
+  compromise@14.19.0:
+    resolution: {integrity: sha512-nA/ClpXt0PaS2Ne389wClhxFBBxV0el3nv6V7XFpoRRQBr8eCnV3Iv4ZY6C5H06UHq1k7bqth73nVc/hv/rrCg==}
     engines: {node: '>=18'}
 
   convert-source-map@2.0.0:
@@ -1662,10 +1662,6 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
-
-  grad-school@0.0.9:
-    resolution: {integrity: sha512-/aoG9CJz/1gB7x5XKp9i7ggA4k+MqZD7Neph3crfrOLWERkeJFXDXzNefvPW0j97iGTNYqTL+rpBEcz83MTmZw==}
-    engines: {node: '>=12'}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -3574,10 +3570,9 @@ snapshots:
       normalize-path: 3.0.0
       readable-stream: 4.7.0
 
-  compromise@14.18.0:
+  compromise@14.19.0:
     dependencies:
       efrt: 2.9.0
-      grad-school: 0.0.9
       suffix-thumb: 6.0.0
 
   convert-source-map@2.0.0: {}
@@ -3825,8 +3820,6 @@ snapshots:
   globals@17.13.0: {}
 
   graceful-fs@4.2.11: {}
-
-  grad-school@0.0.9: {}
 
   has-flag@4.0.0: {}
 
