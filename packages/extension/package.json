@@ -29,7 +29,7 @@
     "esbuild": "^0.28.2",
     "jsdom": "^29.1.1",
     "sharp": "^0.35.5",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.5"
   },
   "author": "Forensicate.ai",
   "license": "Apache-2.0"
